@@ -1,0 +1,2 @@
+.promo-section{background:#d9ebf3}.promo-poster{max-width:1040px;margin:auto;border-radius:22px;overflow:hidden;box-shadow:var(--shadow-md);border:1px solid #b7d2df;background:#fff}.promo-poster img{width:100%;height:auto;object-fit:contain}
+@media(max-width:640px){.promo-poster{border-radius:14px;margin-inline:-2px;box-shadow:0 12px 30px rgba(6,38,58,.12)}}

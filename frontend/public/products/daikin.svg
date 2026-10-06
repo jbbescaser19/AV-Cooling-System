@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 420">
+  <defs><linearGradient id="g" x1="0" x2="1"><stop stop-color="#f8fcff"/><stop offset="1" stop-color="#e1f5fb"/></linearGradient></defs>
+  <rect width="640" height="420" rx="36" fill="url(#g)"/>
+  <ellipse cx="320" cy="342" rx="190" ry="26" fill="#d5e7ef"/>
+  <rect x="112" y="120" width="416" height="155" rx="28" fill="#fff" stroke="#bed7e3" stroke-width="5"/>
+  <rect x="142" y="228" width="356" height="13" rx="6" fill="#d9eaf1"/>
+  <circle cx="478" cy="160" r="10" fill="#00a8d6"/>
+  <text x="320" y="200" text-anchor="middle" font-family="Arial" font-size="38" font-weight="700" fill="#0b3a67">DAIKIN</text>
+  <text x="320" y="325" text-anchor="middle" font-family="Arial" font-size="24" fill="#466579">Inverter Air Conditioner</text>
+</svg>

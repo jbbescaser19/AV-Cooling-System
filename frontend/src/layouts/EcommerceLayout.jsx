@@ -1,0 +1,1 @@
+import { Outlet } from "react-router-dom";import PublicNavbar from "../components/common/PublicNavbar";import Footer from "../components/common/Footer";export default function EcommerceLayout(){return <><PublicNavbar/><main><Outlet/></main><Footer/></>}

@@ -1,0 +1,1 @@
+export const promo={promo_id:1,image_url:"/promos/current-promo.svg"};

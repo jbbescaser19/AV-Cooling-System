@@ -1,0 +1,48 @@
+/* =========================================================
+   CUSTOMER E-COMMERCE PAGES
+   Shop, services, product details, cart, checkout, confirmation
+========================================================= */
+
+/* ---------- SHOP ---------- */
+.shop-toolbar{display:grid;grid-template-columns:minmax(0,1fr) 220px;gap:12px;padding:14px;margin-bottom:24px;align-items:center}.shop-search{display:flex;align-items:center;gap:9px;min-width:0}.shop-search svg{color:#477789}.shop-search .form-control{min-width:0}.shop-brand-nav{display:flex;gap:7px;overflow-x:auto;margin:0 0 8px;padding:3px 0 10px;scrollbar-width:none}.shop-brand-nav::-webkit-scrollbar{display:none}.shop-brand-nav button{flex:0 0 auto;border:1px solid #bad1dc;background:#eef7fa;color:#315a70;padding:7px 11px;border-radius:999px;font-size:.7rem;font-weight:800}.shop-brand-nav button.active{background:#0b4f7d;color:#fff;border-color:#0b4f7d}.shop-brand-block{padding:22px 0}.shop-brand-block+.shop-brand-block{border-top:1px solid rgba(95,142,163,.18)}.shop-brand-title{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin-bottom:12px}.shop-brand-title h2{margin:0;color:#0c3551;font-size:1.4rem}.shop-brand-title p{margin:4px 0 0;color:#607687;font-size:.8rem}.shop-brand-title span{font-size:.68rem;background:#c9dfe8;color:#315a70;padding:5px 8px;border-radius:999px;font-weight:800}
+
+/* ---------- SERVICE LISTING ---------- */
+.services-list-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}.service-list-card{padding:22px;display:flex;flex-direction:column;gap:12px;min-height:250px}.service-list-card>svg{color:#0e7490}.service-list-card h2{margin:0;color:#113a53;font-size:1.15rem}.service-list-card p{margin:0;color:#607687;font-size:.84rem;line-height:1.6}.service-list-card .btn{margin-top:auto;width:max-content}
+
+/* ---------- PRODUCT DETAILS ---------- */
+.product-detail-shell{display:grid;grid-template-columns:minmax(320px,.9fr) minmax(0,1.1fr);gap:28px;align-items:start}.product-detail-visual{position:sticky;top:calc(var(--nav-height) + 22px);overflow:hidden}.product-detail-hero{min-height:390px;display:grid;place-items:center;position:relative;background:radial-gradient(circle at 50% 30%,#fff 0%,#e7f4f8 46%,#cfe7f0 100%);color:#348fb1;border-bottom:1px solid #d3e4eb}.product-detail-hero small{position:absolute;left:18px;bottom:16px;font-size:.72rem;font-weight:800;color:#315a70}.product-detail-hero svg{filter:drop-shadow(0 12px 20px rgba(32,111,145,.14))}.detail-summary{padding:18px;display:grid;gap:10px}.detail-summary-row{display:flex;justify-content:space-between;gap:16px;color:#627786;font-size:.8rem}.detail-summary-row strong{color:#16394f;text-align:right}.product-detail-info{display:grid;gap:16px}.detail-card{padding:20px}.detail-card h2,.detail-card h3{margin:0 0 12px;color:#143e56}.detail-kicker{color:#0e7490;font-size:.7rem;font-weight:900;text-transform:uppercase;letter-spacing:.08em}.detail-price{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap}.detail-price strong{font-size:2rem;color:#0a456e;line-height:1}.detail-price del{color:#8fa0aa;font-size:.84rem}.detail-save{color:#18794e;font-size:.78rem;font-weight:800}.detail-hp-grid{display:flex;flex-wrap:wrap;gap:8px}.detail-hp-grid button{border:1px solid #bad1dc;background:#eff8fa;color:#315a70;border-radius:9px;padding:8px 11px;font-size:.74rem;font-weight:800;min-height:38px}.detail-hp-grid button.active{background:#0e7490;border-color:#0e7490;color:#fff}.detail-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.detail-list div{display:flex;align-items:flex-start;gap:7px;padding:9px 10px;border-radius:9px;background:#eff7fa;color:#526f7f;font-size:.74rem}.detail-list svg{color:#1682aa;margin-top:1px}.detail-actions{display:flex;gap:10px;align-items:center}.detail-actions .btn{min-width:150px}.quote-banner{padding:18px;border:1px solid #bdd8e4;background:#e8f4f8;border-radius:14px;color:#315a70}.quote-banner strong{display:block;color:#0a638a;font-size:1.05rem;margin-bottom:4px}
+
+/* ---------- CART ---------- */
+.cart-layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:22px;align-items:start}.cart-list{display:grid;gap:10px}.cart-item{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:center;padding:16px 18px}.cart-item-main{min-width:0}.cart-item-main b{display:block;color:#143e56}.cart-item-main span{font-size:.77rem;color:#657c8a}.cart-item-side{display:flex;align-items:center;gap:12px}.cart-item-side b{white-space:nowrap}.cart-item-side .btn{min-width:42px;padding:9px}.cart-summary{position:sticky;top:calc(var(--nav-height) + 18px);padding:20px;display:grid;gap:13px}.cart-summary h2{margin:0;color:#143e56;font-size:1.08rem}.cart-summary-row{display:flex;justify-content:space-between;gap:14px;font-size:.82rem;color:#617989}.cart-summary-row strong{color:#17394e}.cart-total{border-top:1px solid #d8e6ec;padding-top:12px;font-size:1rem}.cart-summary .btn{width:100%}.cart-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+
+/* ---------- CHECKOUT ---------- */
+.checkout-layout{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:24px;align-items:start}.checkout-main{display:grid;gap:14px}.checkout-section{padding:20px}.checkout-section h2{margin:0 0 14px;font-size:1.05rem;color:#153e57}.checkout-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.checkout-summary{position:sticky;top:calc(var(--nav-height) + 18px);padding:20px;display:grid;gap:12px}.checkout-summary h2{margin:0;font-size:1.08rem}.checkout-summary-row{display:flex;justify-content:space-between;gap:12px;color:#607687;font-size:.82rem}.checkout-summary-row strong{color:#17394e}.checkout-summary .btn{width:100%;margin-top:4px}.confirmation-card{max-width:660px;margin:24px auto;text-align:center;padding:34px}.confirmation-card svg{color:#18794e}.confirmation-card h1{margin:12px 0 6px}.confirmation-card .btn{margin-top:10px}
+
+/* ---------- GENERIC ABOUT ---------- */
+.about-card{padding:28px;max-width:820px}.about-card p{line-height:1.7}
+
+@media(max-width:1024px){
+  .services-list-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .product-detail-shell{grid-template-columns:minmax(260px,.8fr) minmax(0,1.2fr);gap:20px}.product-detail-hero{min-height:320px}
+  .cart-layout,.checkout-layout{grid-template-columns:1fr}.cart-summary,.checkout-summary{position:static}.checkout-summary{order:-1}
+}
+
+@media(max-width:760px){
+  .shop-toolbar{grid-template-columns:1fr;padding:12px}.shop-toolbar select{width:100%}
+  .shop-brand-title{align-items:flex-start}.shop-brand-title span{display:none}
+  .services-list-grid{grid-template-columns:1fr}.service-list-card{min-height:auto;padding:18px}.service-list-card .btn{width:100%}
+  .product-detail-shell{grid-template-columns:1fr}.product-detail-visual{position:static}.product-detail-hero{min-height:260px}.detail-list{grid-template-columns:1fr}.detail-actions{position:sticky;bottom:0;z-index:12;background:rgba(247,251,253,.96);backdrop-filter:blur(10px);padding:10px 0 calc(10px + env(safe-area-inset-bottom));border-top:1px solid #d5e4eb}.detail-actions .btn{flex:1;min-width:0}
+  .cart-item{grid-template-columns:1fr;padding:14px}.cart-item-side{justify-content:space-between;border-top:1px solid #e0eaef;padding-top:10px}.cart-actions{display:grid;grid-template-columns:1fr 1fr}.cart-actions .btn{width:100%}
+  .checkout-form-grid{grid-template-columns:1fr}.checkout-section{padding:16px}.checkout-summary{padding:16px}.confirmation-card{padding:26px 18px}
+}
+
+@media(max-width:440px){
+  .cart-actions{grid-template-columns:1fr}.detail-price strong{font-size:1.7rem}.product-detail-hero{min-height:230px}.detail-card{padding:16px}
+}
+
+/* ---------- FUNCTIONAL SERVICE BOOKING ---------- */
+.service-booking-backdrop{position:fixed;inset:0;z-index:120;display:grid;place-items:center;padding:18px;background:rgba(3,18,30,.68);backdrop-filter:blur(5px)}
+.service-booking-dialog{width:min(650px,100%);max-height:90vh;overflow:auto;border:1px solid #bdd5df;border-radius:18px;background:#f8fcfd;box-shadow:0 26px 75px rgba(0,14,24,.3)}
+.service-booking-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 18px;border-bottom:1px solid #d7e5eb}.service-booking-head span{color:#0b739b;font-size:.6rem;font-weight:900;text-transform:uppercase;letter-spacing:.07em}.service-booking-head h2{margin:2px 0 0;color:#153e56;font-size:1.05rem}.service-booking-head button{width:36px;height:36px;display:grid;place-items:center;border:1px solid #c6d9e2;border-radius:9px;background:#edf6f9;color:#315d72}
+.service-booking-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px;padding:18px}.service-booking-grid label{display:grid;gap:5px;color:#385b6f;font-size:.7rem;font-weight:850}.service-booking-grid .full{grid-column:1/-1}.service-booking-actions{display:flex;justify-content:flex-end;gap:8px;padding:14px 18px;border-top:1px solid #d7e5eb;background:#f3f9fb}
+@media(max-width:620px){.service-booking-backdrop{align-items:end;padding:8px}.service-booking-dialog{max-height:86vh;border-radius:18px}.service-booking-grid{grid-template-columns:1fr;padding:14px}.service-booking-grid .full{grid-column:auto}.service-booking-actions{display:grid;grid-template-columns:1fr 1fr}.service-booking-actions .btn{width:100%}}

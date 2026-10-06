@@ -1,0 +1,1 @@
+export const businessProfile={name:"AV Cooling System",phone:"+63 917 123 4567",email:"hello@avcooling.local",address:"Calamba, Laguna, Philippines",hours:"Mon–Sat · 8:00 AM–6:00 PM"};
