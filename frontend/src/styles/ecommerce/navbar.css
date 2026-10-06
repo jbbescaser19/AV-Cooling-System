@@ -1,42 +1,556 @@
-.public-nav{position:sticky;top:0;z-index:70;background:rgba(6,19,33,.96);backdrop-filter:blur(16px);border-bottom:1px solid rgba(255,255,255,.08);color:#fff}
-.nav-inner{width:var(--container);margin:auto;height:var(--nav-height);display:flex;align-items:center;gap:20px}
-.brand{display:flex;align-items:center;gap:10px;min-width:max-content;color:#fff}
-.brand-mark{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#22d3ee,#60a5fa);display:grid;place-items:center;color:#061827;box-shadow:0 8px 24px rgba(34,211,238,.14)}
-.brand span:last-child{display:grid;line-height:1.04}
-.brand b{font-size:.96rem}.brand small{font-size:.66rem;color:#a8c5d2;margin-top:4px;font-weight:600}
-.desktop-links{display:flex;align-items:center;gap:clamp(8px,1.1vw,18px);margin-left:auto}
-.desktop-links a{position:relative;font-size:clamp(.74rem,.82vw,.84rem);font-weight:720;white-space:nowrap;color:#d4e7f0;padding:10px 2px}
-.desktop-links a::after{content:"";position:absolute;left:50%;right:50%;bottom:3px;height:2px;border-radius:99px;background:#67e8f9;transition:left .16s ease,right .16s ease}
-.desktop-links a:hover{color:#fff}.desktop-links a:hover::after{left:0;right:0}
-.nav-actions{display:flex;align-items:center;gap:7px}
-.icon-link,.menu-btn{width:40px;height:40px;border:1px solid rgba(255,255,255,.09);border-radius:11px;display:grid;place-items:center;background:rgba(255,255,255,.06);color:#fff;transition:.16s ease}
-.icon-link:hover,.menu-btn:hover{background:rgba(255,255,255,.12);border-color:rgba(103,232,249,.3)}
-.menu-btn{display:none}
-.mobile-drawer{display:none}
+/* =========================================================
+   AV COOLING
+   CUSTOMER NAVBAR
+========================================================= */
 
-@media(max-width:1120px){
-  .desktop-links{display:none}
-  .menu-btn{display:grid}
-  .mobile-drawer{position:absolute;left:0;right:0;top:100%;display:block;background:rgba(6,19,33,.985);border-bottom:1px solid rgba(255,255,255,.08);box-shadow:0 22px 45px rgba(0,0,0,.26)}
-  .mobile-drawer>div{width:var(--container);margin:auto;padding:12px 0 18px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
-  .mobile-drawer a{min-height:44px;display:flex;align-items:center;padding:9px 11px;border-radius:9px;color:#d5e8f0;font-size:.82rem;font-weight:750}
-  .mobile-drawer a:hover{background:rgba(255,255,255,.07);color:#fff}
+.public-nav {
+  position: sticky;
+
+  top: 0;
+
+  z-index: 70;
+
+  background: rgba(6, 19, 33, 0.96);
+
+  backdrop-filter: blur(16px);
+
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+
+  color: #ffffff;
 }
 
-@media(max-width:700px){
-  .nav-inner{gap:8px}
-  .brand-mark{width:38px;height:38px}
-  .brand b{font-size:.9rem}.brand small{font-size:.6rem}
-  .nav-actions{margin-left:auto}
-  .search-link,.desktop-account{display:none}
-  .icon-link,.menu-btn{width:38px;height:38px}
-  .mobile-drawer{position:fixed;top:var(--nav-height);bottom:0;left:auto;right:0;width:min(88vw,360px);border-left:1px solid rgba(255,255,255,.08);overflow:auto}
-  .mobile-drawer>div{width:auto;padding:14px;grid-template-columns:1fr;gap:3px}
-  .mobile-drawer a{min-height:48px;padding:11px 12px;border-bottom:1px solid rgba(255,255,255,.06);border-radius:0}
-  .mobile-drawer a:nth-last-child(-n+3){border-radius:9px;border:1px solid rgba(255,255,255,.08);margin-top:5px;background:rgba(255,255,255,.04)}
+/* =========================================================
+   NAV INNER
+========================================================= */
+
+.nav-inner {
+  width: var(--container);
+
+  margin: auto;
+
+  height: var(--nav-height);
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 20px;
 }
 
-@media(max-width:380px){
-  .brand span:last-child small{display:none}
-  .brand-mark{width:36px;height:36px;border-radius:10px}
+/* =========================================================
+   BRAND
+========================================================= */
+
+.brand {
+  display: inline-flex;
+
+  align-items: center;
+
+  gap: 10px;
+
+  min-width: max-content;
+
+  color: #ffffff;
+}
+
+.brand-mark {
+  width: 40px;
+
+  height: 40px;
+
+  display: grid;
+
+  place-items: center;
+
+  flex: 0 0 auto;
+
+  border-radius: 12px;
+
+  background: linear-gradient(135deg, #22d3ee, #60a5fa);
+
+  color: #061827;
+
+  box-shadow: 0 8px 24px rgba(34, 211, 238, 0.14);
+}
+
+.brand span:last-child {
+  display: grid;
+
+  line-height: 1.04;
+}
+
+.brand b {
+  font-size: 0.96rem;
+}
+
+.brand small {
+  margin-top: 4px;
+
+  color: #a8c5d2;
+
+  font-size: 0.66rem;
+
+  font-weight: 600;
+}
+
+/* =========================================================
+   DESKTOP NAVIGATION
+========================================================= */
+
+.desktop-links {
+  display: flex;
+
+  align-items: center;
+
+  gap: clamp(8px, 1.1vw, 18px);
+
+  margin-left: auto;
+}
+
+.desktop-links a {
+  position: relative;
+
+  padding: 10px 2px;
+
+  color: #d4e7f0;
+
+  font-size: clamp(0.74rem, 0.82vw, 0.84rem);
+
+  font-weight: 720;
+
+  white-space: nowrap;
+}
+
+.desktop-links a::after {
+  content: "";
+
+  position: absolute;
+
+  left: 50%;
+
+  right: 50%;
+
+  bottom: 3px;
+
+  height: 2px;
+
+  border-radius: 99px;
+
+  background: #67e8f9;
+
+  transition:
+    left 160ms ease,
+    right 160ms ease;
+}
+
+.desktop-links a:hover {
+  color: #ffffff;
+}
+
+.desktop-links a:hover::after {
+  left: 0;
+
+  right: 0;
+}
+
+/* =========================================================
+   NAV ACTIONS
+========================================================= */
+
+.nav-actions {
+  display: flex;
+
+  align-items: center;
+
+  gap: 7px;
+}
+
+.icon-link,
+.menu-btn {
+  width: 40px;
+
+  height: 40px;
+
+  display: grid;
+
+  place-items: center;
+
+  flex: 0 0 auto;
+
+  padding: 0;
+
+  border: 1px solid rgba(255, 255, 255, 0.09);
+
+  border-radius: 11px;
+
+  background: rgba(255, 255, 255, 0.06);
+
+  color: #ffffff;
+
+  cursor: pointer;
+
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease;
+}
+
+.icon-link:hover,
+.menu-btn:hover {
+  border-color: rgba(103, 232, 249, 0.3);
+
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* =========================================================
+   IMPORTANT
+
+   DESKTOP:
+   no burger button.
+
+   Burger only appears when desktop
+   navigation disappears.
+========================================================= */
+
+.menu-btn {
+  display: none;
+}
+
+/* =========================================================
+   MOBILE MENU PORTAL LAYER
+
+   Rendered directly under <body>.
+   This prevents sticky/backdrop-filter
+   from breaking the fixed drawer.
+========================================================= */
+
+.mobile-menu-layer {
+  position: fixed;
+
+  inset: 0;
+
+  z-index: 9999;
+
+  display: flex;
+
+  justify-content: flex-end;
+
+  isolation: isolate;
+}
+
+/* =========================================================
+   MENU BACKDROP
+========================================================= */
+
+.mobile-menu-backdrop {
+  position: absolute;
+
+  inset: 0;
+
+  width: 100%;
+
+  height: 100%;
+
+  padding: 0;
+
+  border: 0;
+
+  border-radius: 0;
+
+  background: rgba(2, 10, 18, 0.66);
+
+  backdrop-filter: blur(3px);
+
+  cursor: default;
+}
+
+/* =========================================================
+   MOBILE DRAWER
+========================================================= */
+
+.mobile-nav-drawer {
+  position: relative;
+
+  z-index: 2;
+
+  width: min(88vw, 370px);
+
+  height: 100dvh;
+
+  display: flex;
+
+  flex-direction: column;
+
+  overflow-y: auto;
+
+  overscroll-behavior: contain;
+
+  background: linear-gradient(180deg, #071827 0%, #092238 100%);
+
+  border-left: 1px solid rgba(255, 255, 255, 0.09);
+
+  box-shadow: -24px 0 60px rgba(0, 0, 0, 0.3);
+
+  animation: avMobileDrawerIn 180ms ease-out;
+}
+
+/* =========================================================
+   DRAWER HEADER
+========================================================= */
+
+.mobile-nav-head {
+  display: flex;
+
+  align-items: center;
+
+  justify-content: space-between;
+
+  gap: 14px;
+
+  flex: 0 0 auto;
+
+  min-height: 76px;
+
+  padding: 14px 16px;
+
+  border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+}
+
+.mobile-nav-brand {
+  display: flex;
+
+  align-items: center;
+
+  gap: 10px;
+
+  min-width: 0;
+}
+
+.mobile-nav-brand > div {
+  min-width: 0;
+}
+
+.mobile-nav-brand strong,
+.mobile-nav-brand small {
+  display: block;
+}
+
+.mobile-nav-brand strong {
+  color: #ffffff;
+
+  font-size: 0.94rem;
+}
+
+.mobile-nav-brand small {
+  margin-top: 2px;
+
+  color: #91afbd;
+
+  font-size: 0.65rem;
+}
+
+.mobile-nav-close {
+  width: 40px;
+
+  height: 40px;
+
+  display: grid;
+
+  place-items: center;
+
+  flex: 0 0 auto;
+
+  padding: 0;
+
+  border: 1px solid rgba(255, 255, 255, 0.1);
+
+  border-radius: 11px;
+
+  background: rgba(255, 255, 255, 0.06);
+
+  color: #ffffff;
+
+  cursor: pointer;
+}
+
+/* =========================================================
+   MAIN MOBILE LINKS
+========================================================= */
+
+.mobile-nav-links {
+  display: grid;
+
+  gap: 2px;
+
+  padding: 12px 12px 8px;
+}
+
+.mobile-nav-links a {
+  min-height: 48px;
+
+  display: flex;
+
+  align-items: center;
+
+  padding: 10px 12px;
+
+  border-radius: 9px;
+
+  color: #d5e8f0;
+
+  font-size: 0.82rem;
+
+  font-weight: 750;
+
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
+}
+
+.mobile-nav-links a:hover,
+.mobile-nav-links a:active {
+  background: rgba(255, 255, 255, 0.07);
+
+  color: #ffffff;
+}
+
+/* =========================================================
+   MOBILE SHORTCUTS
+========================================================= */
+
+.mobile-nav-shortcuts {
+  display: grid;
+
+  gap: 7px;
+
+  margin-top: auto;
+
+  padding: 14px 12px calc(14px + env(safe-area-inset-bottom));
+
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.mobile-nav-shortcuts a {
+  min-height: 48px;
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 10px;
+
+  padding: 10px 12px;
+
+  border: 1px solid rgba(255, 255, 255, 0.08);
+
+  border-radius: 10px;
+
+  background: rgba(255, 255, 255, 0.045);
+
+  color: #e2f2f7;
+
+  font-size: 0.79rem;
+
+  font-weight: 750;
+}
+
+.mobile-nav-shortcuts svg {
+  flex: 0 0 auto;
+
+  color: #67e8f9;
+}
+
+/* =========================================================
+   DRAWER ANIMATION
+========================================================= */
+
+@keyframes avMobileDrawerIn {
+  from {
+    transform: translateX(100%);
+  }
+
+  to {
+    transform: translateX(0);
+  }
+}
+
+/* =========================================================
+   TABLET
+========================================================= */
+
+@media (max-width: 1120px) {
+  .desktop-links {
+    display: none;
+  }
+
+  .menu-btn {
+    display: grid;
+  }
+
+  .nav-actions {
+    margin-left: auto;
+  }
+}
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media (max-width: 700px) {
+  .nav-inner {
+    gap: 8px;
+  }
+
+  .brand-mark {
+    width: 38px;
+
+    height: 38px;
+  }
+
+  .brand b {
+    font-size: 0.9rem;
+  }
+
+  .brand small {
+    font-size: 0.6rem;
+  }
+
+  /*
+     Mobile:
+     search + account hidden.
+     Cart + hamburger remain.
+  */
+
+  .search-link,
+  .desktop-account {
+    display: none;
+  }
+
+  .icon-link,
+  .menu-btn {
+    width: 38px;
+
+    height: 38px;
+  }
+}
+
+/* =========================================================
+   SMALL MOBILE
+========================================================= */
+
+@media (max-width: 380px) {
+  .brand span:last-child small {
+    display: none;
+  }
+
+  .brand-mark {
+    width: 36px;
+
+    height: 36px;
+
+    border-radius: 10px;
+  }
+
+  .mobile-nav-drawer {
+    width: 90vw;
+  }
 }
