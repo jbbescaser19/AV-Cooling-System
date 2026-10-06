@@ -1,2 +1,381 @@
-.promo-section{background:#d9ebf3}.promo-poster{max-width:1040px;margin:auto;border-radius:22px;overflow:hidden;box-shadow:var(--shadow-md);border:1px solid #b7d2df;background:#fff}.promo-poster img{width:100%;height:auto;object-fit:contain}
-@media(max-width:640px){.promo-poster{border-radius:14px;margin-inline:-2px;box-shadow:0 12px 30px rgba(6,38,58,.12)}}
+/* =========================================================
+   AV COOLING SYSTEM
+   SPECIAL OFFERS / PROMO SECTION
+
+   GOAL:
+   - Entire section = about 100vh
+   - Promo poster stays completely visible
+   - Poster shrinks proportionally
+   - No cropping
+   - No stretching
+   - Works on desktop, iPad, and mobile
+========================================================= */
+
+/* =========================================================
+   SECTION
+========================================================= */
+
+.promo-section {
+  width: 100%;
+
+  height: 100vh;
+  height: 100dvh;
+
+  min-height: 100vh;
+  min-height: 100dvh;
+
+  display: flex;
+  flex-direction: column;
+
+  padding: clamp(24px, 3vw, 40px) 0 !important;
+
+  overflow: hidden;
+
+  background: #f1f7fb;
+}
+
+/* =========================================================
+   SECTION CONTAINER
+
+   The container uses the entire available height.
+========================================================= */
+
+.promo-section > .container {
+  flex: 1;
+
+  min-height: 0;
+
+  width: min(calc(100% - 32px), var(--container-xl, 1440px));
+
+  margin-inline: auto;
+
+  display: flex;
+  flex-direction: column;
+}
+
+/* =========================================================
+   SECTION HEADER
+========================================================= */
+
+.promo-section .section-head {
+  flex: 0 0 auto;
+
+  margin-bottom: clamp(12px, 1.5vw, 20px);
+}
+
+.promo-section .eyebrow {
+  margin: 0 0 6px;
+
+  color: #0284c7;
+
+  font-size: 0.72rem;
+
+  font-weight: 800;
+
+  letter-spacing: 0.13em;
+
+  text-transform: uppercase;
+}
+
+.promo-section .section-title {
+  margin: 0 0 6px;
+
+  color: #0b2239;
+
+  font-size: clamp(1.65rem, 3vw, 2.6rem);
+
+  line-height: 1.08;
+}
+
+.promo-section .section-copy {
+  max-width: 700px;
+
+  margin: 0;
+
+  color: #64748b;
+
+  font-size: clamp(0.82rem, 1vw, 0.95rem);
+
+  line-height: 1.55;
+}
+
+/* =========================================================
+   PROMO FRAME
+
+   IMPORTANT:
+   The frame fills the remaining section space,
+   while the actual image stays centered and shrinks.
+========================================================= */
+
+.promo-frame {
+  flex: 1;
+
+  min-height: 0;
+
+  width: 100%;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: clamp(10px, 1.5vw, 20px);
+
+  overflow: hidden;
+
+  border: 0;
+
+  border-radius: 18px;
+
+  background: #e6f0f5;
+
+  box-shadow: 0 14px 38px rgba(8, 45, 68, 0.1);
+}
+
+/* =========================================================
+   PROMO IMAGE
+
+   VERY IMPORTANT:
+
+   width: auto
+   height: auto
+   max-width: 100%
+   max-height: 100%
+
+   This makes the image SHRINK TO FIT.
+
+   It will NOT:
+   - crop
+   - stretch
+   - overflow
+========================================================= */
+
+.promo-frame img {
+  display: block;
+
+  width: auto !important;
+
+  height: auto !important;
+
+  max-width: 100% !important;
+
+  max-height: 100% !important;
+
+  object-fit: contain !important;
+
+  object-position: center;
+
+  margin: auto;
+}
+
+/* =========================================================
+   FOCUS STATE
+========================================================= */
+
+.promo-frame:focus-visible {
+  outline: 4px solid rgba(2, 132, 199, 0.25);
+
+  outline-offset: 4px;
+}
+
+/* =========================================================
+   LARGE DESKTOP
+========================================================= */
+
+@media (min-width: 1440px) {
+  .promo-section {
+    padding: 32px 0 !important;
+  }
+
+  .promo-frame {
+    padding: 18px;
+  }
+}
+
+/* =========================================================
+   LAPTOP
+========================================================= */
+
+@media (max-width: 1200px) {
+  .promo-section {
+    padding: 28px 0 !important;
+  }
+
+  .promo-frame {
+    border-radius: 16px;
+
+    padding: 14px;
+  }
+}
+
+/* =========================================================
+   IPAD / TABLET
+========================================================= */
+
+@media (max-width: 1024px) {
+  .promo-section {
+    height: 100vh;
+    height: 100dvh;
+
+    min-height: 100vh;
+    min-height: 100dvh;
+
+    padding: 24px 0 !important;
+  }
+
+  .promo-section > .container {
+    width: min(calc(100% - 28px), var(--container-xl, 1440px));
+  }
+
+  .promo-section .section-head {
+    margin-bottom: 12px;
+  }
+
+  .promo-frame {
+    padding: 12px;
+
+    border-radius: 15px;
+  }
+}
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media (max-width: 640px) {
+  .promo-section {
+    height: 100vh;
+    height: 100dvh;
+
+    min-height: 100vh;
+    min-height: 100dvh;
+
+    padding: 18px 0 !important;
+  }
+
+  .promo-section > .container {
+    width: min(calc(100% - 20px), var(--container-xl, 1440px));
+  }
+
+  .promo-section .section-head {
+    margin-bottom: 10px;
+  }
+
+  .promo-section .eyebrow {
+    margin-bottom: 3px;
+
+    font-size: 0.64rem;
+
+    letter-spacing: 0.11em;
+  }
+
+  .promo-section .section-title {
+    margin-bottom: 4px;
+
+    font-size: 1.45rem;
+
+    line-height: 1.08;
+  }
+
+  .promo-section .section-copy {
+    font-size: 0.74rem;
+
+    line-height: 1.4;
+  }
+
+  .promo-frame {
+    padding: 8px;
+
+    border-radius: 12px;
+  }
+}
+
+/* =========================================================
+   SMALL MOBILE
+========================================================= */
+
+@media (max-width: 380px) {
+  .promo-section {
+    padding: 14px 0 !important;
+  }
+
+  .promo-section > .container {
+    width: calc(100% - 16px);
+  }
+
+  .promo-section .section-head {
+    margin-bottom: 7px;
+  }
+
+  .promo-section .section-title {
+    font-size: 1.3rem;
+  }
+
+  .promo-section .section-copy {
+    font-size: 0.7rem;
+  }
+
+  .promo-frame {
+    padding: 6px;
+
+    border-radius: 10px;
+  }
+}
+
+/* =========================================================
+   SHORT DESKTOP / LAPTOP SCREENS
+
+   Example:
+   1366 × 768 laptop
+
+   Reduce header spacing so the poster gets more room.
+========================================================= */
+
+@media (min-width: 641px) and (max-height: 800px) {
+  .promo-section {
+    padding: 18px 0 !important;
+  }
+
+  .promo-section .section-head {
+    margin-bottom: 10px;
+  }
+
+  .promo-section .eyebrow {
+    margin-bottom: 3px;
+  }
+
+  .promo-section .section-title {
+    font-size: clamp(1.5rem, 2.4vw, 2rem);
+
+    margin-bottom: 4px;
+  }
+
+  .promo-section .section-copy {
+    font-size: 0.8rem;
+  }
+
+  .promo-frame {
+    padding: 10px;
+  }
+}
+
+/* =========================================================
+   VERY SHORT SCREENS
+========================================================= */
+
+@media (max-height: 620px) {
+  .promo-section {
+    padding: 12px 0 !important;
+  }
+
+  .promo-section .section-head {
+    margin-bottom: 6px;
+  }
+
+  .promo-section .section-copy {
+    display: none;
+  }
+
+  .promo-frame {
+    padding: 6px;
+  }
+}
