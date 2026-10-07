@@ -1,14 +1,256 @@
-import { NavLink,Link } from "react-router-dom";
-import { LayoutDashboard,ShoppingCart,ClipboardList,CreditCard,Package,Boxes,ArrowLeftRight,Wrench,ClipboardCheck,BriefcaseBusiness,Users,CalendarDays,Image,PanelsTopLeft,MessageSquare,MessagesSquare,Globe2,FileText,Bell,ScrollText,Snowflake,X } from "lucide-react";
-import { getStaff } from "../../utils/authMock";
+import { NavLink } from "react-router-dom";
+
+import {
+  BarChart3,
+  Bell,
+  Boxes,
+  CalendarDays,
+  ClipboardList,
+  ContactRound,
+  CreditCard,
+  History,
+  LayoutDashboard,
+  MessageCircle,
+  MessageSquareText,
+  MonitorCog,
+  Package,
+  ReceiptText,
+  ShieldCheck,
+  ShoppingCart,
+  UserCog,
+  Users,
+  Wrench,
+  X,
+} from "lucide-react";
+
+import { readStaff } from "../../utils/authMock";
+
 import "../../styles/management/sidebar.css";
-const groups=[
-  ["",[["dashboard",LayoutDashboard,"Dashboard",["OWNER","MANAGER","SALES_CASHIER","TECHNICIAN"]]]],
-  ["Sales",[["pos",ShoppingCart,"POS / Walk-in",["OWNER","MANAGER","SALES_CASHIER"]],["orders",ClipboardList,"Orders",["OWNER","MANAGER","SALES_CASHIER"]],["payments",CreditCard,"Payments",["OWNER","MANAGER","SALES_CASHIER"]]]],
-  ["Catalog",[["products",Package,"Products",["OWNER","MANAGER","SALES_CASHIER"]],["inventory",Boxes,"Inventory",["OWNER","MANAGER"]],["stock-movements",ArrowLeftRight,"Stock Movements",["OWNER","MANAGER"]]]],
-  ["Services",[["service-types",Wrench,"Service Types",["OWNER","MANAGER"]],["service-requests",ClipboardCheck,"Service Requests",["OWNER","MANAGER","TECHNICIAN"]],["work-orders",BriefcaseBusiness,"Work Orders",["OWNER","MANAGER","TECHNICIAN"]],["technicians",Users,"Technicians",["OWNER","MANAGER"]],["schedules",CalendarDays,"Schedules",["OWNER","MANAGER","TECHNICIAN"]]]],
-  ["Customers",[["customers",Users,"Customers",["OWNER","MANAGER","SALES_CASHIER"]]]],
-  ["Website",[["promos",Image,"Promos",["OWNER","MANAGER"]],["website-content",PanelsTopLeft,"Website Content",["OWNER","MANAGER"]],["feedback",MessageSquare,"Feedback",["OWNER","MANAGER"]],["contact-messages",MessagesSquare,"Contact Messages",["OWNER","MANAGER","SALES_CASHIER"]]]],
-  ["Operations",[["facebook-requests",Globe2,"Facebook Requests",["OWNER","MANAGER","SALES_CASHIER"]],["reports",FileText,"Reports",["OWNER","MANAGER"]],["notifications",Bell,"Notifications",["OWNER","MANAGER","SALES_CASHIER","TECHNICIAN"]],["audit-logs",ScrollText,"Audit Logs",["OWNER"]]]],
+
+const nav = [
+  {
+    label: "",
+    items: [
+      [
+        "Dashboard",
+        "/management/dashboard",
+        LayoutDashboard,
+        ["OWNER", "MANAGER", "SALES_CASHIER", "TECHNICIAN"],
+      ],
+    ],
+  },
+
+  {
+    label: "Sales",
+    items: [
+      [
+        "POS",
+        "/management/pos",
+        ShoppingCart,
+        ["OWNER", "MANAGER", "SALES_CASHIER"],
+      ],
+
+      [
+        "Orders",
+        "/management/orders",
+        ClipboardList,
+        ["OWNER", "MANAGER", "SALES_CASHIER"],
+      ],
+
+      [
+        "Payments",
+        "/management/payments",
+        CreditCard,
+        ["OWNER", "MANAGER", "SALES_CASHIER"],
+      ],
+    ],
+  },
+
+  {
+    label: "Catalog",
+    items: [
+      [
+        "Products",
+        "/management/products",
+        Package,
+        ["OWNER", "MANAGER", "SALES_CASHIER"],
+      ],
+
+      ["Inventory", "/management/inventory", Boxes, ["OWNER", "MANAGER"]],
+
+      [
+        "Stock Movements",
+        "/management/stock-movements",
+        History,
+        ["OWNER", "MANAGER"],
+      ],
+    ],
+  },
+
+  {
+    label: "Services",
+    items: [
+      [
+        "Service Types",
+        "/management/service-types",
+        Wrench,
+        ["OWNER", "MANAGER"],
+      ],
+
+      [
+        "Service Requests",
+        "/management/service-requests",
+        ReceiptText,
+        ["OWNER", "MANAGER", "TECHNICIAN"],
+      ],
+
+      [
+        "Work Orders",
+        "/management/work-orders",
+        ClipboardList,
+        ["OWNER", "MANAGER", "TECHNICIAN"],
+      ],
+
+      ["Technicians", "/management/technicians", Users, ["OWNER", "MANAGER"]],
+
+      [
+        "Schedules",
+        "/management/schedules",
+        CalendarDays,
+        ["OWNER", "MANAGER", "TECHNICIAN"],
+      ],
+    ],
+  },
+
+  {
+    label: "Customers",
+    items: [
+      [
+        "Customers",
+        "/management/customers",
+        ContactRound,
+        ["OWNER", "MANAGER", "SALES_CASHIER"],
+      ],
+    ],
+  },
+
+  {
+    label: "Website",
+    items: [
+      [
+        "Website Content",
+        "/management/website-content",
+        MonitorCog,
+        ["OWNER", "MANAGER"],
+      ],
+
+      [
+        "Feedback",
+        "/management/feedback",
+        MessageSquareText,
+        ["OWNER", "MANAGER"],
+      ],
+
+      [
+        "Contact Messages",
+        "/management/contact-messages",
+        MessageSquareText,
+        ["OWNER", "MANAGER", "SALES_CASHIER"],
+      ],
+    ],
+  },
+
+  {
+    label: "Operations",
+    items: [
+      [
+        "Facebook Requests",
+        "/management/facebook-requests",
+        MessageCircle,
+        ["OWNER", "MANAGER", "SALES_CASHIER"],
+      ],
+
+      ["Reports", "/management/reports", BarChart3, ["OWNER", "MANAGER"]],
+
+      [
+        "Notifications",
+        "/management/notifications",
+        Bell,
+        ["OWNER", "MANAGER", "SALES_CASHIER", "TECHNICIAN"],
+      ],
+    ],
+  },
+
+  {
+    label: "Administration",
+    items: [
+      ["Staff Accounts", "/management/staff", UserCog, ["OWNER"]],
+
+      ["Audit Logs", "/management/audit-logs", ShieldCheck, ["OWNER"]],
+    ],
+  },
 ];
-export default function Sidebar({open,onClose}){const role=getStaff()?.role||"OWNER";return <aside className={`mgmt-sidebar ${open?"open":""}`}><div className="mgmt-brand"><Link to="/management/dashboard"><Snowflake/>AV Cooling</Link><button onClick={onClose}><X/></button></div><div className="side-scroll">{groups.map(([g,items],i)=>{const allowed=items.filter(([, , ,roles])=>roles.includes(role));if(!allowed.length)return null;return <div className="side-group" key={i}>{g&&<div className="side-label">{g}</div>}{allowed.map(([p,I,t])=><NavLink key={p} to={`/management/${p}`} onClick={onClose}><I size={17}/><span>{t}</span></NavLink>)}</div>})}</div></aside>}
+
+export default function Sidebar({ open, onClose }) {
+  const staff = readStaff();
+
+  return (
+    <aside className={`mgmt-sidebar ${open ? "open" : ""}`}>
+      {/* BRAND */}
+
+      <div className="mgmt-brand">
+        <div className="mgmt-brand-info">
+          <span className="mgmt-brand-logo">AV</span>
+
+          <div>
+            <strong>AV Cooling</strong>
+
+            <small>Management</small>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          aria-label="Close navigation"
+          title="Close navigation"
+          onClick={onClose}
+        >
+          <X size={18} />
+        </button>
+      </div>
+
+      {/* NAVIGATION */}
+
+      <nav className="side-scroll">
+        {nav.map((group) => {
+          const items = group.items.filter((item) =>
+            item[3].includes(staff?.role),
+          );
+
+          if (!items.length) {
+            return null;
+          }
+
+          return (
+            <div className="side-group" key={group.label || "main"}>
+              {group.label && <div className="side-label">{group.label}</div>}
+
+              {items.map(([label, path, Icon]) => (
+                <NavLink
+                  key={path}
+                  to={path}
+                  onClick={onClose}
+                  className={({ isActive }) => (isActive ? "active" : "")}
+                >
+                  <Icon size={18} aria-hidden="true" />
+
+                  <span>{label}</span>
+                </NavLink>
+              ))}
+            </div>
+          );
+        })}
+      </nav>
+    </aside>
+  );
+}

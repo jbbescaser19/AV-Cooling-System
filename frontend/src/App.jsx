@@ -1,14 +1,112 @@
 import { Routes, Route, Navigate } from "react-router-dom";
-import EcommerceLayout from "./layouts/EcommerceLayout";import ManagementLayout from "./layouts/ManagementLayout";import CustomerLayout from "./layouts/CustomerLayout";
-import HomePage from "./pages/ecommerce/HomePage";import ShopPage from "./pages/ecommerce/ShopPage";import ProductDetailsPage from "./pages/ecommerce/ProductDetailsPage";import ServicesPage from "./pages/ecommerce/ServicesPage";import AboutPage from "./pages/ecommerce/AboutPage";import ContactPage from "./pages/ecommerce/ContactPage";
-import LoginPage from "./pages/auth/LoginPage";import RegisterPage from "./pages/auth/RegisterPage";import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";import ManagementLoginPage from "./pages/management/ManagementLoginPage";
-import CartPage from "./pages/checkout/CartPage";import CheckoutPage from "./pages/checkout/CheckoutPage";import OrderConfirmationPage from "./pages/checkout/OrderConfirmationPage";
-import DashboardPage from "./pages/management/DashboardPage";import OrdersPage from "./pages/management/OrdersPage";import POSPage from "./pages/management/POSPage";import ProductsPage from "./pages/management/ProductsPage";import InventoryPage from "./pages/management/InventoryPage";import CustomersPage from "./pages/management/CustomersPage";import PromosPage from "./pages/management/PromosPage";import ManagementModulePage from "./pages/management/ManagementModulePage";import CustomerModulePage from "./pages/customer/CustomerModulePage";
-const mgmtModules=["payments","stock-movements","service-types","service-requests","work-orders","technicians","schedules","website-content","feedback","contact-messages","facebook-requests","reports","notifications","audit-logs"];
-const customerModules=["orders","services","payments","notifications","feedback","addresses","profile","change-password"];
-export default function App(){return <Routes>
-<Route element={<EcommerceLayout/>}><Route path="/" element={<HomePage/>}/><Route path="/shop" element={<ShopPage/>}/><Route path="/shop/:productId" element={<ProductDetailsPage/>}/><Route path="/services" element={<ServicesPage/>}/><Route path="/services/:serviceId" element={<ServicesPage/>}/><Route path="/about" element={<AboutPage/>}/><Route path="/contact" element={<ContactPage/>}/><Route path="/cart" element={<CartPage/>}/><Route path="/checkout" element={<CheckoutPage/>}/><Route path="/order-confirmation/:orderId" element={<OrderConfirmationPage/>}/></Route>
-<Route path="/login" element={<LoginPage/>}/><Route path="/register" element={<RegisterPage/>}/><Route path="/forgot-password" element={<ForgotPasswordPage/>}/>
-<Route path="/account" element={<CustomerLayout/>}>{customerModules.map(m=><Route key={m} path={m} element={<CustomerModulePage module={m}/>}/>)}<Route index element={<Navigate to="profile" replace/>}/><Route path="orders/:orderId" element={<CustomerModulePage module="order-details"/>}/><Route path="services/:serviceId" element={<CustomerModulePage module="service-details"/>}/></Route>
-<Route path="/management/login" element={<ManagementLoginPage/>}/><Route path="/management" element={<ManagementLayout/>}><Route index element={<DashboardPage/>}/><Route path="dashboard" element={<DashboardPage/>}/><Route path="orders" element={<OrdersPage/>}/><Route path="pos" element={<POSPage/>}/><Route path="products" element={<ProductsPage/>}/><Route path="inventory" element={<InventoryPage/>}/><Route path="customers" element={<CustomersPage/>}/><Route path="promos" element={<PromosPage/>}/>{mgmtModules.map(m=><Route key={m} path={m} element={<ManagementModulePage module={m}/>}/>)}</Route>
-<Route path="*" element={<Navigate to="/" replace/>}/></Routes>}
+import EcommerceLayout from "./layouts/EcommerceLayout";
+import ManagementLayout from "./layouts/ManagementLayout";
+import CustomerLayout from "./layouts/CustomerLayout";
+import HomePage from "./pages/ecommerce/HomePage";
+import ShopPage from "./pages/ecommerce/ShopPage";
+import ProductDetailsPage from "./pages/ecommerce/ProductDetailsPage";
+import ServicesPage from "./pages/ecommerce/ServicesPage";
+import AboutPage from "./pages/ecommerce/AboutPage";
+import ContactPage from "./pages/ecommerce/ContactPage";
+import LoginPage from "./pages/auth/LoginPage";
+import RegisterPage from "./pages/auth/RegisterPage";
+import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
+import ManagementLoginPage from "./pages/management/ManagementLoginPage";
+import CartPage from "./pages/checkout/CartPage";
+import CheckoutPage from "./pages/checkout/CheckoutPage";
+import OrderConfirmationPage from "./pages/checkout/OrderConfirmationPage";
+import DashboardPage from "./pages/management/DashboardPage";
+import OrdersPage from "./pages/management/OrdersPage";
+import POSPage from "./pages/management/POSPage";
+import ProductsPage from "./pages/management/ProductsPage";
+import InventoryPage from "./pages/management/InventoryPage";
+import CustomersPage from "./pages/management/CustomersPage";
+import ManagementModulePage from "./pages/management/ManagementModulePage";
+import CustomerModulePage from "./pages/customer/CustomerModulePage";
+import StaffAccountsPage from "./pages/management/StaffAccountsPage";
+import RoleGuard from "./components/management/RoleGuard";
+const mgmtModules = [
+  "payments",
+  "stock-movements",
+  "service-types",
+  "service-requests",
+  "work-orders",
+  "technicians",
+  "schedules",
+  "website-content",
+  "feedback",
+  "contact-messages",
+  "facebook-requests",
+  "reports",
+  "notifications",
+  "audit-logs",
+];
+const customerModules = [
+  "orders",
+  "services",
+  "payments",
+  "notifications",
+  "feedback",
+  "addresses",
+  "profile",
+  "change-password",
+];
+export default function App() {
+  return (
+    <Routes>
+      <Route element={<EcommerceLayout />}>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/shop" element={<ShopPage />} />
+        <Route path="/shop/:productId" element={<ProductDetailsPage />} />
+        <Route path="/services" element={<ServicesPage />} />
+        <Route path="/services/:serviceId" element={<ServicesPage />} />
+        <Route path="/about" element={<AboutPage />} />
+        <Route path="/contact" element={<ContactPage />} />
+        <Route path="/cart" element={<CartPage />} />
+        <Route path="/checkout" element={<CheckoutPage />} />
+        <Route
+          path="/order-confirmation/:orderId"
+          element={<OrderConfirmationPage />}
+        />
+      </Route>
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/account" element={<CustomerLayout />}>
+        {customerModules.map((m) => (
+          <Route key={m} path={m} element={<CustomerModulePage module={m} />} />
+        ))}
+        <Route index element={<Navigate to="profile" replace />} />
+        <Route
+          path="orders/:orderId"
+          element={<CustomerModulePage module="order-details" />}
+        />
+        <Route
+          path="services/:serviceId"
+          element={<CustomerModulePage module="service-details" />}
+        />
+      </Route>
+      <Route path="/management/login" element={<ManagementLoginPage />} />
+      <Route path="/management" element={<ManagementLayout />}>
+        <Route index element={<DashboardPage />} />
+        <Route path="dashboard" element={<DashboardPage />} />
+        <Route path="orders" element={<OrdersPage />} />
+        <Route path="pos" element={<POSPage />} />
+        <Route path="products" element={<ProductsPage />} />
+        <Route path="inventory" element={<InventoryPage />} />
+        <Route path="customers" element={<CustomersPage />} />
+        <Route element={<RoleGuard roles={["OWNER"]} />}>
+          <Route path="staff" element={<StaffAccountsPage />} />
+        </Route>
+        {mgmtModules.map((m) => (
+          <Route
+            key={m}
+            path={m}
+            element={<ManagementModulePage module={m} />}
+          />
+        ))}
+      </Route>
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+}

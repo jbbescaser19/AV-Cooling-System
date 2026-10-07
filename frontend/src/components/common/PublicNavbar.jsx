@@ -9,7 +9,6 @@ import { Search, ShoppingCart, User, Menu, X, Snowflake } from "lucide-react";
 import "../../styles/ecommerce/navbar.css";
 
 const links = [
-  ["Special Offers", "/#special-offers"],
   ["Our Expertise", "/#expertise"],
   ["Our Products", "/#products"],
   ["Why Partner With Us", "/#why-us"],

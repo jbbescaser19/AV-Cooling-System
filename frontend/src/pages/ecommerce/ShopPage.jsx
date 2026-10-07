@@ -1,6 +1,108 @@
 import { useEffect, useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import ProductRail from "../../components/ecommerce/ProductRail";
-import { readCatalogBrands, readCatalogProducts } from "../../utils/catalogStore";
+import {
+  readCatalogBrands,
+  readCatalogProducts,
+} from "../../utils/catalogStore";
 import "../../styles/ecommerce/pages.css";
-export default function ShopPage(){const [catalog,setCatalog]=useState(()=>readCatalogProducts());const [query,setQuery]=useState("");const [brand,setBrand]=useState("All");useEffect(()=>{const refresh=()=>setCatalog(readCatalogProducts());window.addEventListener("av-management-updated",refresh);return()=>window.removeEventListener("av-management-updated",refresh)},[]);const brands=useMemo(()=>readCatalogBrands(catalog),[catalog]);const filtered=useMemo(()=>{const n=query.trim().toLowerCase();return catalog.filter(p=>{const inBrand=brand==="All"||p.brand===brand;const text=`${p.brand} ${p.name} ${p.category} ${p.tagline||""} ${p.variants?.map(v=>v.hp).join(" ")||""}`.toLowerCase();return inBrand&&(!n||text.includes(n))})},[catalog,query,brand]);const visible=brand==="All"?brands:[brand];return <section className="page-shell"><div className="container"><div className="page-intro"><div><div className="eyebrow">Shop</div><h1 className="page-title">Air-conditioning catalog</h1><p className="section-copy">Browse product series in layouts designed separately for desktop, iPad/tablet, and phone. Catalog changes made by authorized management staff appear here in this browser prototype.</p></div></div><div className="surface shop-toolbar"><div className="shop-search"><Search size={18}/><input className="form-control" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search brand, series, or HP..."/></div><select className="form-control" value={brand} onChange={e=>setBrand(e.target.value)}><option value="All">All brands</option>{brands.map(x=><option key={x}>{x}</option>)}</select></div><div className="shop-brand-nav"><button className={brand==="All"?"active":""} onClick={()=>setBrand("All")}>All</button>{brands.map(x=><button key={x} className={brand===x?"active":""} onClick={()=>setBrand(x)}>{x==="Carrier Floor Mounted"?"Floor Mounted":x}</button>)}</div>{!filtered.length?<div className="surface empty-state">No products matched your search.</div>:visible.map(x=>{const group=filtered.filter(p=>p.brand===x);if(!group.length)return null;return <section className="shop-brand-block" key={x}><div className="shop-brand-title"><div><h2>{x==="Carrier Floor Mounted"?"Floor Mounted":x}</h2><p>{group[0]?.tagline}</p></div><span>{group.length} series</span></div><ProductRail items={group}/></section>})}</div></section>}
+export default function ShopPage() {
+  const [catalog, setCatalog] = useState(() => readCatalogProducts());
+  const [query, setQuery] = useState("");
+  const [brand, setBrand] = useState("All");
+  useEffect(() => {
+    const refresh = () => setCatalog(readCatalogProducts());
+    window.addEventListener("av-management-updated", refresh);
+    return () => window.removeEventListener("av-management-updated", refresh);
+  }, []);
+  const brands = useMemo(() => readCatalogBrands(catalog), [catalog]);
+  const filtered = useMemo(() => {
+    const n = query.trim().toLowerCase();
+    return catalog.filter((p) => {
+      const inBrand = brand === "All" || p.brand === brand;
+      const text =
+        `${p.brand} ${p.name} ${p.category} ${p.tagline || ""} ${p.variants?.map((v) => v.hp).join(" ") || ""}`.toLowerCase();
+      return inBrand && (!n || text.includes(n));
+    });
+  }, [catalog, query, brand]);
+  const visible = brand === "All" ? brands : [brand];
+  return (
+    <section className="page-shell">
+      <div className="container">
+        <div className="page-intro">
+          <div>
+            <div className="eyebrow">Shop</div>
+            <h1 className="page-title">Air-conditioning catalog</h1>
+            <p className="section-copy">
+              Browse product series in layouts designed separately for desktop,
+              iPad/tablet, and phone. Catalog changes made by authorized
+              management staff appear here in this browser prototype.
+            </p>
+          </div>
+        </div>
+        <div className="surface shop-toolbar">
+          <div className="shop-search">
+            <Search size={18} />
+            <input
+              className="form-control"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search brand, series, or HP..."
+            />
+          </div>
+          <select
+            className="form-control"
+            value={brand}
+            onChange={(e) => setBrand(e.target.value)}
+          >
+            <option value="All">All brands</option>
+            {brands.map((x) => (
+              <option key={x}>{x}</option>
+            ))}
+          </select>
+        </div>
+        <div className="shop-brand-nav">
+          <button
+            className={brand === "All" ? "active" : ""}
+            onClick={() => setBrand("All")}
+          >
+            All
+          </button>
+          {brands.map((x) => (
+            <button
+              key={x}
+              className={brand === x ? "active" : ""}
+              onClick={() => setBrand(x)}
+            >
+              {x === "Carrier Floor Mounted" ? "Floor Mounted" : x}
+            </button>
+          ))}
+        </div>
+        {!filtered.length ? (
+          <div className="surface empty-state">
+            No products matched your search.
+          </div>
+        ) : (
+          visible.map((x) => {
+            const group = filtered.filter((p) => p.brand === x);
+            if (!group.length) return null;
+            return (
+              <section className="shop-brand-block" key={x}>
+                <div className="shop-brand-title">
+                  <div>
+                    <h2>
+                      {x === "Carrier Floor Mounted" ? "Floor Mounted" : x}
+                    </h2>
+                    <p>{group[0]?.tagline}</p>
+                  </div>
+                  <span>{group.length} series</span>
+                </div>
+                <ProductRail items={group} />
+              </section>
+            );
+          })
+        )}
+      </div>
+    </section>
+  );
+}

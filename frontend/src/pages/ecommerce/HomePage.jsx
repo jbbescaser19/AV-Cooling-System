@@ -1,5 +1,4 @@
 import HeroSection from "../../components/home/HeroSection";
-import PromoSection from "../../components/home/PromoSection";
 import ExpertiseSection from "../../components/home/ExpertiseSection";
 import ProductsSection from "../../components/home/ProductsSection";
 import WhyChooseUsSection from "../../components/home/WhyChooseUsSection";
@@ -10,7 +9,7 @@ export default function HomePage() {
   return (
     <>
       <HeroSection />
-      <PromoSection />
+
       <ExpertiseSection />
       <ProductsSection />
       <WhyChooseUsSection />
