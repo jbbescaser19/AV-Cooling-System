@@ -70,6 +70,8 @@ export default function LoginPage() {
         <p>
           New customer? <Link to="/register">Create account</Link>
         </p>
+
+        <Link to="/management/login">Management Login</Link>
       </form>
     </div>
   );

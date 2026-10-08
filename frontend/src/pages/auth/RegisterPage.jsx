@@ -2,8 +2,12 @@ import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 
 export default function RegisterPage() {
-  const nav = useNavigate();
-
+  //   const nav = useNavigate();
+  // const [formData setFormData] = useState({
+  //   name:"",
+  //   email:"",
+  //   pass:"",
+  // })
   return (
     <div className="auth-shell">
       <form className="auth-card">
