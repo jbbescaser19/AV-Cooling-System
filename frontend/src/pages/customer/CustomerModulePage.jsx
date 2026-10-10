@@ -1,34 +1,646 @@
 import { useState } from "react";
-import { Bell, CreditCard, MapPin, Package, Plus, Star, UserRound, Wrench, X } from "lucide-react";
+import {
+  Bell,
+  CreditCard,
+  MapPin,
+  Package,
+  Plus,
+  Star,
+  Trash2,
+  UserRound,
+  Wrench,
+  X,
+} from "lucide-react";
+import {
+  MAX_SAVED_ADDRESSES,
+  addCustomerAddress,
+  deleteCustomerAddress,
+  readCustomerAddresses,
+  setDefaultCustomerAddress,
+} from "../../utils/addressStore";
 import { getCustomer } from "../../utils/authMock";
 import { loadMock, saveMock, uid } from "../../utils/prototypeStore";
 
-const seedOrders=[{id:"AV-1048",date:"Oct 6, 2026",total:42800,status:"Processing",type:"Delivery",payment:"GCash"},{id:"AV-1022",date:"Sep 22, 2026",total:23499,status:"Completed",type:"Pickup",payment:"Cash"}];
-const seedServices=[{id:"SR-0318",service:"Cleaning & Maintenance",schedule:"Oct 7 · 9:00 AM",status:"Pending Approval",address:"Calamba, Laguna"},{id:"SR-0291",service:"Installation",schedule:"Sep 18 · 1:00 PM",status:"Completed",address:"Calamba, Laguna"}];
-const seedPayments=[{id:"PAY-2218",order:"AV-1048",method:"GCash",amount:42800,status:"Paid"},{id:"PAY-2102",order:"AV-1022",method:"Cash",amount:23499,status:"Paid"}];
-const seedNotices=[{id:"CN-1",title:"Order AV-1048 is processing",text:"Your payment is verified and the order is being prepared.",time:"10 min ago",read:false},{id:"CN-2",title:"Service request received",text:"Cleaning & Maintenance request SR-0318 is waiting for schedule approval.",time:"35 min ago",read:false},{id:"CN-3",title:"Promo update",text:"A new AV Cooling promotional poster is available on the homepage.",time:"Yesterday",read:true}];
-const money=v=>`₱${Number(v||0).toLocaleString("en-PH")}`;
-const badge=v=><span className="customer-status">{v}</span>;
+const seedOrders = [
+  {
+    id: "AV-1048",
+    date: "Oct 6, 2026",
+    total: 42800,
+    status: "Processing",
+    type: "Delivery",
+    payment: "GCash",
+  },
+  {
+    id: "AV-1022",
+    date: "Sep 22, 2026",
+    total: 23499,
+    status: "Completed",
+    type: "Pickup",
+    payment: "Cash",
+  },
+];
+const seedServices = [
+  {
+    id: "SR-0318",
+    service: "Cleaning & Maintenance",
+    schedule: "Oct 7 · 9:00 AM",
+    status: "Pending Approval",
+    address: "Calamba, Laguna",
+  },
+  {
+    id: "SR-0291",
+    service: "Installation",
+    schedule: "Sep 18 · 1:00 PM",
+    status: "Completed",
+    address: "Calamba, Laguna",
+  },
+];
+const seedPayments = [
+  {
+    id: "PAY-2218",
+    order: "AV-1048",
+    method: "GCash",
+    amount: 42800,
+    status: "Paid",
+  },
+  {
+    id: "PAY-2102",
+    order: "AV-1022",
+    method: "Cash",
+    amount: 23499,
+    status: "Paid",
+  },
+];
+const seedNotices = [
+  {
+    id: "CN-1",
+    title: "Order AV-1048 is processing",
+    text: "Your payment is verified and the order is being prepared.",
+    time: "10 min ago",
+    read: false,
+  },
+  {
+    id: "CN-2",
+    title: "Service request received",
+    text: "Cleaning & Maintenance request SR-0318 is waiting for schedule approval.",
+    time: "35 min ago",
+    read: false,
+  },
+  {
+    id: "CN-3",
+    title: "Promo update",
+    text: "A new AV Cooling promotional poster is available on the homepage.",
+    time: "Yesterday",
+    read: true,
+  },
+];
+const money = (v) => `₱${Number(v || 0).toLocaleString("en-PH")}`;
+const badge = (v) => <span className="customer-status">{v}</span>;
 
-export default function CustomerModulePage({module}){
- const customer=getCustomer()||{name:"Demo Customer",email:"customer@example.com"};
- if(module==="orders"||module==="order-details") return <OrdersModule/>;
- if(module==="services"||module==="service-details") return <ServicesModule/>;
- if(module==="payments") return <PaymentsModule/>;
- if(module==="notifications") return <NotificationsModule/>;
- if(module==="feedback") return <FeedbackModule/>;
- if(module==="addresses") return <AddressesModule/>;
- if(module==="change-password") return <PasswordModule/>;
- return <ProfileModule customer={customer}/>;
+export default function CustomerModulePage({ module }) {
+  const customer = getCustomer() || {
+    name: "Demo Customer",
+    email: "customer@example.com",
+  };
+  if (module === "orders" || module === "order-details")
+    return <OrdersModule />;
+  if (module === "services" || module === "service-details")
+    return <ServicesModule />;
+  if (module === "payments") return <PaymentsModule />;
+  if (module === "notifications") return <NotificationsModule />;
+  if (module === "feedback") return <FeedbackModule />;
+  if (module === "addresses") return <AddressesModule />;
+  if (module === "change-password") return <PasswordModule />;
+  return <ProfileModule customer={customer} />;
 }
 
-function Head({Icon,title,copy}){return <div className="customer-module-head"><Icon/><div><span>My Account</span><h1>{title}</h1><p>{copy}</p></div></div>}
-function OrdersModule(){const [selected,setSelected]=useState(null);const items=[...loadMock("av_customer_orders",[]),...seedOrders];return <div className="customer-module"><Head Icon={Package} title="Orders" copy="Track current and previous AV Cooling orders."/><div className="customer-record-list">{items.map(o=><button className="surface customer-record customer-record-button" key={o.id} onClick={()=>setSelected(o)}><div><strong>{o.id}</strong><span>{o.date} · {o.type}</span></div><div><b>{typeof o.total==="number"?money(o.total):o.total}</b>{badge(o.status)}</div></button>)}</div>{selected&&<CustomerDialog title={selected.id} onClose={()=>setSelected(null)}><div className="customer-detail-grid"><div><span>Status</span><strong>{selected.status}</strong></div><div><span>Fulfillment</span><strong>{selected.type}</strong></div><div><span>Payment</span><strong>{selected.payment||"—"}</strong></div><div><span>Total</span><strong>{typeof selected.total==="number"?money(selected.total):selected.total}</strong></div></div>{selected.items?.map((item,i)=><div className="customer-line-item" key={i}><span>{item.qty} × {item.name} {item.hp}</span><strong>{money(item.price*item.qty)}</strong></div>)}</CustomerDialog>}</div>}
-function ServicesModule(){const items=[...loadMock("av_customer_services",[]),...seedServices];return <div className="customer-module"><Head Icon={Wrench} title="Service Bookings" copy="View service requests, preferred schedules, and job status."/><div className="customer-record-list">{items.map(x=><article className="surface customer-record" key={x.id}><div><strong>{x.service}</strong><span>{x.id} · {x.schedule}</span><small>{x.address}</small></div>{badge(x.status)}</article>)}</div></div>}
-function PaymentsModule(){const items=loadMock("av_customer_payments",seedPayments);return <div className="customer-module"><Head Icon={CreditCard} title="Payments" copy="Payment history and verification status."/><div className="customer-record-list">{items.map(x=><article className="surface customer-record" key={x.id}><div><strong>{money(x.amount)}</strong><span>{x.id} · {x.order} · {x.method}</span></div>{badge(x.status)}</article>)}</div></div>}
-function NotificationsModule(){const [items,setItems]=useState(()=>loadMock("av_customer_notifications",seedNotices));const save=n=>{setItems(n);saveMock("av_customer_notifications",n)};return <div className="customer-module"><div className="customer-module-action-head"><Head Icon={Bell} title="Notifications" copy="Order, payment, service, and promotional updates."/><button className="btn btn-soft" onClick={()=>save(items.map(x=>({...x,read:true})))}>Mark all read</button></div><div className="customer-notice-list">{items.map(x=><article className={`surface customer-notice ${x.read?"":"unread"}`} key={x.id}><Bell size={17}/><div><strong>{x.title}</strong><p>{x.text}</p><small>{x.time}</small></div>{!x.read&&<button className="customer-mini-action" onClick={()=>save(items.map(i=>i.id===x.id?{...i,read:true}:i))}>Mark read</button>}</article>)}</div></div>}
-function FeedbackModule(){const [category,setCategory]=useState("Service Quality");const [rating,setRating]=useState("5");const [comment,setComment]=useState("");const [history,setHistory]=useState(()=>loadMock("av_customer_feedback",[]));const submit=()=>{if(!comment.trim())return alert("Please enter your feedback.");const rec={id:uid("FB"),category,rating:Number(rating),comment,date:new Date().toLocaleDateString("en-PH")};const next=[rec,...history];setHistory(next);saveMock("av_customer_feedback",next);setComment("");alert("Feedback submitted.")};return <div className="customer-module"><Head Icon={Star} title="Feedback" copy="Send feedback after an order or service and view your submissions."/><section className="surface customer-form-card"><label>Category<select className="form-control" value={category} onChange={e=>setCategory(e.target.value)}><option>Service Quality</option><option>Installation</option><option>Product Quality</option><option>Communication</option><option>Pricing</option></select></label><label>Rating<select className="form-control" value={rating} onChange={e=>setRating(e.target.value)}><option value="5">5 - Excellent</option><option value="4">4 - Good</option><option value="3">3 - Average</option><option value="2">2 - Poor</option><option value="1">1 - Very Poor</option></select></label><label>Comment<textarea className="form-control" value={comment} onChange={e=>setComment(e.target.value)} placeholder="Tell us about your experience"/></label><button className="btn btn-dark" onClick={submit}>Submit Feedback</button></section>{history.length>0&&<div className="customer-record-list customer-history">{history.map(x=><article className="surface customer-record" key={x.id}><div><strong>{x.category} · {x.rating}/5</strong><span>{x.comment}</span></div><small>{x.date}</small></article>)}</div>}</div>}
-function AddressesModule(){const [items,setItems]=useState(()=>loadMock("av_customer_addresses",[{id:"ADDR-1",label:"Home",address:"Calamba, Laguna",default:true}]));const [open,setOpen]=useState(false);const [label,setLabel]=useState("Home");const [address,setAddress]=useState("");const add=()=>{if(!address.trim())return;const next=[...items,{id:uid("ADDR"),label,address,default:items.length===0}];setItems(next);saveMock("av_customer_addresses",next);setOpen(false);setAddress("")};return <div className="customer-module"><div className="customer-module-action-head"><Head Icon={MapPin} title="Addresses" copy="Saved delivery and service addresses."/><button className="btn btn-dark" onClick={()=>setOpen(true)}><Plus size={16}/> Add Address</button></div><div className="customer-address-grid">{items.map(x=><article className="surface customer-address" key={x.id}><strong>{x.label}</strong><p>{x.address}</p><span>{x.default?"Default address":"Saved address"}</span></article>)}</div>{open&&<CustomerDialog title="Add Address" onClose={()=>setOpen(false)}><div className="customer-form-card dialog-form"><label>Label<input className="form-control" value={label} onChange={e=>setLabel(e.target.value)}/></label><label>Address<textarea className="form-control" value={address} onChange={e=>setAddress(e.target.value)}/></label><button className="btn btn-dark" onClick={add}>Save Address</button></div></CustomerDialog>}</div>}
-function PasswordModule(){const [done,setDone]=useState(false);return <div className="customer-module"><Head Icon={UserRound} title="Change Password" copy="Prototype password update flow."/><section className="surface customer-form-card"><label>Current password<input className="form-control" type="password"/></label><label>New password<input className="form-control" type="password"/></label><label>Confirm new password<input className="form-control" type="password"/></label><button className="btn btn-dark" onClick={()=>setDone(true)}>Update Password</button>{done&&<span className="customer-success-note">Password updated in mock mode.</span>}</section></div>}
-function ProfileModule({customer}){const saved=loadMock("av_customer_profile",{name:customer.name,email:customer.email,phone:"0917 000 0000",status:"Active"});const [f,setF]=useState(saved);const set=(k,v)=>setF(x=>({...x,[k]:v}));return <div className="customer-module"><Head Icon={UserRound} title="Profile" copy="Customer information used for orders and service bookings."/><section className="surface customer-profile-grid"><label>Full name<input className="form-control" value={f.name} onChange={e=>set("name",e.target.value)}/></label><label>Email<input className="form-control" value={f.email} onChange={e=>set("email",e.target.value)}/></label><label>Phone<input className="form-control" value={f.phone} onChange={e=>set("phone",e.target.value)}/></label><label>Account status<input className="form-control" value={f.status} readOnly/></label><button className="btn btn-dark" onClick={()=>{saveMock("av_customer_profile",f);alert("Profile saved.")}}>Save Profile</button></section></div>}
-function CustomerDialog({title,onClose,children}){return <div className="customer-dialog-backdrop" onMouseDown={e=>e.target===e.currentTarget&&onClose()}><section className="customer-dialog"><div className="customer-dialog-head"><h2>{title}</h2><button onClick={onClose}><X size={18}/></button></div>{children}</section></div>}
+function Head({ Icon, title, copy }) {
+  return (
+    <div className="customer-module-head">
+      <Icon />
+      <div>
+        <span>My Account</span>
+        <h1>{title}</h1>
+        <p>{copy}</p>
+      </div>
+    </div>
+  );
+}
+function OrdersModule() {
+  const [selected, setSelected] = useState(null);
+  const items = [...loadMock("av_customer_orders", []), ...seedOrders];
+  return (
+    <div className="customer-module">
+      <Head
+        Icon={Package}
+        title="Orders"
+        copy="Track current and previous AV Cooling orders."
+      />
+      <div className="customer-record-list">
+        {items.map((o) => (
+          <button
+            className="surface customer-record customer-record-button"
+            key={o.id}
+            onClick={() => setSelected(o)}
+          >
+            <div>
+              <strong>{o.id}</strong>
+              <span>
+                {o.date} · {o.type}
+              </span>
+            </div>
+            <div>
+              <b>{typeof o.total === "number" ? money(o.total) : o.total}</b>
+              {badge(o.status)}
+            </div>
+          </button>
+        ))}
+      </div>
+      {selected && (
+        <CustomerDialog title={selected.id} onClose={() => setSelected(null)}>
+          <div className="customer-detail-grid">
+            <div>
+              <span>Status</span>
+              <strong>{selected.status}</strong>
+            </div>
+            <div>
+              <span>Fulfillment</span>
+              <strong>{selected.type}</strong>
+            </div>
+            <div>
+              <span>Payment</span>
+              <strong>{selected.payment || "—"}</strong>
+            </div>
+            <div>
+              <span>Total</span>
+              <strong>
+                {typeof selected.total === "number"
+                  ? money(selected.total)
+                  : selected.total}
+              </strong>
+            </div>
+          </div>
+          {selected.items?.map((item, i) => (
+            <div className="customer-line-item" key={i}>
+              <span>
+                {item.qty} × {item.name} {item.hp}
+              </span>
+              <strong>{money(item.price * item.qty)}</strong>
+            </div>
+          ))}
+        </CustomerDialog>
+      )}
+    </div>
+  );
+}
+function ServicesModule() {
+  const items = [...loadMock("av_customer_services", []), ...seedServices];
+  return (
+    <div className="customer-module">
+      <Head
+        Icon={Wrench}
+        title="Service Bookings"
+        copy="View service requests, preferred schedules, and job status."
+      />
+      <div className="customer-record-list">
+        {items.map((x) => (
+          <article className="surface customer-record" key={x.id}>
+            <div>
+              <strong>{x.service}</strong>
+              <span>
+                {x.id} · {x.schedule}
+              </span>
+              <small>{x.address}</small>
+            </div>
+            {badge(x.status)}
+          </article>
+        ))}
+      </div>
+    </div>
+  );
+}
+function PaymentsModule() {
+  const items = loadMock("av_customer_payments", seedPayments);
+  return (
+    <div className="customer-module">
+      <Head
+        Icon={CreditCard}
+        title="Payments"
+        copy="Payment history and verification status."
+      />
+      <div className="customer-record-list">
+        {items.map((x) => (
+          <article className="surface customer-record" key={x.id}>
+            <div>
+              <strong>{money(x.amount)}</strong>
+              <span>
+                {x.id} · {x.order} · {x.method}
+              </span>
+            </div>
+            {badge(x.status)}
+          </article>
+        ))}
+      </div>
+    </div>
+  );
+}
+function NotificationsModule() {
+  const [items, setItems] = useState(() =>
+    loadMock("av_customer_notifications", seedNotices),
+  );
+  const save = (n) => {
+    setItems(n);
+    saveMock("av_customer_notifications", n);
+  };
+  return (
+    <div className="customer-module">
+      <div className="customer-module-action-head">
+        <Head
+          Icon={Bell}
+          title="Notifications"
+          copy="Order, payment, service, and promotional updates."
+        />
+        <button
+          className="btn btn-soft"
+          onClick={() => save(items.map((x) => ({ ...x, read: true })))}
+        >
+          Mark all read
+        </button>
+      </div>
+      <div className="customer-notice-list">
+        {items.map((x) => (
+          <article
+            className={`surface customer-notice ${x.read ? "" : "unread"}`}
+            key={x.id}
+          >
+            <Bell size={17} />
+            <div>
+              <strong>{x.title}</strong>
+              <p>{x.text}</p>
+              <small>{x.time}</small>
+            </div>
+            {!x.read && (
+              <button
+                className="customer-mini-action"
+                onClick={() =>
+                  save(
+                    items.map((i) =>
+                      i.id === x.id ? { ...i, read: true } : i,
+                    ),
+                  )
+                }
+              >
+                Mark read
+              </button>
+            )}
+          </article>
+        ))}
+      </div>
+    </div>
+  );
+}
+function FeedbackModule() {
+  const [category, setCategory] = useState("Service Quality");
+  const [rating, setRating] = useState("5");
+  const [comment, setComment] = useState("");
+  const [history, setHistory] = useState(() =>
+    loadMock("av_customer_feedback", []),
+  );
+  const submit = () => {
+    if (!comment.trim()) return alert("Please enter your feedback.");
+    const rec = {
+      id: uid("FB"),
+      category,
+      rating: Number(rating),
+      comment,
+      date: new Date().toLocaleDateString("en-PH"),
+    };
+    const next = [rec, ...history];
+    setHistory(next);
+    saveMock("av_customer_feedback", next);
+    setComment("");
+    alert("Feedback submitted.");
+  };
+  return (
+    <div className="customer-module">
+      <Head
+        Icon={Star}
+        title="Feedback"
+        copy="Send feedback after an order or service and view your submissions."
+      />
+      <section className="surface customer-form-card">
+        <label>
+          Category
+          <select
+            className="form-control"
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+          >
+            <option>Service Quality</option>
+            <option>Installation</option>
+            <option>Product Quality</option>
+            <option>Communication</option>
+            <option>Pricing</option>
+          </select>
+        </label>
+        <label>
+          Rating
+          <select
+            className="form-control"
+            value={rating}
+            onChange={(e) => setRating(e.target.value)}
+          >
+            <option value="5">5 - Excellent</option>
+            <option value="4">4 - Good</option>
+            <option value="3">3 - Average</option>
+            <option value="2">2 - Poor</option>
+            <option value="1">1 - Very Poor</option>
+          </select>
+        </label>
+        <label>
+          Comment
+          <textarea
+            className="form-control"
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            placeholder="Tell us about your experience"
+          />
+        </label>
+        <button className="btn btn-dark" onClick={submit}>
+          Submit Feedback
+        </button>
+      </section>
+      {history.length > 0 && (
+        <div className="customer-record-list customer-history">
+          {history.map((x) => (
+            <article className="surface customer-record" key={x.id}>
+              <div>
+                <strong>
+                  {x.category} · {x.rating}/5
+                </strong>
+                <span>{x.comment}</span>
+              </div>
+              <small>{x.date}</small>
+            </article>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+function AddressesModule() {
+  const [items, setItems] = useState(() => readCustomerAddresses());
+
+  const [open, setOpen] = useState(false);
+
+  const [label, setLabel] = useState("Home");
+
+  const [address, setAddress] = useState("");
+
+  const add = () => {
+    try {
+      const result = addCustomerAddress({
+        label,
+        address,
+      });
+
+      setItems(result.addresses);
+
+      setOpen(false);
+      setAddress("");
+      setLabel("Home");
+    } catch (error) {
+      alert(error.message);
+    }
+  };
+
+  const remove = (id) => {
+    const next = deleteCustomerAddress(id);
+
+    setItems(next);
+  };
+
+  const makeDefault = (id) => {
+    const next = setDefaultCustomerAddress(id);
+
+    setItems(next);
+  };
+
+  const maxReached = items.length >= MAX_SAVED_ADDRESSES;
+
+  return (
+    <div className="customer-module">
+      <div className="customer-module-action-head">
+        <Head
+          Icon={MapPin}
+          title="Addresses"
+          copy={`Saved delivery and service addresses. Maximum ${MAX_SAVED_ADDRESSES}.`}
+        />
+
+        <button
+          className="btn btn-dark"
+          type="button"
+          disabled={maxReached}
+          onClick={() => setOpen(true)}
+        >
+          <Plus size={16} />
+
+          {maxReached ? "Maximum Reached" : "Add Address"}
+        </button>
+      </div>
+
+      <div className="customer-address-grid">
+        {items.map((item) => (
+          <article className="surface customer-address" key={item.id}>
+            <div className="customer-address-head">
+              <strong>{item.label}</strong>
+
+              {item.default && (
+                <span className="badge badge-blue">Default</span>
+              )}
+            </div>
+
+            <p>{item.address}</p>
+
+            <div className="customer-address-actions">
+              {!item.default && (
+                <button
+                  type="button"
+                  className="btn btn-soft"
+                  onClick={() => makeDefault(item.id)}
+                >
+                  Make Default
+                </button>
+              )}
+
+              <button
+                type="button"
+                className="btn btn-danger"
+                aria-label={`Delete ${item.label}`}
+                onClick={() => remove(item.id)}
+              >
+                <Trash2 size={15} />
+                Delete
+              </button>
+            </div>
+          </article>
+        ))}
+
+        {!items.length && (
+          <div className="surface empty-state">
+            <MapPin size={30} />
+
+            <h3>No saved addresses</h3>
+
+            <p>Add an address for faster checkout and service requests.</p>
+          </div>
+        )}
+      </div>
+
+      {open && (
+        <CustomerDialog title="Add Address" onClose={() => setOpen(false)}>
+          <div className="customer-form-card dialog-form">
+            <label>
+              Label
+              <select
+                className="form-control"
+                value={label}
+                onChange={(event) => setLabel(event.target.value)}
+              >
+                <option>Home</option>
+
+                <option>Office</option>
+
+                <option>Other</option>
+              </select>
+            </label>
+
+            <label>
+              Complete address
+              <textarea
+                className="form-control"
+                value={address}
+                onChange={(event) => setAddress(event.target.value)}
+                placeholder="House/Unit, Street, Barangay, City, Province"
+              />
+            </label>
+
+            <button type="button" className="btn btn-dark" onClick={add}>
+              Save Address
+            </button>
+          </div>
+        </CustomerDialog>
+      )}
+    </div>
+  );
+}
+function PasswordModule() {
+  const [done, setDone] = useState(false);
+  return (
+    <div className="customer-module">
+      <Head
+        Icon={UserRound}
+        title="Change Password"
+        copy="Prototype password update flow."
+      />
+      <section className="surface customer-form-card">
+        <label>
+          Current password
+          <input className="form-control" type="password" />
+        </label>
+        <label>
+          New password
+          <input className="form-control" type="password" />
+        </label>
+        <label>
+          Confirm new password
+          <input className="form-control" type="password" />
+        </label>
+        <button className="btn btn-dark" onClick={() => setDone(true)}>
+          Update Password
+        </button>
+        {done && (
+          <span className="customer-success-note">
+            Password updated in mock mode.
+          </span>
+        )}
+      </section>
+    </div>
+  );
+}
+function ProfileModule({ customer }) {
+  const saved = loadMock("av_customer_profile", {
+    name: customer.name,
+    email: customer.email,
+    phone: "0917 000 0000",
+    status: "Active",
+  });
+  const [f, setF] = useState(saved);
+  const set = (k, v) => setF((x) => ({ ...x, [k]: v }));
+  return (
+    <div className="customer-module">
+      <Head
+        Icon={UserRound}
+        title="Profile"
+        copy="Customer information used for orders and service bookings."
+      />
+      <section className="surface customer-profile-grid">
+        <label>
+          Full name
+          <input
+            className="form-control"
+            value={f.name}
+            onChange={(e) => set("name", e.target.value)}
+          />
+        </label>
+        <label>
+          Email
+          <input
+            className="form-control"
+            value={f.email}
+            onChange={(e) => set("email", e.target.value)}
+          />
+        </label>
+        <label>
+          Phone
+          <input
+            className="form-control"
+            value={f.phone}
+            onChange={(e) => set("phone", e.target.value)}
+          />
+        </label>
+        <label>
+          Account status
+          <input className="form-control" value={f.status} readOnly />
+        </label>
+        <button
+          className="btn btn-dark"
+          onClick={() => {
+            saveMock("av_customer_profile", f);
+            alert("Profile saved.");
+          }}
+        >
+          Save Profile
+        </button>
+      </section>
+    </div>
+  );
+}
+function CustomerDialog({ title, onClose, children }) {
+  return (
+    <div
+      className="customer-dialog-backdrop"
+      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <section className="customer-dialog">
+        <div className="customer-dialog-head">
+          <h2>{title}</h2>
+          <button onClick={onClose}>
+            <X size={18} />
+          </button>
+        </div>
+        {children}
+      </section>
+    </div>
+  );
+}

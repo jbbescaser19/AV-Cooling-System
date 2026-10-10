@@ -3,8 +3,8 @@ import cors from "cors";
 import helmet from "helmet";
 import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
-import db from "./utils/dbConn.js";
-dotenv.config();
+
+dotenv.config();//activates env file
 
 const app = express();
 const PORT = process.env.PORT;

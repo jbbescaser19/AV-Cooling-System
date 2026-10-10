@@ -577,3 +577,38 @@
     display: none;
   }
 }
+
+.customer-address-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 10px;
+}
+
+.customer-address-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+
+  margin-top: 14px;
+}
+
+.customer-address-actions .btn {
+  min-height: 38px;
+
+  padding: 8px 10px;
+
+  font-size: 0.7rem;
+}
+
+@media (max-width: 560px) {
+  .customer-address-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .customer-address-actions .btn {
+    width: 100%;
+  }
+}

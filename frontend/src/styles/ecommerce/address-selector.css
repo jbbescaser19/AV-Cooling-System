@@ -1,0 +1,96 @@
+.address-selector {
+  display: grid;
+  gap: 12px;
+}
+
+.address-selector-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.address-selector-heading > div {
+  display: grid;
+  gap: 2px;
+}
+
+.address-selector-heading strong {
+  color: #173e56;
+  font-size: 0.86rem;
+}
+
+.address-selector-heading span {
+  color: #718894;
+  font-size: 0.68rem;
+}
+
+.address-selector-heading svg {
+  color: #0e7490;
+}
+
+.address-add-button {
+  width: max-content;
+  min-height: 40px;
+
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+
+  padding: 8px 11px;
+
+  border: 1px dashed #9dc5d5;
+  border-radius: 10px;
+
+  background: #eef8fb;
+  color: #0b6389;
+
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.address-new-form {
+  display: grid;
+  gap: 12px;
+
+  padding: 14px;
+
+  border: 1px solid #cbdde5;
+  border-radius: 12px;
+
+  background: #f3f9fb;
+}
+
+.address-new-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.address-error {
+  color: #a4251d;
+  font-size: 0.74rem;
+  font-weight: 750;
+}
+
+.address-limit {
+  color: #768c98;
+  font-size: 0.7rem;
+}
+
+@media (max-width: 560px) {
+  .address-new-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .address-new-actions .btn {
+    width: 100%;
+  }
+
+  .address-add-button {
+    width: 100%;
+    justify-content: center;
+  }
+}
