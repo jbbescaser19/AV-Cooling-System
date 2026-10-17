@@ -18,8 +18,21 @@ function safeSessionRead(key) {
     return JSON.parse(raw);
   } catch {
     sessionStorage.removeItem(key);
+
     return null;
   }
+}
+
+function safeReturnPath(path, fallback = "/services") {
+  if (
+    typeof path !== "string" ||
+    !path.startsWith("/") ||
+    path.startsWith("//")
+  ) {
+    return fallback;
+  }
+
+  return path;
 }
 
 /* ================================
@@ -72,6 +85,7 @@ export function continuePendingAction(navigate) {
 
   if (!pending) {
     navigate("/shop");
+
     return;
   }
 
@@ -84,27 +98,49 @@ export function continuePendingAction(navigate) {
       });
 
       navigate("/checkout");
+
       return;
 
     case PENDING_ACTIONS.CHECKOUT_CART:
       navigate("/checkout");
+
       return;
 
-    case PENDING_ACTIONS.REQUEST_SERVICE:
-      navigate(`/services/${pending.serviceId}`);
+    case PENDING_ACTIONS.REQUEST_SERVICE: {
+      const returnTo = safeReturnPath(pending.returnTo, "/services");
+
+      navigate(returnTo, {
+        replace: true,
+
+        state: {
+          serviceRequestId: pending.serviceId,
+        },
+      });
+
       return;
+    }
 
     /*
-      Compatibility with your old
-      pending-action names.
+      Compatibility with old pending
+      action names.
     */
 
     case "checkout":
       navigate("/checkout");
+
       return;
 
     case "book_service":
-      navigate(pending.service ? `/services/${pending.service}` : "/services");
+      navigate("/services", {
+        replace: true,
+
+        state: pending.service
+          ? {
+              serviceRequestId: pending.service,
+            }
+          : null,
+      });
+
       return;
 
     default:

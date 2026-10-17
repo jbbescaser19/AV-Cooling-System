@@ -1,70 +1,156 @@
-import { Link, useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { Mail, LockKeyhole, Eye, EyeOff, Snowflake } from "lucide-react";
 
-import { loginCustomer } from "../../utils/authMock";
-
+import api from "../../../api/api.js";
 import { continuePendingAction } from "../../utils/purchaseFlow";
-
 import "../../styles/auth/auth.css";
 
 export default function LoginPage() {
-  const nav = useNavigate();
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  const handleSubmit = (event) => {
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+  });
+
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleChange = (event) => {
+    const { name, value } = event.target;
+
+    setFormData((previous) => ({
+      ...previous,
+      [name]: value,
+    }));
+
+    setError("");
+  };
+
+  const handleSubmit = async (event) => {
     event.preventDefault();
+    setError("");
+    setLoading(true);
 
-    const email = event.currentTarget.email.value;
+    try {
+      await api.post("/api/auth/customer/login", formData, {
+        withCredentials: true,
+      });
 
-    /*
-      TEMPORARY MOCK LOGIN.
-
-      Replace this with your real
-      backend login API later.
-    */
-
-    loginCustomer(email);
-
-    /*
-      After successful authentication,
-      continue Order Now / Checkout /
-      Service Request.
-    */
-
-    continuePendingAction(nav);
+      // Continue the pending checkout, cart, or service action.
+      continuePendingAction(navigate);
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+          "Login failed. Please check your credentials and try again.",
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="auth-shell">
-      <form className="auth-card" onSubmit={handleSubmit}>
-        <div className="eyebrow">Customer Login</div>
+      <form className="auth-card auth-register-card" onSubmit={handleSubmit}>
+        <div className="auth-register-heading">
+          <Snowflake size={25} aria-hidden="true" />
 
-        <h1>Welcome back</h1>
+          <div>
+            <div className="eyebrow">AV Cooling System</div>
+            <h1>Welcome back</h1>
+          </div>
+        </div>
 
-        <input
-          name="email"
-          className="form-control"
-          type="email"
-          placeholder="Email"
-          required
-        />
-
-        <input
-          name="password"
-          className="form-control"
-          type="password"
-          placeholder="Password"
-          required
-        />
-
-        <button className="btn btn-dark" type="submit">
-          Login
-        </button>
-
-        <p>
-          <Link to="/forgot-password">Forgot password?</Link>
+        <p className="muted">
+          Log in to manage your orders and service requests.
         </p>
 
-        <p>
-          New customer? <Link to="/register">Create account</Link>
+        {location.state?.message && (
+          <div className="auth-success" role="status">
+            {location.state.message}
+          </div>
+        )}
+
+        <div className="auth-field">
+          <label className="auth-field-label" htmlFor="login-email">
+            Email address
+          </label>
+
+          <div className="auth-input-wrap">
+            <Mail className="auth-input-icon" size={18} aria-hidden="true" />
+
+            <input
+              id="login-email"
+              className="form-control"
+              type="email"
+              name="email"
+              placeholder="Enter your email"
+              autoComplete="email"
+              value={formData.email}
+              onChange={handleChange}
+              required
+            />
+          </div>
+        </div>
+
+        <div className="auth-field">
+          <label className="auth-field-label" htmlFor="login-password">
+            Password
+          </label>
+
+          <div className="auth-input-wrap">
+            <LockKeyhole
+              className="auth-input-icon"
+              size={18}
+              aria-hidden="true"
+            />
+
+            <input
+              id="login-password"
+              className="form-control"
+              type={showPassword ? "text" : "password"}
+              name="password"
+              placeholder="Enter your password"
+              autoComplete="current-password"
+              value={formData.password}
+              onChange={handleChange}
+              required
+            />
+
+            <button
+              className="auth-password-toggle"
+              type="button"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              onClick={() => setShowPassword((previous) => !previous)}
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
+        </div>
+
+        {error && (
+          <div className="auth-error" role="alert">
+            {error}
+          </div>
+        )}
+
+        <div className="auth-links">
+          <Link to="/forgot-password">Forgot password?</Link>
+        </div>
+
+        <button
+          className="btn btn-dark auth-register-submit"
+          type="submit"
+          disabled={loading}
+        >
+          {loading ? "Logging in..." : "Log in"}
+        </button>
+
+        <p className="auth-register-footer">
+          Don't have an account? <Link to="/register">Create account</Link>
         </p>
       </form>
     </div>

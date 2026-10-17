@@ -3,8 +3,8 @@ import cors from "cors";
 import helmet from "helmet";
 import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
-
-dotenv.config();//activates env file
+import authRoutes from "./routes/customer/authRoutes.js";
+dotenv.config(); //activates env file
 
 const app = express();
 const PORT = process.env.PORT;
@@ -20,6 +20,7 @@ app.use(
 app.use(helmet());
 app.use(express.json());
 
+app.use("/api/auth/customer", authRoutes);
 app.listen(PORT, () => {
   console.log(`SERVER IS RUNNING ON PORT ${PORT}`);
 });
