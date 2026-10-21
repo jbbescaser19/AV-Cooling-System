@@ -10,6 +10,7 @@ export default function ExpertiseSection() {
   {
     /* when component renders pass this argument /#expertise to function useServiceRequestFlow on useServiceRequestFlow*/
   }
+
   const { selectedService, requestService, closeServiceRequest } =
     useServiceRequestFlow("/#expertise");
 

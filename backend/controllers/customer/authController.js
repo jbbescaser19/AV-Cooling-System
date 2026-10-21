@@ -27,6 +27,7 @@ export async function registerCustomerController(req, res) {
       .json({ success: true, message: result.message, user: result.user });
   } catch (error) {
     console.error(`authController - registerCustomer: ${error.message}`);
+    
     return res.status(error.status || 500).json({
       message:
         error.status && error.status < 500

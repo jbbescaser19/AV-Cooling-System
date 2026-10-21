@@ -14,7 +14,7 @@ export default function HeroSection() {
             Trusted cooling sales & service
           </span>
 
-          <h1>Comfort engineered for homes and businesses.</h1>
+          <h1>Comfort engineered for homes and businesses</h1>
 
           <p>
             Shop reliable air-conditioning systems or request professional
