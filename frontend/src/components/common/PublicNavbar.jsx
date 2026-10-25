@@ -1,9 +1,6 @@
 import { useEffect, useState } from "react";
-
 import { createPortal } from "react-dom";
-
 import { Link, useLocation } from "react-router-dom";
-
 import { Search, ShoppingCart, User, Menu, X, Snowflake } from "lucide-react";
 
 import "../../styles/ecommerce/navbar.css";
@@ -19,20 +16,18 @@ const links = [
 
 export default function PublicNavbar() {
   const [open, setOpen] = useState(false);
-
   const location = useLocation();
 
-  /* Close menu after navigating */
   useEffect(() => {
     setOpen(false);
   }, [location.pathname, location.hash]);
 
-  /* Lock body + ESC support */
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      return;
+    }
 
     const previousOverflow = document.body.style.overflow;
-
     document.body.style.overflow = "hidden";
 
     const handleKeyDown = (event) => {
@@ -45,7 +40,6 @@ export default function PublicNavbar() {
 
     return () => {
       document.body.style.overflow = previousOverflow;
-
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [open]);
@@ -58,7 +52,6 @@ export default function PublicNavbar() {
     open &&
     createPortal(
       <div className="mobile-menu-layer">
-        {/* DARK BACKDROP */}
         <button
           type="button"
           className="mobile-menu-backdrop"
@@ -66,8 +59,11 @@ export default function PublicNavbar() {
           onClick={closeMenu}
         />
 
-        {/* ACTUAL DRAWER */}
-        <aside className="mobile-nav-drawer" aria-label="Mobile navigation">
+        <aside
+          id="mobile-navigation"
+          className="mobile-nav-drawer"
+          aria-label="Mobile navigation"
+        >
           <div className="mobile-nav-head">
             <div className="mobile-nav-brand">
               <span className="brand-mark">
@@ -76,7 +72,6 @@ export default function PublicNavbar() {
 
               <div>
                 <strong>AV Cooling</strong>
-
                 <small>Sales & Service</small>
               </div>
             </div>
@@ -102,19 +97,16 @@ export default function PublicNavbar() {
           <div className="mobile-nav-shortcuts">
             <Link to="/shop" onClick={closeMenu}>
               <Search size={18} />
-
               <span>Shop Products</span>
             </Link>
 
             <Link to="/cart" onClick={closeMenu}>
               <ShoppingCart size={18} />
-
               <span>Shopping Cart</span>
             </Link>
 
-            <Link to="/account" onClick={closeMenu}>
+            <Link to="/account/profile" onClick={closeMenu}>
               <User size={18} />
-
               <span>My Account</span>
             </Link>
           </div>
@@ -134,12 +126,10 @@ export default function PublicNavbar() {
 
             <span>
               <b>AV Cooling</b>
-
               <small>Sales & Service</small>
             </span>
           </Link>
 
-          {/* DESKTOP NAV ONLY */}
           <nav className="desktop-links" aria-label="Homepage navigation">
             {links.map(([title, href]) => (
               <a key={title} href={href}>
@@ -169,14 +159,13 @@ export default function PublicNavbar() {
 
             <Link
               className="icon-link desktop-account"
-              to="/account"
+              to="/account/profile"
               aria-label="Account"
               title="Account"
             >
               <User size={18} />
             </Link>
 
-            {/* MOBILE BURGER */}
             <button
               className="menu-btn"
               type="button"

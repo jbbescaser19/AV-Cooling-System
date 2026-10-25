@@ -21,6 +21,7 @@ app.use(helmet());
 app.use(express.json());
 
 app.use("/api/auth/customer", authRoutes);
+
 app.listen(PORT, () => {
   console.log(`SERVER IS RUNNING ON PORT ${PORT}`);
 });

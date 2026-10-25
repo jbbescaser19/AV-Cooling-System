@@ -1,71 +1,112 @@
-import { useEffect, useState } from "react";
-
+import { useCallback, useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { services } from "../data/services";
-
-import { getCustomer } from "../utils/authMock";
-
+import api from "../../api/api.js";
 import { PENDING_ACTIONS, savePendingAction } from "../utils/purchaseFlow";
 
 export default function useServiceRequestFlow(returnTo = "/services") {
   const navigate = useNavigate();
-
   const location = useLocation();
 
   const [selectedService, setSelectedService] = useState(null);
-  //if not login then click request service then login succeeds then it do this
+
+  // Restore the requested service after the customer logs in.
   useEffect(() => {
-    const requestedServiceId = location.state?.serviceRequestId;
+    let cancelled = false;
 
-    if (!requestedServiceId || !getCustomer()) {
-      return;
-    }
+    const restoreService = async () => {
+      const requestedServiceId = location.state?.serviceRequestId;
 
-    const service = services.find((item) => item.id === requestedServiceId);
+      if (!requestedServiceId) {
+        return;
+      }
 
-    if (service) {
-      setSelectedService(service);
-    }
+      try {
+        await api.get("/api/auth/customer/me");
 
-    navigate(
-      {
-        pathname: location.pathname,
-        search: location.search,
-        hash: location.hash,
-      },
-      {
-        replace: true,
-        state: null,
-      },
-    );
+        if (cancelled) {
+          return;
+        }
+
+        const service = services.find((item) => item.id === requestedServiceId);
+
+        if (service) {
+          setSelectedService(service);
+        }
+
+        navigate(
+          {
+            pathname: location.pathname,
+            search: location.search,
+            hash: location.hash,
+          },
+          {
+            replace: true,
+            state: null,
+          },
+        );
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
+
+        if (error.response?.status === 401) {
+          savePendingAction({
+            type: PENDING_ACTIONS.REQUEST_SERVICE,
+            serviceId: requestedServiceId,
+            returnTo,
+          });
+
+          navigate("/login", { replace: true });
+          return;
+        }
+
+        console.error("Failed to restore service request:", error);
+      }
+    };
+
+    restoreService();
+
+    return () => {
+      cancelled = true;
+    };
   }, [
     location.pathname,
     location.search,
     location.hash,
     location.state,
     navigate,
+    returnTo,
   ]);
 
-  const requestService = (service) => {
-    if (!getCustomer()) {
-      savePendingAction({
-        type: PENDING_ACTIONS.REQUEST_SERVICE,
-        serviceId: service.id,
-        returnTo,
-      });
+  // Check the backend session before allowing a service request.
+  const requestService = useCallback(
+    async (service) => {
+      try {
+        await api.get("/api/auth/customer/me");
+        setSelectedService(service);
+      } catch (error) {
+        if (error.response?.status === 401) {
+          savePendingAction({
+            type: PENDING_ACTIONS.REQUEST_SERVICE,
+            serviceId: service.id,
+            returnTo,
+          });
 
-      navigate("/login");
+          navigate("/login");
+          return;
+        }
 
-      return;
-    }
+        console.error("Failed to verify customer login:", error);
+      }
+    },
+    [navigate, returnTo],
+  );
 
-    setSelectedService(service);
-  };
-
-  const closeServiceRequest = () => {
+  const closeServiceRequest = useCallback(() => {
     setSelectedService(null);
-  };
+  }, []);
 
   return {
     selectedService,

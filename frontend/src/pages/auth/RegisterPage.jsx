@@ -27,7 +27,6 @@ export default function RegisterPage() {
     email: "",
     phone: "",
     password: "",
-    confirmPassword: "",
   });
   useEffect(() => {
     if (!error) return;
@@ -51,11 +50,6 @@ export default function RegisterPage() {
   const registerCustomer = async (e) => {
     e.preventDefault();
     setError("");
-
-    if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match.");
-      return;
-    }
 
     if (formData.password.length < 8) {
       setError("Password must be at least 8 characters.");
@@ -208,48 +202,6 @@ export default function RegisterPage() {
               onClick={() => setShowPassword((previous) => !previous)}
             >
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-            </button>
-          </div>
-        </div>
-
-        <div className="auth-field">
-          <label
-            className="auth-field-label"
-            htmlFor="register-confirm-password"
-          >
-            Confirm password
-          </label>
-
-          <div className="auth-input-wrap">
-            <LockKeyhole
-              className="auth-input-icon"
-              size={18}
-              aria-hidden="true"
-            />
-
-            <input
-              id="register-confirm-password"
-              className="form-control"
-              name="confirmPassword"
-              type={showConfirmPassword ? "text" : "password"}
-              placeholder="Re-enter your password"
-              autoComplete="new-password"
-              value={formData.confirmPassword}
-              onChange={handleFormData}
-              required
-            />
-
-            <button
-              className="auth-password-toggle"
-              type="button"
-              aria-label={
-                showConfirmPassword
-                  ? "Hide confirm password"
-                  : "Show confirm password"
-              }
-              onClick={() => setShowConfirmPassword((previous) => !previous)}
-            >
-              {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
         </div>

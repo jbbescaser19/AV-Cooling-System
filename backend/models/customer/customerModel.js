@@ -1,19 +1,28 @@
 export function customerModel(db) {
   return {
     /**
-     **Find an existing account by email.
+     * Find an existing account by email.
      */
-
     findUserByEmail(email) {
-      return db.execute("SELECT user_id FROM users WHERE email = ? LIMIT 1", [
-        email,
-      ]);
+      return db.execute(
+        `SELECT
+          user_id,
+          name,
+          email,
+          password_hash,
+          role,
+          status,
+          account_type
+        FROM users
+        WHERE email = ?
+        LIMIT 1`,
+        [email],
+      );
     },
 
     /**
-     ** Create the main user account.
+     * Create the main user account.
      */
-
     createUser(
       fullName,
       email,
@@ -31,7 +40,7 @@ export function customerModel(db) {
     },
 
     /**
-     ** Create the customer profile linked to the user.
+     * Create the customer profile linked to the user.
      */
     createCustomer(userId, phone, status = "ACTIVE") {
       return db.execute(

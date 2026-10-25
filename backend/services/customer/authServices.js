@@ -150,3 +150,86 @@ export async function registerCustomerService(input) {
     connection.release();
   }
 }
+
+export async function loginCustomerService(input) {
+  const validation = validateLogin(input);
+
+  if (!validation.success) {
+    const error = new Error(
+      validation.errors?.join(" ") || "Invalid login data.",
+    );
+    error.status = 400;
+    throw error;
+  }
+
+  const { email, password } = validation.data;
+
+  if (!email || !password) {
+    const error = new Error("All required fields must be provided.");
+    error.status = 400;
+    throw error;
+  }
+
+  if (!process.env.ACCESS_SECRET || !process.env.REFRESH_SECRET) {
+    throw new Error("Authentication secrets are not configured.");
+  }
+
+  const connection = await connectDB.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    const customer = customerModel(connection);
+
+    const [existingUsers] = await customer.findUserByEmail(email);
+
+    const existingUser = existingUsers[0];
+
+    if (!existingUser) {
+      const error = new Error("Invalid email or password.");
+      error.status = 401;
+      throw error;
+    }
+    const { user_id, name, password_hash, role, status, account_type } =
+      existingUser;
+
+    const isPasswordValid = await verifyPassword(password, password_hash);
+
+    if (!isPasswordValid) {
+      const error = new Error("Invalid email or password.");
+      error.status = 401;
+      throw error;
+    }
+
+    if (status !== "ACTIVE") {
+      const error = new Error("Your account is inactive.");
+      error.status = 403;
+      throw error;
+    }
+
+    const payload = {
+      sub: String(user_id),
+      role,
+      accountType: account_type,
+    };
+
+    const accessToken = createAccessToken(payload);
+    const refreshToken = createRefreshToken(payload);
+
+    return {
+      message: "Login successful.",
+      accessToken,
+      refreshToken,
+      user: {
+        userId: user_id,
+        name,
+        email: existingUser.email,
+        role,
+        status,
+        accountType: account_type,
+      },
+    };
+  } finally {
+    //returns the connection to the pool so another query can reuse it.
+    connection.release();
+  }
+}

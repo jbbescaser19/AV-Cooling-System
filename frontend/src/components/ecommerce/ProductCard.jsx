@@ -1,13 +1,9 @@
 import { useState } from "react";
-
 import { Link, useNavigate } from "react-router-dom";
-
 import { Eye, FileText, ShoppingCart, Wind, Zap } from "lucide-react";
 
 import ProductPurchaseDialog from "./ProductPurchaseDialog";
-
-import { getCustomer } from "../../utils/authMock";
-
+import api from "../../../api/api.js";
 import { addCartItem } from "../../utils/cartStore";
 
 import {
@@ -24,7 +20,6 @@ export default function ProductCard({ product }) {
   const navigate = useNavigate();
 
   const [purchaseMode, setPurchaseMode] = useState(null);
-
   const [added, setAdded] = useState(false);
 
   const quotationOnly = Boolean(
@@ -53,29 +48,35 @@ export default function ProductCard({ product }) {
     setAdded(true);
   };
 
-  const handleOrderNow = ({ variant, quantity }) => {
+  const handleOrderNow = async ({ variant, quantity }) => {
     const intent = {
       productId: product.id,
       variant: variant.hp,
       quantity,
     };
 
-    if (!getCustomer()) {
-      savePendingAction({
-        type: PENDING_ACTIONS.ORDER_NOW,
-        ...intent,
-      });
+    try {
+      // Check the customer's actual backend login session.
+      await api.get("/api/auth/customer/me");
 
+      saveDirectCheckout(intent);
       setPurchaseMode(null);
+      navigate("/checkout");
+    } catch (error) {
+      if (error.response?.status === 401) {
+        savePendingAction({
+          type: PENDING_ACTIONS.ORDER_NOW,
+          ...intent,
+        });
 
-      navigate("/login");
+        setPurchaseMode(null);
+        navigate("/login");
+        return;
+      }
 
-      return;
+      console.error("Unable to verify customer session:", error);
+      alert("Unable to verify your login. Please try again.");
     }
-
-    saveDirectCheckout(intent);
-
-    navigate("/checkout");
   };
 
   return (
@@ -141,14 +142,12 @@ export default function ProductCard({ product }) {
               to={`/shop/${product.id}`}
             >
               <Eye size={17} />
-
               <span>View Details</span>
             </Link>
 
             {quotationOnly ? (
               <Link className="btn btn-dark" to={`/shop/${product.id}`}>
                 <FileText size={17} />
-
                 <span>Request Quote</span>
               </Link>
             ) : (
@@ -162,7 +161,6 @@ export default function ProductCard({ product }) {
                   }}
                 >
                   <ShoppingCart size={17} />
-
                   <span>Add to Cart</span>
                 </button>
 
@@ -172,7 +170,6 @@ export default function ProductCard({ product }) {
                   onClick={() => setPurchaseMode("order")}
                 >
                   <Zap size={17} />
-
                   <span>Order Now</span>
                 </button>
               </>

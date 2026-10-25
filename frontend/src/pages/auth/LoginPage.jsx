@@ -4,6 +4,7 @@ import { Mail, LockKeyhole, Eye, EyeOff, Snowflake } from "lucide-react";
 
 import api from "../../../api/api.js";
 import { continuePendingAction } from "../../utils/purchaseFlow";
+
 import "../../styles/auth/auth.css";
 
 export default function LoginPage() {
@@ -32,19 +33,29 @@ export default function LoginPage() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+
+    if (loading) {
+      return;
+    }
+
     setError("");
     setLoading(true);
 
     try {
-      await api.post("/api/auth/customer/login", formData, {
+      const response = await api.post("/api/auth/customer/login", formData, {
         withCredentials: true,
       });
 
-      // Continue the pending checkout, cart, or service action.
+      if (!response.data?.success) {
+        setError(response.data?.message || "Login failed.");
+        return;
+      }
+
+      // Continue the pending action, or go to /shop if none exists.
       continuePendingAction(navigate);
-    } catch (err) {
+    } catch (error) {
       setError(
-        err.response?.data?.message ||
+        error.response?.data?.message ||
           "Login failed. Please check your credentials and try again.",
       );
     } finally {

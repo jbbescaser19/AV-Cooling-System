@@ -32,6 +32,7 @@ import StaffAccountsPage from "./pages/management/StaffAccountsPage";
 
 import CustomerModulePage from "./pages/customer/CustomerModulePage";
 
+import CustomerRoute from "./components/auth/CustomerRoute";
 import RoleGuard from "./components/management/RoleGuard";
 
 const mgmtModules = [
@@ -80,7 +81,9 @@ export default function App() {
 
         <Route path="/cart" element={<CartPage />} />
 
-        <Route path="/checkout" element={<CheckoutPage />} />
+        <Route element={<CustomerRoute />}>
+          <Route path="/checkout" element={<CheckoutPage />} />
+        </Route>
 
         <Route
           path="/order-confirmation/:orderId"
@@ -94,26 +97,28 @@ export default function App() {
 
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
-      <Route path="/account" element={<CustomerLayout />}>
-        {customerModules.map((module) => (
+      <Route element={<CustomerRoute />}>
+        <Route path="/account" element={<CustomerLayout />}>
+          {customerModules.map((module) => (
+            <Route
+              key={module}
+              path={module}
+              element={<CustomerModulePage module={module} />}
+            />
+          ))}
+
+          <Route index element={<Navigate to="profile" replace />} />
+
           <Route
-            key={module}
-            path={module}
-            element={<CustomerModulePage module={module} />}
+            path="orders/:orderId"
+            element={<CustomerModulePage module="order-details" />}
           />
-        ))}
 
-        <Route index element={<Navigate to="profile" replace />} />
-
-        <Route
-          path="orders/:orderId"
-          element={<CustomerModulePage module="order-details" />}
-        />
-
-        <Route
-          path="services/:serviceId"
-          element={<CustomerModulePage module="service-details" />}
-        />
+          <Route
+            path="services/:serviceId"
+            element={<CustomerModulePage module="service-details" />}
+          />
+        </Route>
       </Route>
 
       <Route path="/management/login" element={<ManagementLoginPage />} />

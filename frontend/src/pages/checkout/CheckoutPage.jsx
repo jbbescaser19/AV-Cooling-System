@@ -1,20 +1,15 @@
-import { useEffect, useMemo, useState } from "react";
-
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import SavedAddressSelector from "../../components/common/SavedAddressSelector";
-
-import { getCustomer } from "../../utils/authMock";
 
 import { readCatalogProducts } from "../../utils/catalogStore";
 
 import { getDefaultCustomerAddress } from "../../utils/addressStore";
 
 import {
-  PENDING_ACTIONS,
   clearDirectCheckout,
   getDirectCheckout,
-  savePendingAction,
 } from "../../utils/purchaseFlow";
 
 import { loadMock, saveMock, uid } from "../../utils/prototypeStore";
@@ -23,8 +18,6 @@ import "../../styles/ecommerce/pages.css";
 
 export default function CheckoutPage() {
   const nav = useNavigate();
-
-  const customer = getCustomer();
 
   const directIntent = useMemo(() => getDirectCheckout(), []);
 
@@ -55,17 +48,11 @@ export default function CheckoutPage() {
 
     return {
       productId: product.id,
-
       name: product.name,
-
       brand: product.brand,
-
       hp: variant.hp,
-
       price: variant.price,
-
       srp: variant.srp,
-
       qty: Math.max(1, Number(directIntent.quantity) || 1),
     };
   }, [directIntent]);
@@ -80,7 +67,6 @@ export default function CheckoutPage() {
   );
 
   const [fulfillment, setFulfillment] = useState("Delivery");
-
   const [payment, setPayment] = useState("Cash");
 
   const [address, setAddress] = useState(
@@ -88,26 +74,7 @@ export default function CheckoutPage() {
   );
 
   const [pickupNotes, setPickupNotes] = useState("");
-
   const [schedule, setSchedule] = useState("");
-
-  useEffect(() => {
-    if (customer) {
-      return;
-    }
-
-    savePendingAction({
-      type: PENDING_ACTIONS.CHECKOUT_CART,
-    });
-
-    nav("/login", {
-      replace: true,
-    });
-  }, [customer, nav]);
-
-  if (!customer) {
-    return null;
-  }
 
   const place = (event) => {
     event.preventDefault();
@@ -118,7 +85,6 @@ export default function CheckoutPage() {
 
     if (fulfillment === "Delivery" && !address.trim()) {
       alert("Please select or add a delivery address.");
-
       return;
     }
 
@@ -126,25 +92,15 @@ export default function CheckoutPage() {
 
     const order = {
       id,
-
       date: new Date().toLocaleDateString("en-PH"),
-
       total: subtotal,
-
       status: payment === "Cash" ? "Pending Payment" : "Processing",
-
       type: fulfillment,
-
       payment,
-
       address: fulfillment === "Delivery" ? address : null,
-
       pickupNotes: fulfillment === "Pickup" ? pickupNotes : "",
-
       schedule,
-
       items,
-
       source: isDirectCheckout ? "Order Now" : "Cart",
     };
 
@@ -156,7 +112,6 @@ export default function CheckoutPage() {
       clearDirectCheckout();
     } else {
       localStorage.removeItem("av_cart");
-
       window.dispatchEvent(new Event("av-cart-updated"));
     }
 
@@ -187,35 +142,32 @@ export default function CheckoutPage() {
 
               <div className="checkout-form-grid">
                 <div className="form-group">
-                  <label>Fulfillment method</label>
+                  <label htmlFor="fulfillment">Fulfillment method</label>
 
                   <select
+                    id="fulfillment"
                     className="form-control"
                     value={fulfillment}
                     onChange={(event) => setFulfillment(event.target.value)}
                   >
                     <option>Delivery</option>
-
                     <option>Pickup</option>
                   </select>
                 </div>
 
                 <div className="form-group">
-                  <label>Payment method</label>
+                  <label htmlFor="payment">Payment method</label>
 
                   <select
+                    id="payment"
                     className="form-control"
                     value={payment}
                     onChange={(event) => setPayment(event.target.value)}
                   >
                     <option>Cash</option>
-
                     <option>GCash</option>
-
                     <option>Bank Transfer</option>
-
                     <option>Online</option>
-
                     <option>Installment</option>
                   </select>
                 </div>
@@ -238,9 +190,10 @@ export default function CheckoutPage() {
                 />
               ) : (
                 <div className="form-group">
-                  <label>Pickup notes (optional)</label>
+                  <label htmlFor="pickup-notes">Pickup notes (optional)</label>
 
                   <textarea
+                    id="pickup-notes"
                     className="form-control"
                     rows="3"
                     value={pickupNotes}
@@ -259,6 +212,7 @@ export default function CheckoutPage() {
                 className="form-control"
                 value={schedule}
                 onChange={(event) => setSchedule(event.target.value)}
+                aria-label="Preferred schedule"
               />
             </section>
           </div>
