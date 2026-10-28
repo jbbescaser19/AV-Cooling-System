@@ -1,7 +1,7 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import connectDB from "../../utils/dbConn.js";
-import { customerModel } from "../../models/customer/customerModel.js";
+import { customerModel } from "../../models/customer/authModel.js";
 import {
   validateRegister,
   validateLogin,
@@ -22,68 +22,46 @@ const createRefreshToken = (payload) =>
     expiresIn: "7d",
   });
 
+function createAuthError(message, status = 401) {
+  const error = new Error(message);
+  error.status = status;
+  return error;
+}
+
 export async function registerCustomerService(input) {
-  /**
-   * *  Validate the registration data.
-   */
   const validation = validateRegister(input);
 
-  //validation.errors?.join(" ") -  It combines validation errors into one readable message for the frontend.
   if (!validation.success) {
-    const error = new Error(
+    throw createAuthError(
       validation.errors?.join(" ") || "Invalid registration data.",
+      400,
     );
-    error.status = 400;
-    throw error;
   }
 
   const { fullName, email, phone, password } = validation.data;
 
-  /**
-   **  Check required fields.
-   */
-  //
   if (!fullName || !email || !phone || !password) {
-    const error = new Error("All required fields must be provided.");
-    error.status = 400;
-    throw error;
+    throw createAuthError("All required fields must be provided.", 400);
   }
 
-  /**
-   **  Ensure JWT secrets are configured.
-   */
   if (!process.env.ACCESS_SECRET || !process.env.REFRESH_SECRET) {
     throw new Error("Authentication secrets are not configured.");
   }
 
-  //gets an available db connection from connection pool
   const connection = await connectDB.getConnection();
 
   try {
-    //start transaction useful when multiple related database changes must succeed or fail together.
     await connection.beginTransaction();
 
     const customer = customerModel(connection);
-
-    /**
-     **  Check whether the email is already registered.
-     */
     const [existingUsers] = await customer.findUserByEmail(email);
 
     if (existingUsers.length > 0) {
-      const error = new Error("Email is already registered.");
-      error.status = 409;
-      throw error;
+      throw createAuthError("Email is already registered.", 409);
     }
 
-    /**
-     **  Hash the password before storing it.
-     */
     const passwordHash = await hashPassword(password);
 
-    /**
-     **  Create the main user account.
-     */
     const [userResult] = await customer.createUser(
       fullName,
       email,
@@ -99,9 +77,6 @@ export async function registerCustomerService(input) {
 
     const userId = userResult.insertId;
 
-    /**
-     **  Create the customer profile linked to the user.
-     */
     const [customerResult] = await customer.createCustomer(
       userId,
       phone,
@@ -112,12 +87,8 @@ export async function registerCustomerService(input) {
       throw new Error("Failed to create customer profile.");
     }
 
-    /**
-     **  Create authentication tokens.
-     */
     const payload = {
-      userId,
-      fullName,
+      sub: String(userId),
       accountType: "CUSTOMER",
       role: null,
     };
@@ -125,7 +96,6 @@ export async function registerCustomerService(input) {
     const accessToken = createAccessToken(payload);
     const refreshToken = createRefreshToken(payload);
 
-    //Save both database records together.
     await connection.commit();
 
     return {
@@ -134,7 +104,7 @@ export async function registerCustomerService(input) {
       refreshToken,
       user: {
         userId,
-        fullName,
+        name: fullName,
         email,
         phone,
         accountType: "CUSTOMER",
@@ -142,11 +112,9 @@ export async function registerCustomerService(input) {
       },
     };
   } catch (error) {
-    //Cancels all uncommitted changes made during the current transaction.
     await connection.rollback();
     throw error;
   } finally {
-    //returns the connection to the pool so another query can reuse it.
     connection.release();
   }
 }
@@ -155,19 +123,16 @@ export async function loginCustomerService(input) {
   const validation = validateLogin(input);
 
   if (!validation.success) {
-    const error = new Error(
+    throw createAuthError(
       validation.errors?.join(" ") || "Invalid login data.",
+      400,
     );
-    error.status = 400;
-    throw error;
   }
 
   const { email, password } = validation.data;
 
   if (!email || !password) {
-    const error = new Error("All required fields must be provided.");
-    error.status = 400;
-    throw error;
+    throw createAuthError("All required fields must be provided.", 400);
   }
 
   if (!process.env.ACCESS_SECRET || !process.env.REFRESH_SECRET) {
@@ -175,35 +140,31 @@ export async function loginCustomerService(input) {
   }
 
   const connection = await connectDB.getConnection();
+
   try {
-    await connection.beginTransaction();
-
     const customer = customerModel(connection);
-
     const [existingUsers] = await customer.findUserByEmail(email);
-
     const existingUser = existingUsers[0];
 
     if (!existingUser) {
-      const error = new Error("Invalid email or password.");
-      error.status = 401;
-      throw error;
+      throw createAuthError("Invalid email or password.");
     }
+
     const { user_id, name, password_hash, role, status, account_type } =
       existingUser;
 
     const isPasswordValid = await verifyPassword(password, password_hash);
 
     if (!isPasswordValid) {
-      const error = new Error("Invalid email or password.");
-      error.status = 401;
-      throw error;
+      throw createAuthError("Invalid email or password.");
     }
 
     if (status !== "ACTIVE") {
-      const error = new Error("Your account is inactive.");
-      error.status = 403;
-      throw error;
+      throw createAuthError("Your account is inactive.", 403);
+    }
+
+    if (account_type !== "CUSTOMER") {
+      throw createAuthError("Customer access is required.", 403);
     }
 
     const payload = {
@@ -229,7 +190,67 @@ export async function loginCustomerService(input) {
       },
     };
   } finally {
-    //returns the connection to the pool so another query can reuse it.
+    connection.release();
+  }
+}
+
+export async function refreshCustomerSessionService(refreshToken) {
+  if (!refreshToken) {
+    throw createAuthError("Refresh token is missing.");
+  }
+
+  if (!process.env.ACCESS_SECRET || !process.env.REFRESH_SECRET) {
+    throw new Error("Authentication secrets are not configured.");
+  }
+
+  let payload;
+
+  try {
+    payload = jwt.verify(refreshToken, process.env.REFRESH_SECRET);
+  } catch {
+    throw createAuthError("Your session has expired. Please log in again.");
+  }
+
+  const userId = payload.sub ?? payload.userId ?? payload.user_id;
+
+  const accountType = String(
+    payload.accountType ?? payload.account_type ?? "",
+  ).toUpperCase();
+
+  const numericUserId = Number(userId);
+
+  if (
+    !Number.isSafeInteger(numericUserId) ||
+    numericUserId <= 0 ||
+    accountType !== "CUSTOMER"
+  ) {
+    throw createAuthError("Invalid customer refresh token.");
+  }
+
+  const connection = await connectDB.getConnection();
+
+  try {
+    const customer = customerModel(connection);
+
+    const [users] = await customer.findUserById(numericUserId);
+    const user = users[0];
+
+    if (!user) {
+      throw createAuthError("Customer account not found.");
+    }
+
+    if (user.status !== "ACTIVE" || user.customer_status !== "ACTIVE") {
+      throw createAuthError("Your customer account is inactive.", 403);
+    }
+
+    const accessToken = createAccessToken({
+      sub: String(user.user_id),
+      role: user.role,
+      accountType: user.account_type,
+    });
+
+    return { accessToken };
+  } finally {
     connection.release();
   }
 }

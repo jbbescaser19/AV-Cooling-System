@@ -66,6 +66,7 @@ const customerModules = [
 export default function App() {
   return (
     <Routes>
+      {/* Public ecommerce pages */}
       <Route element={<EcommerceLayout />}>
         <Route path="/" element={<HomePage />} />
 
@@ -79,24 +80,28 @@ export default function App() {
 
         <Route path="/contact" element={<ContactPage />} />
 
+        {/* Cart is accessible without logging in */}
         <Route path="/cart" element={<CartPage />} />
 
+        {/* Protected purchasing pages */}
         <Route element={<CustomerRoute />}>
           <Route path="/checkout" element={<CheckoutPage />} />
-        </Route>
 
-        <Route
-          path="/order-confirmation/:orderId"
-          element={<OrderConfirmationPage />}
-        />
+          <Route
+            path="/order-confirmation/:orderId"
+            element={<OrderConfirmationPage />}
+          />
+        </Route>
       </Route>
 
+      {/* Authentication pages */}
       <Route path="/login" element={<LoginPage />} />
 
       <Route path="/register" element={<RegisterPage />} />
 
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
+      {/* Protected customer account pages */}
       <Route element={<CustomerRoute />}>
         <Route path="/account" element={<CustomerLayout />}>
           {customerModules.map((module) => (
@@ -121,8 +126,10 @@ export default function App() {
         </Route>
       </Route>
 
+      {/* Management login */}
       <Route path="/management/login" element={<ManagementLoginPage />} />
 
+      {/* Management pages */}
       <Route path="/management" element={<ManagementLayout />}>
         <Route index element={<DashboardPage />} />
 
@@ -138,6 +145,7 @@ export default function App() {
 
         <Route path="customers" element={<CustomersPage />} />
 
+        {/* Only the owner can access staff accounts */}
         <Route element={<RoleGuard roles={["OWNER"]} />}>
           <Route path="staff" element={<StaffAccountsPage />} />
         </Route>
@@ -151,6 +159,7 @@ export default function App() {
         ))}
       </Route>
 
+      {/* Unknown routes return to home */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

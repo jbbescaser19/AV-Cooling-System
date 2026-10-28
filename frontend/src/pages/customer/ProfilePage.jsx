@@ -1,75 +1,135 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { UserRound } from "lucide-react";
 
+import api from "../../../api/api.js";
 import CustomerPageHeader from "../../components/customer/CustomerPageHeader";
-import { loadMock, saveMock } from "../../utils/prototypeStore";
 
-export default function ProfilePage({ customer }) {
-  const saved = loadMock("av_customer_profile", {
-    name: customer.name,
-    email: customer.email,
-    phone: "0917 000 0000",
-    status: "Active",
-  });
+export default function ProfilePage() {
+  const navigate = useNavigate();
 
-  const [form, setForm] = useState(saved);
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [retry, setRetry] = useState(0);
 
-  const updateField = (field, value) => {
-    setForm((previous) => ({ ...previous, [field]: value }));
-  };
+  useEffect(() => {
+    const controller = new AbortController();
 
-  const saveProfile = () => {
-    saveMock("av_customer_profile", form);
-    window.alert("Profile saved.");
-  };
+    async function fetchProfile() {
+      setLoading(true);
+      setError("");
+
+      try {
+        const response = await api.get("/api/customer/account/profile", {
+          signal: controller.signal,
+        });
+
+        if (controller.signal.aborted) return;
+
+        if (!response.data?.success || !response.data?.user) {
+          throw new Error("Customer profile was not returned.");
+        }
+
+        const user = response.data.user;
+
+        setProfile({
+          name: user.name || "",
+          email: user.email || "",
+          phone: user.phone || "",
+          status: user.status || "Unknown",
+        });
+      } catch (error) {
+        if (controller.signal.aborted) return;
+
+        if (error.response?.status === 401) {
+          navigate("/login", {
+            replace: true,
+            state: {
+              message: "Please log in to access your profile.",
+            },
+          });
+          return;
+        }
+
+        setError(
+          error.response?.data?.message ||
+            error.message ||
+            "Unable to load your profile.",
+        );
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
+      }
+    }
+
+    fetchProfile();
+
+    return () => controller.abort();
+  }, [navigate, retry]);
 
   return (
     <div className="customer-module">
       <CustomerPageHeader
         Icon={UserRound}
         title="Profile"
-        copy="Customer information used for orders and service bookings."
+        copy="View your AV Cooling System account information."
       />
 
-      <section className="surface customer-profile-grid">
-        <label>
-          Full name
-          <input
-            className="form-control"
-            value={form.name}
-            onChange={(event) => updateField("name", event.target.value)}
-          />
-        </label>
+      {loading && (
+        <section className="surface customer-profile-grid">
+          <p role="status">Loading your profile...</p>
+        </section>
+      )}
 
-        <label>
-          Email
-          <input
-            className="form-control"
-            type="email"
-            value={form.email}
-            onChange={(event) => updateField("email", event.target.value)}
-          />
-        </label>
+      {!loading && error && (
+        <section className="surface customer-profile-grid">
+          <p role="alert">{error}</p>
 
-        <label>
-          Phone
-          <input
-            className="form-control"
-            type="tel"
-            value={form.phone}
-            onChange={(event) => updateField("phone", event.target.value)}
-          />
-        </label>
+          <button
+            type="button"
+            className="btn btn-dark"
+            onClick={() => setRetry((value) => value + 1)}
+          >
+            Try Again
+          </button>
+        </section>
+      )}
 
-        <label>
-          Account status
-          <input className="form-control" value={form.status} readOnly />
-        </label>
+      {!loading && !error && profile && (
+        <section className="surface customer-profile-grid">
+          <label>
+            Full name
+            <input className="form-control" value={profile.name} readOnly />
+          </label>
 
-        <button type="button" className="btn btn-dark" onClick={saveProfile}>
-          Save Profile
-        </button>
-      </section>
+          <label>
+            Email
+            <input
+              className="form-control"
+              type="email"
+              value={profile.email}
+              readOnly
+            />
+          </label>
+
+          <label>
+            Phone
+            <input
+              className="form-control"
+              type="tel"
+              value={profile.phone}
+              readOnly
+            />
+          </label>
+
+          <label>
+            Account status
+            <input className="form-control" value={profile.status} readOnly />
+          </label>
+        </section>
+      )}
     </div>
   );
 }

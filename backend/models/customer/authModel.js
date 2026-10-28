@@ -1,8 +1,5 @@
 export function customerModel(db) {
   return {
-    /**
-     * Find an existing account by email.
-     */
     findUserByEmail(email) {
       return db.execute(
         `SELECT
@@ -20,9 +17,26 @@ export function customerModel(db) {
       );
     },
 
-    /**
-     * Create the main user account.
-     */
+    findUserById(userId) {
+      return db.execute(
+        `SELECT
+          u.user_id,
+          u.name,
+          u.email,
+          u.role,
+          u.status,
+          u.account_type,
+          c.status AS customer_status
+        FROM users AS u
+        INNER JOIN customers AS c
+          ON c.user_id = u.user_id
+        WHERE u.user_id = ?
+          AND u.account_type = 'CUSTOMER'
+        LIMIT 1`,
+        [userId],
+      );
+    },
+
     createUser(
       fullName,
       email,
@@ -39,9 +53,6 @@ export function customerModel(db) {
       );
     },
 
-    /**
-     * Create the customer profile linked to the user.
-     */
     createCustomer(userId, phone, status = "ACTIVE") {
       return db.execute(
         `INSERT INTO customers (user_id, phone, status)

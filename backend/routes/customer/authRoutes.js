@@ -3,7 +3,8 @@ import express from "express";
 import {
   registerCustomerController,
   loginCustomerController,
-  getCurrentCustomerController,
+  refreshCustomerSessionController,
+  checkCustomerSessionController,
   logoutCustomerController,
 } from "../../controllers/customer/authController.js";
 
@@ -12,11 +13,14 @@ import { requireCustomerAuth } from "../../middleware/requireCustomerAuth.js";
 const router = express.Router();
 
 router.post("/register", registerCustomerController);
-
 router.post("/login", loginCustomerController);
 
-router.post("/logout", logoutCustomerController);
+// Renew the access token using the refresh-token cookie.
+router.post("/refresh", refreshCustomerSessionController);
 
-router.get("/me", requireCustomerAuth, getCurrentCustomerController);
+// Check whether the current access token is valid.
+router.get("/session", requireCustomerAuth, checkCustomerSessionController);
+
+router.post("/logout", logoutCustomerController);
 
 export default router;

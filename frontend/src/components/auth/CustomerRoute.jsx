@@ -2,81 +2,61 @@ import { useEffect, useState } from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 
 import api from "../../../api/api.js";
-import {
-  PENDING_ACTIONS,
-  getPendingAction,
-  savePendingAction,
-} from "../../utils/purchaseFlow";
+
+import { PENDING_ACTIONS, savePendingAction } from "../../utils/purchaseFlow";
 
 export default function CustomerRoute() {
   const location = useLocation();
 
   const [status, setStatus] = useState("checking");
-  const [retryCount, setRetryCount] = useState(0);
+  const [retry, setRetry] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
 
-    const markUnauthenticated = () => {
-      // Preserve direct checkout when the customer must log in first.
-      if (location.pathname === "/checkout" && !getPendingAction()) {
-        savePendingAction({
-          type: PENDING_ACTIONS.CHECKOUT_CART,
-        });
-      }
+    async function verifySession() {
+      setStatus("checking");
 
-      setStatus("unauthenticated");
-    };
-
-    const verifySession = async () => {
       try {
-        const response = await api.get("/api/auth/customer/me", {
-          withCredentials: true,
+        const response = await api.get("/api/auth/customer/session", {
           signal: controller.signal,
         });
 
-        if (controller.signal.aborted) {
-          return;
-        }
+        if (controller.signal.aborted) return;
 
-        if (response.data?.success) {
-          setStatus("authenticated");
-        } else {
-          markUnauthenticated();
-        }
+        setStatus(
+          response.data?.authenticated ? "authenticated" : "unauthenticated",
+        );
       } catch (error) {
-        if (controller.signal.aborted) {
+        if (controller.signal.aborted) return;
+
+        if (error.response?.status === 401 || error.response?.status === 403) {
+          if (location.pathname === "/checkout") {
+            savePendingAction({
+              type: PENDING_ACTIONS.CHECKOUT_CART,
+            });
+          }
+
+          setStatus("unauthenticated");
           return;
         }
 
-        const statusCode = error.response?.status;
-        const message = error.response?.data?.message || "";
-
-        const sessionInvalid =
-          statusCode === 401 ||
-          statusCode === 403 ||
-          /authentication required|session is invalid|expired|log in again/i.test(
-            message,
-          );
-
-        if (sessionInvalid) {
-          markUnauthenticated();
-          return;
-        }
-
+        console.error("Customer session check failed:", error);
         setStatus("error");
       }
-    };
+    }
 
     verifySession();
 
-    return () => {
-      controller.abort();
-    };
-  }, [location.pathname, retryCount]);
+    return () => controller.abort();
+  }, [location.pathname, retry]);
 
   if (status === "checking") {
-    return <p role="status">Checking your session...</p>;
+    return (
+      <div className="container page-shell" role="status">
+        Checking your session...
+      </div>
+    );
   }
 
   if (status === "unauthenticated") {
@@ -86,7 +66,7 @@ export default function CustomerRoute() {
         replace
         state={{
           from: location,
-          message: "Please log in to continue.",
+          message: "Please log in to access this page.",
         }}
       />
     );
@@ -94,17 +74,18 @@ export default function CustomerRoute() {
 
   if (status === "error") {
     return (
-      <div role="alert">
-        <p>Unable to contact the authentication service.</p>
+      <div className="container page-shell">
+        <p role="alert">
+          Unable to verify your login. Check your connection and make sure the
+          backend is running.
+        </p>
 
         <button
           type="button"
-          onClick={() => {
-            setStatus("checking");
-            setRetryCount((previous) => previous + 1);
-          }}
+          className="btn btn-dark"
+          onClick={() => setRetry((value) => value + 1)}
         >
-          Try again
+          Try Again
         </button>
       </div>
     );

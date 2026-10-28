@@ -3,13 +3,17 @@ import cors from "cors";
 import helmet from "helmet";
 import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
+
 import authRoutes from "./routes/customer/authRoutes.js";
-dotenv.config(); //activates env file
+import customerAccountRoutes from "./routes/customer/accountRoutes.js";
+
+dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT;
+const PORT = Number(process.env.PORT) || 3000;
 
-app.use(cookieParser());
+app.use(helmet());
+
 app.use(
   cors({
     origin: "http://localhost:5173",
@@ -17,11 +21,12 @@ app.use(
   }),
 );
 
-app.use(helmet());
 app.use(express.json());
+app.use(cookieParser());
 
 app.use("/api/auth/customer", authRoutes);
+app.use("/api/customer/account", customerAccountRoutes);
 
 app.listen(PORT, () => {
-  console.log(`SERVER IS RUNNING ON PORT ${PORT}`);
+  console.log(`Server is running on port ${PORT}`);
 });
