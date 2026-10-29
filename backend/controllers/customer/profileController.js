@@ -1,4 +1,4 @@
-import { getCustomerProfileService } from "../../services/customer/accountService.js";
+import { getCustomerProfileService } from "../../services/customer/profileService.js";
 
 export async function getCustomerProfileController(req, res) {
   const accountType = String(req.auth?.accountType ?? "").toUpperCase();

@@ -1,5 +1,5 @@
 import connectDB from "../../utils/dbConn.js";
-import { customerAccountModel } from "../../models/customer/accountModel.js";
+import { customerAccountModel } from "../../models/customer/profileModel.js";
 
 export async function getCustomerProfileService(userId) {
   const id = Number(userId);

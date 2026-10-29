@@ -14,7 +14,10 @@ export default function ProfilePage() {
   const [retry, setRetry] = useState(0);
 
   useEffect(() => {
-    const controller = new AbortController();
+    /**
+     **since its fetching from db when its still fetching then click another page that need fetching it cancel the old fetching
+     */
+    const controller = new AbortController(); //creates a controller that can cancel the request
 
     async function fetchProfile() {
       setLoading(true);
@@ -22,10 +25,11 @@ export default function ProfilePage() {
 
       try {
         const response = await api.get("/api/customer/account/profile", {
-          signal: controller.signal,
+          signal:
+            controller.signal /* Listen to this controller for a cancellation signal */,
         });
 
-        if (controller.signal.aborted) return;
+        if (controller.signal.aborted) return; //checks whether cancellation has been triggered
 
         if (!response.data?.success || !response.data?.user) {
           throw new Error("Customer profile was not returned.");
@@ -65,7 +69,6 @@ export default function ProfilePage() {
     }
 
     fetchProfile();
-
     return () => controller.abort();
   }, [navigate, retry]);
 
