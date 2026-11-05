@@ -1,0 +1,98 @@
+/* AV Cooling System — visible, reusable ecommerce snowflake texture.
+   Scoped to the public ecommerce area; no global layout overrides. */
+
+.ecommerce-main {
+  --snowflake-image: url("../../assets/snowflake-tile.svg");
+  --snowflake-tile: 280px 280px;
+}
+
+/* Main shop, services, product, cart, checkout, and about backgrounds. */
+.ecommerce-main .page-shell {
+  background-color: #eaf5fa;
+  background-image:
+    linear-gradient(
+      180deg,
+      rgba(250, 253, 255, 0.36),
+      rgba(228, 244, 251, 0.45)
+    ),
+    var(--snowflake-image);
+  background-repeat: no-repeat, repeat;
+  background-position:
+    center,
+    center top;
+  background-size:
+    100% 100%,
+    var(--snowflake-tile);
+}
+
+/* The lighter sections of the ecommerce homepage. */
+.ecommerce-main
+  :is(
+    .expertise-section,
+    .products-section,
+    .foundation-section,
+    .testimonials-section
+  ) {
+  background-color: #e9f5fa;
+  background-image:
+    linear-gradient(
+      180deg,
+      rgba(251, 254, 255, 0.36),
+      rgba(232, 245, 251, 0.42)
+    ),
+    var(--snowflake-image);
+  background-repeat: no-repeat, repeat;
+  background-position:
+    center,
+    center top;
+  background-size:
+    100% 100%,
+    var(--snowflake-tile);
+}
+
+/* White cards retain a bright, readable base with the pattern visible. */
+.ecommerce-main .page-shell .surface,
+.ecommerce-main
+  :is(
+    .product-card,
+    .service-card,
+    .shop-toolbar,
+    .service-list-card,
+    .testimonial,
+    .foundation-intro
+  ),
+.ecommerce-main .foundation-cards > div {
+  background-color: #fbfdff;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.68), rgba(255, 255, 255, 0.68)),
+    var(--snowflake-image);
+  background-repeat: no-repeat, repeat;
+  background-position: center, center;
+  background-size:
+    100% 100%,
+    var(--snowflake-tile);
+}
+
+/* Maintain the same subtle design inside the purchase and service dialogs. */
+.ecommerce-main :is(.purchase-dialog, .service-booking-dialog) {
+  background-color: #fbfdff;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.66), rgba(255, 255, 255, 0.66)),
+    var(--snowflake-image);
+  background-repeat: no-repeat, repeat;
+  background-position: center, center;
+  background-size:
+    100% 100%,
+    var(--snowflake-tile);
+}
+
+/* Keep fields and text areas solid for readability. */
+.ecommerce-main :is(input, textarea, select) {
+  background-image: none;
+}
+
+@media (max-width: 600px) {
+  .ecommerce-main {
+    --snowflake-tile: 240px 240px;
+  }
+}

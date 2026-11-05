@@ -612,3 +612,34 @@
     width: 100%;
   }
 }
+
+/* Mobile account layouts: avoid edge-to-edge crowded records. */
+@media (max-width: 760px) {
+  .customer-shell { padding-top: 60px; }
+  .customer-side { height: 60px; gap: 8px; padding: 7px 12px; }
+  .customer-side nav { gap: 5px; }
+  .customer-main { padding: 20px 16px 38px; }
+  .customer-module { width: 100%; max-width: 100%; }
+  .customer-module-head { gap: 10px; margin-bottom: 15px; }
+  .customer-module-head > svg { width: 40px; height: 40px; flex: 0 0 40px; }
+  .customer-record-list, .customer-notice-list, .customer-address-grid { gap: 11px; }
+  .customer-record, .customer-address, .customer-form-card, .customer-profile-grid, .customer-notice {
+    min-width: 0; padding: 15px; border-radius: 15px; box-shadow: 0 5px 18px rgba(7,55,80,.06);
+  }
+  .customer-record > div { min-width: 0; }
+  .customer-record strong, .customer-record span { overflow-wrap: anywhere; }
+  .customer-dialog-backdrop { padding: 12px; }
+  .customer-dialog { max-height: calc(100dvh - 24px); border-radius: 17px; }
+  .customer-form-card, .customer-profile-grid { gap: 12px; }
+}
+@media (max-width: 520px) {
+  .customer-main { padding: 17px 14px 32px; }
+  .customer-record { gap: 9px; flex-wrap: wrap; }
+  .customer-module-action-head > .btn { min-height: 44px; }
+  .customer-dialog { padding: 15px; }
+  .customer-address-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .customer-address-actions .btn { min-width: 0; }
+}
+@media (max-width: 360px) {
+  .customer-address-actions { grid-template-columns: 1fr; }
+}

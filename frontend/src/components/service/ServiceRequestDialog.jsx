@@ -6,6 +6,7 @@ import api from "../../../api/api.js";
 import SavedAddressSelector from "../common/SavedAddressSelector";
 
 import "../../styles/ecommerce/pages.css";
+import "../../styles/ecommerce/service-booking.css";
 
 function resolveServiceType(service) {
   const value =

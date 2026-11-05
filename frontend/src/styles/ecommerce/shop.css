@@ -1,0 +1,10 @@
+/* Shop: compact toolbar and readable brand filtering on phones. */
+@media (max-width: 760px) {
+  .shop-toolbar { gap: 10px; padding: 12px; margin-bottom: 15px; border-radius: 15px; }
+  .shop-search { gap: 9px; min-width: 0; }
+  .shop-brand-nav { gap: 7px; padding-bottom: 7px; margin-bottom: 0; }
+  .shop-brand-block { padding: 16px 0; }
+  .shop-brand-title { gap: 10px; margin-bottom: 10px; }
+  .shop-brand-title h2 { font-size: 1.13rem; }
+  .shop-brand-title p { line-height: 1.5; }
+}

@@ -119,3 +119,15 @@
     width: 100%;
   }
 }
+
+/* Mobile service carousel: compact cards rather than screen-filling panels. */
+@media (max-width: 560px) {
+  .service-grid { gap: 11px; padding: 2px 12% 12px 1px; }
+  .service-card { flex-basis: 78%; min-width: 0; min-height: 0; padding: 16px; border-radius: 16px; }
+  .service-card h3 { margin: 12px 0 6px; }
+  .service-card p { margin-bottom: 9px; }
+  .service-actions { padding-top: 12px; }
+}
+@media (max-width: 380px) {
+  .service-card { flex-basis: 86%; }
+}

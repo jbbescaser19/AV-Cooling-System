@@ -1,0 +1,12 @@
+/* Service booking dialog: inset bottom sheet and reachable actions. */
+@media (max-width: 620px) {
+  .service-booking-backdrop { align-items: end; padding: 10px; }
+  .service-booking-dialog { width: min(100%, 540px); max-height: calc(100dvh - 20px); border-radius: 18px; }
+  .service-booking-grid { gap: 11px; padding: 15px; }
+  .service-booking-head { padding: 14px 15px; }
+  .service-booking-actions { gap: 8px; padding: 12px 15px max(12px,env(safe-area-inset-bottom)); }
+  .service-booking-grid .form-control { min-height: 44px; }
+}
+@media (max-width: 380px) {
+  .service-booking-actions { grid-template-columns: 1fr; }
+}

@@ -1,0 +1,11 @@
+/* Checkout: compact sections and properly spaced form controls. */
+@media (max-width: 760px) {
+  .checkout-layout { gap: 13px; }
+  .checkout-main { gap: 12px; }
+  .checkout-section { padding: 17px; border-radius: 16px; }
+  .checkout-form-grid { gap: 12px; }
+  .checkout-summary { padding: 17px; border-radius: 16px; }
+  .checkout-section h2 { margin-bottom: 11px; }
+  .checkout-summary-row, .cart-summary-row { min-width: 0; gap: 9px; }
+  .checkout-summary-row > *, .cart-summary-row > * { min-width: 0; overflow-wrap: anywhere; }
+}

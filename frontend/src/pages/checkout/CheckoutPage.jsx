@@ -15,6 +15,7 @@ import {
 import { loadMock, saveMock, uid } from "../../utils/prototypeStore";
 
 import "../../styles/ecommerce/pages.css";
+import "../../styles/ecommerce/checkout.css";
 
 export default function CheckoutPage() {
   const nav = useNavigate();

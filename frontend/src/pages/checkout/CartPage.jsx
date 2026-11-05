@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ShoppingBag, Trash2 } from "lucide-react";
 import "../../styles/ecommerce/pages.css";
+import "../../styles/ecommerce/cart.css";
 
 export default function CartPage() {
   const [cart, setCart] = useState(() =>

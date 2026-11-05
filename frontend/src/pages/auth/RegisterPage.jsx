@@ -11,16 +11,20 @@ import {
 } from "lucide-react";
 
 import api from "../../../api/api";
+import TermsCheckbox from "../../components/auth/TermsCheckbox.jsx";
+
 import "../../styles/auth/auth.css";
+import "../../styles/auth/register.css";
 import { continuePendingAction } from "../../utils/purchaseFlow";
 
 export default function RegisterPage() {
   const navigate = useNavigate();
 
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const [acceptTerms, setAcceptTerms] = useState(false);
 
   const [formData, setFormData] = useState({
     fullName: "",
@@ -28,6 +32,7 @@ export default function RegisterPage() {
     phone: "",
     password: "",
   });
+
   useEffect(() => {
     if (!error) return;
 
@@ -49,31 +54,44 @@ export default function RegisterPage() {
 
   const registerCustomer = async (e) => {
     e.preventDefault();
+
+    if (loading) return;
+
     setError("");
 
     if (formData.password.length < 8) {
       setError("Password must be at least 8 characters.");
       return;
     }
+
+    if (!acceptTerms) {
+      setError(
+        "Please accept the Terms and Conditions before creating an account.",
+      );
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const response = await api.post("/api/auth/customer/register", formData);
+      const response = await api.post("/api/auth/customer/register", {
+        ...formData,
+        acceptTerms,
+      });
 
-      if (response.data.success) {
+      if (response.data?.success) {
         continuePendingAction(navigate);
       } else {
-        setError("Signup failed");
-        return;
+        setError("Signup failed.");
       }
-    } catch (error) {
+    } catch (requestError) {
       console.error(
         "Registration error:",
-        error.response?.data || error.message,
+        requestError.response?.data?.message || requestError.message,
       );
 
       setError(
-        error.response?.data?.message ||
+        requestError.response?.data?.message ||
           "Registration failed. Please try again.",
       );
     } finally {
@@ -82,7 +100,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="auth-shell">
+    <div className="auth-shell auth-register-page">
       <form
         className="auth-card auth-register-card"
         onSubmit={registerCustomer}
@@ -92,6 +110,7 @@ export default function RegisterPage() {
 
           <div>
             <div className="eyebrow">AV Cooling System</div>
+
             <h1>Create account</h1>
           </div>
         </div>
@@ -122,6 +141,7 @@ export default function RegisterPage() {
               value={formData.fullName}
               onChange={handleFormData}
               required
+              disabled={loading}
             />
           </div>
         </div>
@@ -144,6 +164,7 @@ export default function RegisterPage() {
               value={formData.email}
               onChange={handleFormData}
               required
+              disabled={loading}
             />
           </div>
         </div>
@@ -166,6 +187,7 @@ export default function RegisterPage() {
               value={formData.phone}
               onChange={handleFormData}
               required
+              disabled={loading}
             />
           </div>
         </div>
@@ -193,17 +215,29 @@ export default function RegisterPage() {
               value={formData.password}
               onChange={handleFormData}
               required
+              disabled={loading}
             />
 
             <button
               className="auth-password-toggle"
               type="button"
               aria-label={showPassword ? "Hide password" : "Show password"}
+              aria-pressed={showPassword}
+              disabled={loading}
               onClick={() => setShowPassword((previous) => !previous)}
             >
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
+        </div>
+
+        {/* Terms and Conditions */}
+        <div className="auth-field">
+          <TermsCheckbox
+            checked={acceptTerms}
+            onChange={setAcceptTerms}
+            disabled={loading}
+          />
         </div>
 
         {error && (
@@ -215,7 +249,7 @@ export default function RegisterPage() {
         <button
           className="btn btn-dark auth-register-submit"
           type="submit"
-          disabled={loading}
+          disabled={loading || !acceptTerms}
         >
           {loading ? "Creating account..." : "Create account"}
         </button>

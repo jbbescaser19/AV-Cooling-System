@@ -26,6 +26,7 @@ import {
 } from "../../utils/purchaseFlow";
 
 import "../../styles/ecommerce/pages.css";
+import "../../styles/ecommerce/product-details.css";
 
 const peso = (value) => `₱${Number(value || 0).toLocaleString("en-PH")}`;
 

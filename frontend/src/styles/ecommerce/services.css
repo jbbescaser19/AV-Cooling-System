@@ -1,0 +1,8 @@
+/* Service listing: lighter, non-stretched cards for mobile. */
+@media (max-width: 760px) {
+  .services-list-grid { gap: 12px; }
+  .service-list-card { min-height: 0; padding: 17px; gap: 10px; border-radius: 16px; box-shadow: 0 5px 18px rgba(7,55,80,.06); }
+  .service-list-card h2 { font-size: 1.06rem; }
+  .service-list-card p { line-height: 1.55; }
+  .service-list-card .btn { width: 100%; min-height: 44px; }
+}

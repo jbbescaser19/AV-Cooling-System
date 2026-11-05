@@ -1,0 +1,10 @@
+/* Cart: balanced item rows and full-width summary only where useful. */
+@media (max-width: 760px) {
+  .cart-layout { gap: 13px; }
+  .cart-list { gap: 10px; }
+  .cart-item { gap: 10px; padding: 14px; border-radius: 15px; }
+  .cart-item-main b { overflow-wrap: anywhere; }
+  .cart-item-side { flex-wrap: wrap; gap: 10px; }
+  .cart-summary { padding: 17px; border-radius: 16px; }
+  .cart-actions { gap: 9px; margin-top: 14px; }
+}

@@ -2,6 +2,7 @@ import { NavLink } from "react-router-dom";
 
 import {
   BarChart3,
+  Archive,
   Bell,
   Boxes,
   CalendarDays,
@@ -37,6 +38,7 @@ const nav = [
         LayoutDashboard,
         ["OWNER", "MANAGER", "SALES_CASHIER", "TECHNICIAN"],
       ],
+      ["Archive", "/management/archive", Archive, ["OWNER", "MANAGER"]],
     ],
   },
 

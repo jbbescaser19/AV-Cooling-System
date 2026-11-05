@@ -39,6 +39,7 @@ const access = {
     "reports",
     "notifications",
     "audit-logs",
+    "archive",
 
     // OWNER ONLY
     "staff",
@@ -64,6 +65,7 @@ const access = {
     "facebook-requests",
     "reports",
     "notifications",
+    "archive",
   ],
 
   SALES_CASHIER: [

@@ -209,3 +209,14 @@
     max-width: 88%;
   }
 }
+
+/* Mobile product carousel: keep neighboring products visible. */
+@media (max-width: 640px) {
+  .brand-tabs { margin-inline: 0; padding-inline: 2px; }
+  .brand-section { padding-block: 18px 14px; }
+  .product-rail { gap: 10px; padding-right: 13%; }
+  .product-rail-item { flex: 0 0 76%; min-width: 76%; max-width: 76%; }
+}
+@media (max-width: 380px) {
+  .product-rail-item { flex-basis: 84%; min-width: 84%; max-width: 84%; }
+}

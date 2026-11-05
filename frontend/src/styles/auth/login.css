@@ -1,0 +1,37 @@
+/* Login page: visually distinct from registration, same existing form and API. */
+.auth-login-page .auth-card {
+  width: min(100%, 420px);
+  gap: 14px;
+  padding: 28px;
+  background: #f9fcfe;
+  border: 1px solid #bfd7e3;
+  border-radius: 22px;
+  box-shadow: 0 22px 58px rgba(0, 12, 26, .24);
+}
+.auth-login-page .auth-register-heading {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+}
+.auth-login-page .auth-register-heading > svg {
+  box-sizing: content-box;
+  padding: 10px;
+  color: #0b749c;
+  background: #e4f5fa;
+  border: 1px solid #c8e3ec;
+  border-radius: 12px;
+}
+.auth-login-page .auth-links { display: flex; justify-content: flex-end; }
+@media (max-width: 560px) {
+  .auth-login-page { padding: 24px 16px; }
+  .auth-login-page .auth-card {
+    width: min(100%, 400px);
+    gap: 15px;
+    padding: 25px 21px;
+    border-radius: 20px;
+  }
+  .auth-login-page .auth-register-heading h1 { font-size: 1.55rem; }
+  .auth-login-page .auth-register-card .form-control { min-height: 46px; font-size: 16px; }
+  .auth-login-page .auth-register-submit { min-height: 46px; }
+  .auth-login-page .auth-register-footer { line-height: 1.6; }
+}

@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
-
 import { ArrowRight, ShieldCheck, Clock3, MapPin, Star } from "lucide-react";
 
+import heroPerson from "../../assets/av-cooling-hero-person.png";
 import "../../styles/home/hero.css";
 
 export default function HeroSection() {
@@ -11,7 +11,7 @@ export default function HeroSection() {
         <div className="hero-copy">
           <span className="hero-badge">
             <ShieldCheck size={16} />
-            Trusted cooling sales & service
+            Trusted cooling sales &amp; service
           </span>
 
           <h1>Comfort engineered for homes and businesses</h1>
@@ -39,7 +39,6 @@ export default function HeroSection() {
 
               <span>
                 <b>Fast scheduling</b>
-
                 <small>Organized service requests</small>
               </span>
             </div>
@@ -49,8 +48,7 @@ export default function HeroSection() {
 
               <span>
                 <b>Local support</b>
-
-                <small>Calamba & nearby areas</small>
+                <small>Calamba &amp; nearby areas</small>
               </span>
             </div>
 
@@ -59,11 +57,22 @@ export default function HeroSection() {
 
               <span>
                 <b>After-sales care</b>
-
                 <small>Support beyond purchase</small>
               </span>
             </div>
           </div>
+        </div>
+
+        {/* Decorative image only; it does not alter the existing actions. */}
+        <div className="hero-figure" aria-hidden="true">
+          <div className="hero-figure-glow" />
+          <img
+            className="hero-figure-image"
+            src={heroPerson}
+            alt=""
+            loading="eager"
+            decoding="async"
+          />
         </div>
       </div>
     </section>

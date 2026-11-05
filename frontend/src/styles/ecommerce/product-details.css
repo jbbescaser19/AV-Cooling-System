@@ -1,0 +1,16 @@
+/* Product details: proportioned hero and actions on phones. */
+@media (max-width: 760px) {
+  .product-detail-shell { gap: 14px; }
+  .product-detail-visual { border-radius: 16px; }
+  .product-detail-hero { min-height: 210px; }
+  .product-detail-info { gap: 12px; }
+  .detail-card { padding: 16px; }
+  .detail-summary { padding: 14px; }
+  .detail-list { gap: 7px; }
+  .detail-actions { gap: 8px; }
+  .detail-actions .btn { min-height: 46px; }
+}
+@media (max-width: 380px) {
+  .detail-actions { flex-wrap: wrap; }
+  .detail-actions .btn { flex: 1 1 100%; }
+}

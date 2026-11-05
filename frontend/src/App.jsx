@@ -29,11 +29,16 @@ import InventoryPage from "./pages/management/InventoryPage";
 import CustomersPage from "./pages/management/CustomersPage";
 import ManagementModulePage from "./pages/management/ManagementModulePage";
 import StaffAccountsPage from "./pages/management/StaffAccountsPage";
+import ArchivePage from "./pages/management/ArchivePage";
 
 import CustomerModulePage from "./pages/customer/CustomerModulePage";
 
 import CustomerRoute from "./components/auth/CustomerRoute";
 import RoleGuard from "./components/management/RoleGuard";
+
+/* =========================================================
+   MANAGEMENT MODULES
+========================================================= */
 
 const mgmtModules = [
   "payments",
@@ -52,6 +57,10 @@ const mgmtModules = [
   "audit-logs",
 ];
 
+/* =========================================================
+   CUSTOMER MODULES
+========================================================= */
+
 const customerModules = [
   "orders",
   "services",
@@ -63,10 +72,17 @@ const customerModules = [
   "change-password",
 ];
 
+/* =========================================================
+   APPLICATION ROUTES
+========================================================= */
+
 export default function App() {
   return (
     <Routes>
-      {/* Public ecommerce pages */}
+      {/* =============================================
+          PUBLIC ECOMMERCE
+      ============================================= */}
+
       <Route element={<EcommerceLayout />}>
         <Route path="/" element={<HomePage />} />
 
@@ -80,10 +96,8 @@ export default function App() {
 
         <Route path="/contact" element={<ContactPage />} />
 
-        {/* Cart is accessible without logging in */}
         <Route path="/cart" element={<CartPage />} />
 
-        {/* Protected purchasing pages */}
         <Route element={<CustomerRoute />}>
           <Route path="/checkout" element={<CheckoutPage />} />
 
@@ -94,16 +108,24 @@ export default function App() {
         </Route>
       </Route>
 
-      {/* Authentication pages */}
+      {/* =============================================
+          CUSTOMER AUTHENTICATION
+      ============================================= */}
+
       <Route path="/login" element={<LoginPage />} />
 
       <Route path="/register" element={<RegisterPage />} />
 
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
-      {/* Protected customer account pages */}
+      {/* =============================================
+          CUSTOMER ACCOUNT
+      ============================================= */}
+
       <Route element={<CustomerRoute />}>
         <Route path="/account" element={<CustomerLayout />}>
+          <Route index element={<Navigate to="profile" replace />} />
+
           {customerModules.map((module) => (
             <Route
               key={module}
@@ -111,8 +133,6 @@ export default function App() {
               element={<CustomerModulePage module={module} />}
             />
           ))}
-
-          <Route index element={<Navigate to="profile" replace />} />
 
           <Route
             path="orders/:orderId"
@@ -126,29 +146,50 @@ export default function App() {
         </Route>
       </Route>
 
-      {/* Management login */}
+      {/* =============================================
+          MANAGEMENT LOGIN
+      ============================================= */}
+
       <Route path="/management/login" element={<ManagementLoginPage />} />
 
-      {/* Management pages */}
+      {/* =============================================
+          MANAGEMENT SYSTEM
+      ============================================= */}
+
       <Route path="/management" element={<ManagementLayout />}>
         <Route index element={<DashboardPage />} />
 
         <Route path="dashboard" element={<DashboardPage />} />
 
-        <Route path="orders" element={<OrdersPage />} />
+        {/* ARCHIVE
+            Access is controlled by ManagementLayout:
+            OWNER and MANAGER only.
+        */}
+        <Route path="archive" element={<ArchivePage />} />
+
+        {/* SALES */}
 
         <Route path="pos" element={<POSPage />} />
+
+        <Route path="orders" element={<OrdersPage />} />
+
+        {/* CATALOG */}
 
         <Route path="products" element={<ProductsPage />} />
 
         <Route path="inventory" element={<InventoryPage />} />
 
+        {/* CUSTOMERS */}
+
         <Route path="customers" element={<CustomersPage />} />
 
-        {/* Only the owner can access staff accounts */}
+        {/* OWNER-ONLY STAFF MANAGEMENT */}
+
         <Route element={<RoleGuard roles={["OWNER"]} />}>
           <Route path="staff" element={<StaffAccountsPage />} />
         </Route>
+
+        {/* OTHER MANAGEMENT MODULES */}
 
         {mgmtModules.map((module) => (
           <Route
@@ -157,9 +198,22 @@ export default function App() {
             element={<ManagementModulePage module={module} />}
           />
         ))}
+
+        {/* UNKNOWN MANAGEMENT ROUTES
+            Stay inside management instead of
+            redirecting to ecommerce.
+        */}
+
+        <Route
+          path="*"
+          element={<Navigate to="/management/dashboard" replace />}
+        />
       </Route>
 
-      {/* Unknown routes return to home */}
+      {/* =============================================
+          UNKNOWN PUBLIC ROUTES
+      ============================================= */}
+
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

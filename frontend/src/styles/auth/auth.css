@@ -327,3 +327,29 @@
   box-sizing: border-box;
   width: 100%;
 }
+
+/* Shared small-screen auth foundations, including account recovery and staff login. */
+@media (max-width: 560px) {
+  .auth-shell {
+    padding: 20px 16px;
+    place-items: center;
+  }
+  .auth-card {
+    width: min(100%, 420px);
+    min-width: 0;
+    padding: 22px 20px;
+    border-radius: 20px;
+    border: 1px solid #bad4e0;
+    box-shadow: 0 18px 46px rgba(0, 10, 24, .24);
+  }
+  .auth-card .form-control { min-height: 44px; font-size: 16px; }
+  .auth-register-card .form-control { height: 44px; }
+  .auth-register-submit { min-height: 46px; }
+}
+@media (max-width: 380px) {
+  .auth-shell { padding-inline: 14px; }
+  .auth-card { padding: 20px 16px; }
+}
+@media (max-height: 700px) {
+  .auth-register-heading p, .auth-field-hint { display: block; }
+}

@@ -1,0 +1,50 @@
+/* Register page: design-only, scoped to the existing registration component. */
+.auth-register-page .auth-register-card {
+  width: min(100%, 440px);
+  gap: 12px;
+  border: 1px solid rgba(188, 216, 230, .94);
+  border-radius: 22px;
+  background: #f9fcfe;
+  box-shadow: 0 22px 58px rgba(0, 12, 26, .25);
+}
+.auth-register-page .auth-register-heading {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+}
+.auth-register-page .auth-register-heading > svg {
+  box-sizing: content-box;
+  padding: 10px;
+  color: #0b749c;
+  background: #e4f5fa;
+  border: 1px solid #c8e3ec;
+  border-radius: 12px;
+}
+.auth-register-page .terms-consent {
+  padding: 12px;
+  border-radius: 13px;
+  border-color: #c5deea;
+  box-shadow: 0 4px 16px rgba(7, 55, 80, .045);
+}
+.auth-register-page .terms-consent__header { margin-bottom: 10px; }
+.auth-register-page .terms-consent__icon { flex-basis: 36px; width: 36px; height: 36px; }
+.auth-register-page .terms-consent__accept { padding: 11px; }
+.auth-register-page .terms-consent__read { margin-top: 4px; }
+@media (max-width: 560px) {
+  .auth-register-page { padding: 20px 16px; }
+  .auth-register-page .auth-register-card {
+    width: min(100%, 410px);
+    gap: 9px;
+    padding: 19px 18px 21px;
+    border-radius: 19px;
+  }
+  .auth-register-page .terms-consent__heading p { display: none; }
+  .auth-register-page .terms-consent__icon { flex-basis: 32px; width: 32px; height: 32px; }
+  .auth-register-page .terms-consent__header { margin-bottom: 8px; }
+  .auth-register-page .auth-register-heading h1 { font-size: clamp(1.4rem, 6vw, 1.7rem); }
+  .auth-register-page .auth-register-card > .muted { line-height: 1.48; }
+  .auth-register-page .auth-register-card .auth-field { gap: 6px; }
+  .auth-register-page .auth-register-card .form-control { height: 44px; font-size: 16px; }
+  .auth-register-page .auth-register-submit { min-height: 46px; }
+  .auth-register-page .auth-register-footer { line-height: 1.6; }
+}

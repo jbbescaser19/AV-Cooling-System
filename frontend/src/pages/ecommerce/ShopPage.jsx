@@ -6,6 +6,8 @@ import {
   readCatalogProducts,
 } from "../../utils/catalogStore";
 import "../../styles/ecommerce/pages.css";
+import "../../styles/ecommerce/shop.css";
+
 export default function ShopPage() {
   const [catalog, setCatalog] = useState(() => readCatalogProducts());
   const [query, setQuery] = useState("");

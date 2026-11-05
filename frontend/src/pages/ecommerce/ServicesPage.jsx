@@ -5,6 +5,7 @@ import ServiceRequestDialog from "../../components/service/ServiceRequestDialog"
 import useServiceRequestFlow from "../../hooks/useServiceRequestFlow";
 
 import "../../styles/ecommerce/pages.css";
+import "../../styles/ecommerce/services.css";
 
 export default function ServicesPage() {
   {

@@ -83,3 +83,20 @@ textarea.form-control{resize:vertical;min-height:120px}
 @media(prefers-reduced-motion:reduce){
   *{scroll-behavior:auto!important;animation:none!important;transition:none!important}
 }
+
+/* Mobile spacing refinements across public pages. */
+@media (max-width: 720px) {
+  .section { padding-block: 38px; }
+  .section-head { margin-bottom: 18px; }
+  .page-shell { min-height: calc(100svh - var(--nav-height)); padding-block: 24px 42px; }
+  .page-intro { margin-bottom: 18px; }
+  .section-copy { line-height: 1.6; }
+  .empty-state { padding: 24px 16px; border-radius: 14px; }
+  .surface { box-shadow: 0 5px 18px rgba(6, 38, 58, .065); }
+  .grid-2 > *, .grid-3 > *, .grid-4 > * { min-width: 0; }
+}
+@media (max-width: 420px) {
+  :root { --container: min(calc(100% - 28px), 1120px); }
+  .section { padding-block: 34px; }
+  .page-title { font-size: clamp(1.8rem, 9vw, 2.3rem); }
+}

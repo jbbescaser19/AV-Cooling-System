@@ -6,6 +6,7 @@ import api from "../../../api/api.js";
 import { continuePendingAction } from "../../utils/purchaseFlow";
 
 import "../../styles/auth/auth.css";
+import "../../styles/auth/login.css";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -64,7 +65,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="auth-shell">
+    <div className="auth-shell auth-login-page">
       <form className="auth-card auth-register-card" onSubmit={handleSubmit}>
         <div className="auth-register-heading">
           <Snowflake size={25} aria-hidden="true" />

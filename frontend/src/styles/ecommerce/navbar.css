@@ -554,3 +554,17 @@
     width: 90vw;
   }
 }
+
+/* Small-screen navigation spacing and contained, scrollable drawer. */
+@media (max-width: 700px) {
+  .nav-inner { gap: 8px; min-width: 0; }
+  .nav-actions { gap: 5px; }
+  .mobile-nav-drawer { width: min(90vw, 360px); max-width: 100%; max-height: 100dvh; overflow-y: auto; }
+  .mobile-nav-links a { min-height: 44px; }
+}
+@media (max-width: 380px) {
+  .brand { gap: 7px; }
+  .brand b { font-size: .83rem; }
+  .brand-mark { width: 34px; height: 34px; }
+  .icon-link, .menu-btn { width: 36px; height: 36px; }
+}
