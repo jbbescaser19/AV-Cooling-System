@@ -1,124 +1,177 @@
-import { useEffect, useState } from "react";
-
+import { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { CalendarDays, X } from "lucide-react";
 
+import api from "../../../api/api.js";
 import SavedAddressSelector from "../common/SavedAddressSelector";
-
-import { getCustomer } from "../../utils/authMock";
-
-import { getDefaultCustomerAddress } from "../../utils/addressStore";
-
-import { loadMock, saveMock, uid } from "../../utils/prototypeStore";
 
 import "../../styles/ecommerce/pages.css";
 
+function resolveServiceType(service) {
+  const value =
+    service?.serviceType ?? service?.type ?? service?.id ?? service?.name ?? "";
+
+  const slug = String(value)
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+  const compact = slug.replace(/-/g, "");
+
+  if (compact === "emergency" || compact === "emergencyservice") {
+    return "emergency";
+  }
+
+  if (
+    compact === "troubleshooting" ||
+    compact === "troubleshootingservice" ||
+    compact === "troubleshoot"
+  ) {
+    return "troubleshooting";
+  }
+
+  return slug;
+}
+
+function getTodayPH() {
+  return new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+
 export default function ServiceRequestDialog({ service, onClose }) {
-  const customer = getCustomer();
+  const navigate = useNavigate();
 
-  const defaultAddress = getDefaultCustomerAddress();
+  const serviceType = resolveServiceType(service);
+  const serviceName = service?.name ?? service?.serviceName ?? "Service";
 
-  const isRelocation = service.id === "relocation";
+  const isRelocation = serviceType === "relocation";
+
+  const isValidServiceType = /^[a-z][a-z0-9-]{1,39}$/.test(serviceType);
 
   const [form, setForm] = useState({
     date: "",
     time: "09:00",
-
-    address: defaultAddress?.address || "",
-
+    address: "",
     destinationAddress: "",
-
     concern: "",
     notes: "",
   });
+
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
 
     document.body.style.overflow = "hidden";
 
-    const handleKeyDown = (event) => {
-      if (event.key === "Escape") {
+    function handleKeyDown(event) {
+      if (event.key === "Escape" && !submitting) {
         onClose();
       }
-    };
+    }
 
     window.addEventListener("keydown", handleKeyDown);
 
     return () => {
       document.body.style.overflow = previousOverflow;
-
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [onClose]);
+  }, [onClose, submitting]);
 
-  const set = (key, value) => {
+  function set(key, value) {
     setForm((current) => ({
       ...current,
       [key]: value,
     }));
-  };
+  }
 
-  const submit = (event) => {
+  const handleAddressChange = useCallback((address) => {
+    setForm((current) => ({
+      ...current,
+      address,
+    }));
+  }, []);
+
+  async function submit(event) {
     event.preventDefault();
 
-    if (!form.date) {
-      alert("Please select a preferred date.");
+    if (submitting || success) return;
 
+    setError("");
+
+    if (!isValidServiceType) {
+      setError("This service type is not configured correctly.");
+      return;
+    }
+
+    if (!form.date || !form.time) {
+      setError("Please select a preferred date and time.");
       return;
     }
 
     if (!form.address.trim()) {
-      alert(
-        isRelocation
-          ? "Please select the current unit address."
-          : "Please select or add a service address.",
-      );
-
+      setError("Please enter a service address.");
       return;
     }
 
     if (isRelocation && !form.destinationAddress.trim()) {
-      alert("Please enter the relocation destination address.");
-
+      setError("Please enter the relocation destination address.");
       return;
     }
 
-    const items = loadMock("av_customer_services", []);
+    setSubmitting(true);
 
-    const record = {
-      id: uid("SR"),
+    try {
+      const response = await api.post("/api/customer/services/requests", {
+        serviceType,
+        preferredDate: form.date,
+        preferredTime: form.time,
+        serviceAddress: form.address.trim(),
+        destinationAddress: isRelocation
+          ? form.destinationAddress.trim()
+          : null,
+        concern: form.concern.trim(),
+        notes: form.notes.trim(),
+      });
 
-      serviceId: service.id,
+      if (!response.data?.success) {
+        throw new Error(
+          response.data?.message || "Unable to submit your service request.",
+        );
+      }
 
-      service: service.name,
+      setSuccess(
+        response.data.message ||
+          "Your service request was submitted successfully.",
+      );
+    } catch (requestError) {
+      if (requestError.response?.status === 401) {
+        navigate("/login", {
+          replace: true,
+          state: {
+            message: "Please log in to request a service.",
+          },
+        });
+        return;
+      }
 
-      schedule: `${form.date} · ${form.time}`,
-
-      address: form.address,
-
-      destinationAddress: isRelocation ? form.destinationAddress : "",
-
-      concern: form.concern,
-
-      notes: form.notes,
-
-      status: "Pending Approval",
-
-      customer: customer?.name || "Customer",
-    };
-
-    saveMock("av_customer_services", [record, ...items]);
-
-    alert(`Service request ${record.id} submitted.`);
-
-    onClose();
-  };
+      setError(
+        requestError.response?.data?.message ||
+          requestError.message ||
+          "Unable to submit your service request.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   return (
     <div
       className="service-booking-backdrop"
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget) {
+        if (event.target === event.currentTarget && !submitting) {
           onClose();
         }
       }}
@@ -127,112 +180,156 @@ export default function ServiceRequestDialog({ service, onClose }) {
         className="service-booking-dialog"
         role="dialog"
         aria-modal="true"
-        aria-label={`Request ${service.name}`}
+        aria-label={`Request ${serviceName}`}
       >
-        <form onSubmit={submit}>
-          <div className="service-booking-head">
-            <div>
-              <span>
-                {isRelocation ? "Relocation Request" : "Service Request"}
-              </span>
+        <div className="service-booking-head">
+          <div>
+            <span>
+              {isRelocation ? "Relocation Request" : "Service Request"}
+            </span>
 
-              <h2>{service.name}</h2>
-            </div>
-
-            <button type="button" aria-label="Close" onClick={onClose}>
-              <X size={18} />
-            </button>
+            <h2>{serviceName}</h2>
           </div>
 
+          <button
+            type="button"
+            aria-label="Close"
+            onClick={onClose}
+            disabled={submitting}
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {!isValidServiceType && (
+          <p className="form-error" role="alert">
+            This service type is not configured correctly.
+          </p>
+        )}
+
+        {error && (
+          <p className="form-error" role="alert">
+            {error}
+          </p>
+        )}
+
+        {success ? (
           <div className="service-booking-grid">
-            <label>
-              Preferred date
-              <input
-                className="form-control"
-                type="date"
-                value={form.date}
-                onChange={(event) => set("date", event.target.value)}
-                required
-              />
-            </label>
+            <p role="status">{success}</p>
 
-            <label>
-              Preferred time
-              <input
-                className="form-control"
-                type="time"
-                value={form.time}
-                onChange={(event) => set("time", event.target.value)}
-                required
-              />
-            </label>
-
-            <SavedAddressSelector
-              className="full"
-              title={isRelocation ? "Current unit address" : "Service address"}
-              value={form.address}
-              onChange={(address) => set("address", address)}
-            />
-
-            {isRelocation && (
-              <label className="full">
-                Relocation destination
-                <textarea
+            <div className="service-booking-actions">
+              <button type="button" className="btn btn-dark" onClick={onClose}>
+                Done
+              </button>
+            </div>
+          </div>
+        ) : (
+          <form onSubmit={submit}>
+            <div className="service-booking-grid">
+              <label>
+                Preferred date
+                <input
                   className="form-control"
-                  rows="3"
-                  value={form.destinationAddress}
-                  onChange={(event) =>
-                    set("destinationAddress", event.target.value)
-                  }
-                  placeholder="House/Unit, Street, Barangay, City, Province"
+                  type="date"
+                  value={form.date}
+                  min={getTodayPH()}
+                  onChange={(event) => set("date", event.target.value)}
                   required
+                  disabled={submitting}
                 />
               </label>
-            )}
 
-            <label className="full">
-              {isRelocation ? "Relocation details" : "Concern"}
+              <label>
+                Preferred time
+                <input
+                  className="form-control"
+                  type="time"
+                  value={form.time}
+                  onChange={(event) => set("time", event.target.value)}
+                  required
+                  disabled={submitting}
+                />
+              </label>
 
-              <textarea
-                className="form-control"
-                rows="3"
-                value={form.concern}
-                onChange={(event) => set("concern", event.target.value)}
-                placeholder={
-                  isRelocation
-                    ? "Example: Move a 1.5HP split-type unit from the bedroom to another house."
-                    : "Example: unit is not cooling properly"
+              <SavedAddressSelector
+                className="full"
+                title={
+                  isRelocation ? "Current unit address" : "Service address"
                 }
+                value={form.address}
+                onChange={handleAddressChange}
+                disabled={submitting}
               />
-            </label>
 
-            <label className="full">
-              Notes
-              <textarea
-                className="form-control"
-                rows="2"
-                value={form.notes}
-                onChange={(event) => set("notes", event.target.value)}
-                placeholder={
-                  isRelocation
-                    ? "Example: second floor unit, outdoor unit mounted outside window"
-                    : ""
-                }
-              />
-            </label>
-          </div>
+              {isRelocation && (
+                <label className="full">
+                  Relocation destination
+                  <textarea
+                    className="form-control"
+                    rows={3}
+                    value={form.destinationAddress}
+                    onChange={(event) =>
+                      set("destinationAddress", event.target.value)
+                    }
+                    placeholder="House/Unit, Street, Barangay, City, Province"
+                    required
+                    disabled={submitting}
+                  />
+                </label>
+              )}
 
-          <div className="service-booking-actions">
-            <button type="button" className="btn btn-soft" onClick={onClose}>
-              Cancel
-            </button>
+              <label className="full">
+                {isRelocation ? "Relocation details" : "Concern"}
 
-            <button type="submit" className="btn btn-dark">
-              <CalendarDays size={16} />
-              Submit Request
-            </button>
-          </div>
-        </form>
+                <textarea
+                  className="form-control"
+                  rows={3}
+                  value={form.concern}
+                  onChange={(event) => set("concern", event.target.value)}
+                  placeholder={
+                    isRelocation
+                      ? "Describe where the unit will be moved."
+                      : "Describe the issue or service needed."
+                  }
+                  disabled={submitting}
+                />
+              </label>
+
+              <label className="full">
+                Notes
+                <textarea
+                  className="form-control"
+                  rows={2}
+                  value={form.notes}
+                  onChange={(event) => set("notes", event.target.value)}
+                  placeholder="Additional information (optional)"
+                  disabled={submitting}
+                />
+              </label>
+            </div>
+
+            <div className="service-booking-actions">
+              <button
+                type="button"
+                className="btn btn-soft"
+                onClick={onClose}
+                disabled={submitting}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="submit"
+                className="btn btn-dark"
+                disabled={submitting || !isValidServiceType}
+              >
+                <CalendarDays size={16} />
+
+                {submitting ? "Submitting..." : "Submit Request"}
+              </button>
+            </div>
+          </form>
+        )}
       </section>
     </div>
   );

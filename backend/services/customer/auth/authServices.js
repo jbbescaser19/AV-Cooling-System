@@ -1,11 +1,11 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import connectDB from "../../utils/dbConn.js";
-import { customerModel } from "../../models/customer/authModel.js";
+import connectDB from "../../../utils/dbConn.js";
+import { customerModel } from "../../../models/customer/auth/authModel.js";
 import {
   validateRegister,
   validateLogin,
-} from "../../utils/validateAndSanitize.js";
+} from "../../../utils/validateAndSanitize.js";
 
 const hashPassword = (password) => bcrypt.hash(password, 12);
 

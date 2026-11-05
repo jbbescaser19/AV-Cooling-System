@@ -1,25 +1,27 @@
 import express from "express";
 
-import { getCustomerProfileController } from "../../controllers/customer/profileController.js";
+import { requireCustomerAuth } from "../../middleware/requireCustomerAuth.js";
+import { getCustomerProfileController } from "../../controllers/customer/account/profileController.js";
+import { getMyServicesController } from "../../controllers/customer/account/serviceController.js";
 
 import {
   getCustomerAddressesController,
   addCustomerAddressController,
   setDefaultCustomerAddressController,
   deleteCustomerAddressController,
-} from "../../controllers/customer/addressController.js";
-
-import { requireCustomerAuth } from "../../middleware/requireCustomerAuth.js";
+} from "../../controllers/customer/account/addressController.js";
 
 const router = express.Router();
 
-// All account endpoints require an authenticated customer.
 router.use(requireCustomerAuth);
 
 // Customer profile
 router.get("/profile", getCustomerProfileController);
 
-// Customer addresses
+// Customer's own service requests
+router.get("/my-services", getMyServicesController);
+
+// Saved addresses
 router.get("/addresses", getCustomerAddressesController);
 router.post("/addresses", addCustomerAddressController);
 router.patch(

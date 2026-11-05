@@ -5,7 +5,8 @@ import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
 
 import authRoutes from "./routes/customer/authRoutes.js";
-import customerAccountRoutes from "./routes/customer/accountRoutes.js";
+import accountRoutes from "./routes/customer/accountRoutes.js";
+import serviceRoutes from "./routes/customer/serviceRoutes.js";
 
 dotenv.config();
 
@@ -25,7 +26,8 @@ app.use(express.json());
 app.use(cookieParser());
 
 app.use("/api/auth/customer", authRoutes);
-app.use("/api/customer/account", customerAccountRoutes);
+app.use("/api/customer/account", accountRoutes);
+app.use("/api/customer/services", serviceRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);

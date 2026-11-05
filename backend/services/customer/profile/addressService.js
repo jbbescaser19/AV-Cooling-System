@@ -1,5 +1,5 @@
-import connectDB from "../../utils/dbConn.js";
-import { customerAddressModel } from "../../models/customer/addressModel.js";
+import connectDB from "../../../utils/dbConn.js";
+import { customerAddressModel } from "../../../models/customer/account/addressModel.js";
 
 export const MAX_SAVED_ADDRESSES = 5;
 

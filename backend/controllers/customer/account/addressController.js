@@ -3,7 +3,7 @@ import {
   addCustomerAddressService,
   setDefaultCustomerAddressService,
   deleteCustomerAddressService,
-} from "../../services/customer/addressService.js";
+} from "../../../services/customer/profile/addressService.js";
 
 function sendError(res, error, operation) {
   if (!error.status || error.status >= 500) {

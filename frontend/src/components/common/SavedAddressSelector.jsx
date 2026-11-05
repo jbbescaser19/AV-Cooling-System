@@ -1,190 +1,156 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
-import { MapPin, Plus } from "lucide-react";
-
-import {
-  MAX_SAVED_ADDRESSES,
-  addCustomerAddress,
-  readCustomerAddresses,
-} from "../../utils/addressStore";
-
-import "../../styles/ecommerce/address-selector.css";
+import api from "../../../api/api.js";
 
 export default function SavedAddressSelector({
-  value,
+  title = "Service address",
+  value = "",
   onChange,
   className = "",
-  title = "Address",
+  disabled = false,
 }) {
-  const [addresses, setAddresses] = useState(() => readCustomerAddresses());
+  const navigate = useNavigate();
 
-  const [adding, setAdding] = useState(
-    () => readCustomerAddresses().length === 0,
-  );
-
-  const [label, setLabel] = useState("Home");
-
-  const [newAddress, setNewAddress] = useState("");
-
+  const [addresses, setAddresses] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [retry, setRetry] = useState(0);
+
+  const currentValue = useRef(value);
 
   useEffect(() => {
-    const refresh = () => {
-      setAddresses(readCustomerAddresses());
-    };
+    currentValue.current = value;
+  }, [value]);
 
-    window.addEventListener("av-customer-updated", refresh);
+  useEffect(() => {
+    const controller = new AbortController();
 
-    return () => {
-      window.removeEventListener("av-customer-updated", refresh);
-    };
-  }, []);
+    async function fetchAddresses() {
+      setLoading(true);
+      setError("");
 
-  const selected = addresses.find((item) => item.address === value) || null;
+      try {
+        const response = await api.get("/api/customer/account/addresses", {
+          signal: controller.signal,
+        });
 
-  const canAdd = addresses.length < MAX_SAVED_ADDRESSES;
+        if (controller.signal.aborted) return;
 
-  const saveNewAddress = () => {
-    setError("");
+        if (
+          !response.data?.success ||
+          !Array.isArray(response.data.addresses)
+        ) {
+          throw new Error("Unable to load saved addresses.");
+        }
 
-    try {
-      const result = addCustomerAddress({
-        label,
-        address: newAddress,
-      });
+        const savedAddresses = response.data.addresses.filter(
+          (item) => typeof item.address === "string" && item.address.trim(),
+        );
 
-      setAddresses(result.addresses);
+        setAddresses(savedAddresses);
 
-      onChange(result.record.address);
+        const defaultAddress =
+          savedAddresses.find((item) => Boolean(item.isDefault)) ||
+          savedAddresses[0];
 
-      setAdding(false);
-      setNewAddress("");
-      setLabel("Home");
-    } catch (err) {
-      setError(err.message || "Unable to save address.");
+        // Only fill the field if the user has not entered an address
+        if (defaultAddress && !currentValue.current?.trim()) {
+          onChange(defaultAddress.address);
+        }
+      } catch (requestError) {
+        if (controller.signal.aborted) return;
+
+        if (requestError.response?.status === 401) {
+          navigate("/login", {
+            replace: true,
+            state: {
+              message: "Please log in to access your saved addresses.",
+            },
+          });
+          return;
+        }
+
+        setError(
+          requestError.response?.data?.message ||
+            requestError.message ||
+            "Unable to load saved addresses.",
+        );
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
+      }
     }
-  };
+
+    fetchAddresses();
+
+    return () => controller.abort();
+  }, [navigate, onChange, retry]);
+
+  const selectedAddress = addresses.some((item) => item.address === value)
+    ? value
+    : "";
 
   return (
-    <div className={`address-selector ${className}`}>
-      <div className="address-selector-heading">
-        <div>
-          <strong>{title}</strong>
+    <div className={className}>
+      <label>
+        {title}
 
-          <span>
-            {addresses.length}/{MAX_SAVED_ADDRESSES} saved
-          </span>
-        </div>
-
-        <MapPin size={18} />
-      </div>
-
-      {addresses.length > 0 && (
-        <div className="form-group">
-          <label>Select saved address</label>
-
-          <select
-            className="form-control"
-            value={selected?.id || ""}
-            onChange={(event) => {
-              const id = event.target.value;
-
-              const address = addresses.find((item) => item.id === id);
-
-              if (address) {
-                onChange(address.address);
-
-                setAdding(false);
-              }
-            }}
-          >
-            <option value="" disabled>
-              Select an address
-            </option>
-
-            {addresses.map((item) => (
-              <option value={item.id} key={item.id}>
-                {item.label}
-                {item.default ? " · Default" : ""}
-                {" — "}
-                {item.address}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      {!adding && canAdd && (
-        <button
-          type="button"
-          className="address-add-button"
-          onClick={() => setAdding(true)}
+        <select
+          className="form-control"
+          value={selectedAddress}
+          onChange={(event) => onChange(event.target.value)}
+          disabled={disabled || loading}
         >
-          <Plus size={16} />
-          Add new address
-        </button>
-      )}
+          <option value="">
+            {loading
+              ? "Loading saved addresses..."
+              : "Enter a different address"}
+          </option>
 
-      {adding && canAdd && (
-        <div className="address-new-form">
-          <div className="form-group">
-            <label>Address label</label>
+          {addresses.map((item) => (
+            <option key={item.id} value={item.address}>
+              {item.label || "Saved address"}
+              {item.isDefault ? " (Default)" : ""}
+              {" - "}
+              {item.address}
+            </option>
+          ))}
+        </select>
+      </label>
 
-            <select
-              className="form-control"
-              value={label}
-              onChange={(event) => setLabel(event.target.value)}
-            >
-              <option>Home</option>
-              <option>Office</option>
-              <option>Other</option>
-            </select>
-          </div>
+      {error && (
+        <div role="alert">
+          <p className="form-error">{error}</p>
 
-          <div className="form-group">
-            <label>Complete address</label>
-
-            <textarea
-              className="form-control"
-              rows="3"
-              value={newAddress}
-              onChange={(event) => setNewAddress(event.target.value)}
-              placeholder="House/Unit, Street, Barangay, City, Province"
-            />
-          </div>
-
-          {error && <div className="address-error">{error}</div>}
-
-          <div className="address-new-actions">
-            {addresses.length > 0 && (
-              <button
-                type="button"
-                className="btn btn-soft"
-                onClick={() => {
-                  setAdding(false);
-                  setError("");
-                }}
-              >
-                Cancel
-              </button>
-            )}
-
-            <button
-              type="button"
-              className="btn btn-dark"
-              onClick={saveNewAddress}
-            >
-              Save & Use Address
-            </button>
-          </div>
+          <button
+            type="button"
+            className="btn btn-soft"
+            onClick={() => setRetry((current) => current + 1)}
+            disabled={disabled}
+          >
+            Try Again
+          </button>
         </div>
       )}
 
-      {!canAdd && (
-        <small className="address-limit">
-          Maximum of 3 saved addresses reached.
-        </small>
+      {!loading && !error && addresses.length === 0 && (
+        <p>You have no saved addresses. Enter one below.</p>
       )}
+
+      <label>
+        Complete address
+        <textarea
+          className="form-control"
+          rows={3}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder="House/Unit, Street, Barangay, City, Province"
+          required
+          disabled={disabled}
+        />
+      </label>
     </div>
   );
 }

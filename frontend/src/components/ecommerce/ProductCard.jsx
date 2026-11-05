@@ -57,7 +57,7 @@ export default function ProductCard({ product }) {
 
     try {
       // Check the customer's actual backend login session.
-      await api.get("/api/auth/customer/me");
+      await api.get("/api/auth/customer/session");
 
       saveDirectCheckout(intent);
       setPurchaseMode(null);

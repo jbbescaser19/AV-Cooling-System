@@ -2,7 +2,7 @@ import {
   registerCustomerService,
   loginCustomerService,
   refreshCustomerSessionService,
-} from "../../services/customer/authServices.js";
+} from "../../../services/customer/auth/authServices.js";
 
 const cookieOptions = {
   httpOnly: true,

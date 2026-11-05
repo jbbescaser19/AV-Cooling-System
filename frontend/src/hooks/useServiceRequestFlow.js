@@ -84,7 +84,7 @@ export default function useServiceRequestFlow(returnTo = "/services") {
   const requestService = useCallback(
     async (service) => {
       try {
-        await api.get("/api/auth/customer/me");
+        await api.get("/api/auth/customer/session ");
         setSelectedService(service);
       } catch (error) {
         if (error.response?.status === 401) {

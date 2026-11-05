@@ -6,7 +6,7 @@ import {
   refreshCustomerSessionController,
   checkCustomerSessionController,
   logoutCustomerController,
-} from "../../controllers/customer/authController.js";
+} from "../../controllers/customer/auth/authController.js";
 
 import { requireCustomerAuth } from "../../middleware/requireCustomerAuth.js";
 
