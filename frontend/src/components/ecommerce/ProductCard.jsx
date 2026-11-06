@@ -5,6 +5,7 @@ import { Eye, FileText, ShoppingCart, Wind, Zap } from "lucide-react";
 import ProductPurchaseDialog from "./ProductPurchaseDialog";
 import api from "../../../api/api.js";
 import { addCartItem } from "../../utils/cartStore";
+import { getProductImage } from "../../utils/productImages";
 
 import {
   PENDING_ACTIONS,
@@ -21,6 +22,10 @@ export default function ProductCard({ product }) {
 
   const [purchaseMode, setPurchaseMode] = useState(null);
   const [added, setAdded] = useState(false);
+  const [failedImageSrc, setFailedImageSrc] = useState("");
+
+  const productImage = getProductImage(product);
+  const showPhoto = Boolean(productImage) && failedImageSrc !== productImage;
 
   const quotationOnly = Boolean(
     product.quotationOnly || !product.variants?.length,
@@ -91,7 +96,22 @@ export default function ProductCard({ product }) {
             <span className="discount-badge">-{discount}%</span>
           )}
 
-          <Wind size={68} />
+          {showPhoto ? (
+            <img
+              className={
+                product.id === "floor-mounted-commercial"
+                  ? "product-aircon-photo product-aircon-photo--tower"
+                  : "product-aircon-photo"
+              }
+              src={productImage}
+              alt={`${product.name} air conditioner`}
+              loading="lazy"
+              decoding="async"
+              onError={() => setFailedImageSrc(productImage)}
+            />
+          ) : (
+            <Wind size={68} aria-hidden="true" />
+          )}
 
           <small>{product.category}</small>
         </div>

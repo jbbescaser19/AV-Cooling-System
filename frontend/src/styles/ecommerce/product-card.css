@@ -10,15 +10,7 @@
   border: 1px solid #bdd5e0;
   border-radius: 18px;
 
-  background-color: #f8fcfe;
-  background-image:
-    linear-gradient(rgba(248, 252, 254, 0.96), rgba(248, 252, 254, 0.96)),
-    var(
-      --ecommerce-snowflake-pattern,
-      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180' viewBox='0 0 180 180'%3E%3Cg fill='none' stroke='%230e7490' stroke-width='1.4' stroke-linecap='round' opacity='.12'%3E%3Cpath d='M34 28v20M24 38h20M27 31l14 14M41 31L27 45'/%3E%3Cpath d='M126 34v16M118 42h16M120 36l12 12M132 36l-12 12'/%3E%3Cpath d='M76 82v24M64 94h24M67 85l18 18M85 85L67 103'/%3E%3Cpath d='M150 108v14M143 115h14M145 110l10 10M155 110l-10 10'/%3E%3Cpath d='M42 128v18M33 137h18M36 131l12 12M48 131l-12 12'/%3E%3C/g%3E%3C/svg%3E")
-    );
-  background-position: center, center;
-  background-size: auto, var(--ecommerce-snowflake-size, 180px 180px);
+  background: #f8fcfe;
 
   box-shadow: 0 10px 26px rgba(4, 42, 65, 0.075);
 
@@ -54,6 +46,29 @@
   );
 
   border-bottom: 1px solid #d3e4eb;
+}
+
+/* Actual aircon photos are centered inside the existing card image area. */
+.product-aircon-photo {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  padding: 31px 14px 30px;
+  object-fit: contain;
+  object-position: center;
+  filter: drop-shadow(0 9px 12px rgba(22, 67, 89, 0.16));
+  transition: transform 200ms ease;
+}
+
+.product-card:hover .product-aircon-photo {
+  transform: scale(1.035);
+}
+
+/* The commercial tower is tall, unlike the wall-mounted units. */
+.product-aircon-photo--tower {
+  padding: 12px 28px 29px;
 }
 
 .product-visual > svg {
@@ -267,39 +282,93 @@
     font-size: 0.96rem;
   }
 
-  .price-block strong {
-    font-size: 1.14rem;
+  .product-actions .btn {
+    font-size: 0.7rem;
   }
 }
 
-@media (max-width: 760px) {
+@media (max-width: 640px) {
   .product-card {
     border-radius: 16px;
   }
 
+  .product-card:hover {
+    transform: none;
+  }
+
   .product-visual {
-    height: 160px;
+    height: 170px;
+  }
+
+  .product-visual small {
+    font-size: 0.64rem;
   }
 
   .product-body {
-    padding: 14px;
+    padding: 15px;
+
+    gap: 8px;
   }
 
   .product-body h3 {
     min-height: auto;
+
+    font-size: 1rem;
+  }
+
+  .product-model {
+    font-size: 0.72rem;
+  }
+
+  .price-block strong {
+    font-size: 1.22rem;
+  }
+
+  .product-actions .btn {
+    min-height: 42px;
+
+    font-size: 0.7rem;
   }
 }
 
-@media (max-width: 420px) {
+/* Touch-friendly product cards and readable controls on narrow rails. */
+@media (max-width: 640px) {
   .product-visual {
-    height: 148px;
+    height: 146px;
   }
-
+  .product-aircon-photo {
+    padding: 27px 10px 26px;
+  }
+  .product-aircon-photo--tower {
+    padding: 9px 22px 25px;
+  }
+  .product-body {
+    padding: 13px;
+    gap: 7px;
+  }
+  .product-body h3 {
+    font-size: 0.93rem;
+    min-height: 0;
+  }
   .product-actions {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
   }
+  .product-actions .btn {
+    min-width: 0;
+    min-height: 44px;
+    padding-inline: 5px;
+    font-size: 0.69rem;
+    white-space: normal;
+    line-height: 1.2;
+  }
+  .product-card {
+    box-shadow: 0 5px 18px rgba(4, 42, 65, 0.08);
+  }
+}
 
-  .product-actions-purchase .product-view-action {
-    grid-column: auto;
+@media (prefers-reduced-motion: reduce) {
+  .product-aircon-photo {
+    transition: none;
   }
 }
