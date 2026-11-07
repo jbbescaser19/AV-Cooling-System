@@ -1,3 +1,4 @@
+import { syncGuestCart } from "../../utils/cartStore";
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -80,7 +81,19 @@ export default function RegisterPage() {
       });
 
       if (response.data?.success) {
-        continuePendingAction(navigate);
+        try {
+          await syncGuestCart();
+          continuePendingAction(navigate);
+        } catch (syncError) {
+          navigate("/cart", {
+            replace: true,
+            state: {
+              cartWarning:
+                syncError.response?.data?.message ||
+                "Account created, but your guest cart could not be synced. Remove items or retry.",
+            },
+          });
+        }
       } else {
         setError("Signup failed.");
       }

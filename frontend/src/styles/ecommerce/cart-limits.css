@@ -1,0 +1,13 @@
+.product-cart-error {
+  max-width: 100%;
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border: 1px solid #f1bdbd;
+  border-radius: 8px;
+  background: #fff4f3;
+  color: #9c2222;
+  font-size: 0.83rem;
+  font-weight: 650;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}

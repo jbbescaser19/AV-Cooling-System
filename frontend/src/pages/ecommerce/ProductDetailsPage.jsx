@@ -15,9 +15,7 @@ import ProductPurchaseDialog from "../../components/ecommerce/ProductPurchaseDia
 
 import { readCatalogProducts } from "../../utils/catalogStore";
 
-import { addCartItem } from "../../utils/cartStore";
-
-import { getCustomer } from "../../utils/authMock";
+import { addCartItem, hasCustomerSession } from "../../utils/cartStore";
 
 import {
   PENDING_ACTIONS,
@@ -45,6 +43,8 @@ export default function ProductDetailsPage() {
   const [purchaseMode, setPurchaseMode] = useState(null);
 
   const [added, setAdded] = useState(false);
+  const [cartError, setCartError] = useState("");
+  const [adding, setAdding] = useState(false);
 
   if (!product) {
     return (
@@ -68,36 +68,45 @@ export default function ProductDetailsPage() {
 
   const savings = variant ? variant.srp - variant.price : 0;
 
-  const handleAddToCart = ({ variant: selectedVariant, quantity }) => {
-    addCartItem(product, selectedVariant, quantity);
-
-    setPurchaseMode(null);
-    setAdded(true);
+  const handleAddToCart = async ({ variant: selectedVariant, quantity }) => {
+    if (adding) return;
+    setAdding(true);
+    setCartError("");
+    try {
+      await addCartItem(product, selectedVariant, quantity);
+      setPurchaseMode(null);
+      setAdded(true);
+    } catch (error) {
+      setCartError(
+        error.response?.data?.message || error.message || "Unable to add item.",
+      );
+      setPurchaseMode(null);
+      setAdded(false);
+    } finally {
+      setAdding(false);
+    }
   };
 
-  const handleOrderNow = ({ variant: selectedVariant, quantity }) => {
+  const handleOrderNow = async ({ variant: selectedVariant, quantity }) => {
     const intent = {
       productId: product.id,
       variant: selectedVariant.hp,
       quantity,
     };
-
-    if (!getCustomer()) {
-      savePendingAction({
-        type: PENDING_ACTIONS.ORDER_NOW,
-        ...intent,
-      });
-
+    try {
+      if (!(await hasCustomerSession())) {
+        savePendingAction({ type: PENDING_ACTIONS.ORDER_NOW, ...intent });
+        setPurchaseMode(null);
+        navigate("/login");
+        return;
+      }
+      saveDirectCheckout(intent);
       setPurchaseMode(null);
-
-      navigate("/login");
-
-      return;
+      navigate("/checkout");
+    } catch (error) {
+      setPurchaseMode(null);
+      setCartError(error.message || "Cannot verify your session.");
     }
-
-    saveDirectCheckout(intent);
-
-    navigate("/checkout");
   };
 
   return (
@@ -209,7 +218,14 @@ export default function ProductDetailsPage() {
                     </div>
 
                     {added && (
-                      <p className="customer-success-note">Added to cart.</p>
+                      <p className="customer-success-note" role="status">
+                        Added to cart.
+                      </p>
+                    )}
+                    {cartError && (
+                      <p role="alert" style={{ color: "#a52a2a" }}>
+                        {cartError}
+                      </p>
                     )}
                   </section>
 
@@ -273,7 +289,7 @@ export default function ProductDetailsPage() {
                       type="button"
                       onClick={() => {
                         setAdded(false);
-
+                        setCartError("");
                         setPurchaseMode("cart");
                       }}
                     >

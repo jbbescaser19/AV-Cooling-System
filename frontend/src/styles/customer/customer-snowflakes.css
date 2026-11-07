@@ -1,0 +1,56 @@
+/* Snowflake texture for customer account pages only.
+   Reuses the existing AV Cooling SVG without extra dependencies. */
+
+.customer-shell {
+  --customer-snowflake-image: url("../../assets/snowflake-tile.svg");
+  --customer-snowflake-tile: 280px 280px;
+
+  /* Pattern behind every customer account page. */
+  background-color: #eaf5fa;
+
+  background-image:
+    linear-gradient(
+      180deg,
+      rgba(252, 254, 255, 0.42),
+      rgba(229, 245, 251, 0.52)
+    ),
+    var(--customer-snowflake-image);
+
+  background-repeat: no-repeat, repeat;
+  background-position:
+    center,
+    center top;
+  background-size:
+    100% 100%,
+    var(--customer-snowflake-tile);
+}
+
+/* Profile, services, orders, payments, notifications, feedback,
+   addresses, password, and their detail or empty-state cards.
+   Only the background image is added so existing status colors remain. */
+
+.customer-shell .customer-main .surface,
+.customer-shell .customer-dialog,
+.customer-shell .customer-detail-grid > div {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.7)),
+    var(--customer-snowflake-image);
+
+  background-repeat: no-repeat, repeat;
+  background-position: center, center;
+  background-size:
+    100% 100%,
+    var(--customer-snowflake-tile);
+}
+
+/* Form fields and controls stay plain for clarity and readability. */
+
+.customer-shell :is(input, textarea, select, button) {
+  background-image: none;
+}
+
+@media (max-width: 600px) {
+  .customer-shell {
+    --customer-snowflake-tile: 240px 240px;
+  }
+}

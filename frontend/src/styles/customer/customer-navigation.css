@@ -1,0 +1,199 @@
+/* The existing desktop and tablet sidebar styles remain untouched. */
+
+.customer-mobile-header,
+.customer-side-close,
+.customer-menu-scrim {
+  display: none;
+}
+
+@media (max-width: 760px) {
+  .customer-shell {
+    padding-top: 64px;
+  }
+
+  .customer-mobile-header {
+    position: fixed;
+    inset: 0 0 auto 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    height: 64px;
+    padding: 8px 14px;
+    background: #071426;
+    box-shadow: 0 4px 14px rgba(4, 20, 36, 0.15);
+  }
+
+  .customer-mobile-brand {
+    color: #67e8f9;
+    font-size: 1rem;
+    font-weight: 850;
+    text-decoration: none;
+  }
+
+  .customer-menu-toggle,
+  .customer-side-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 8px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #ffffff;
+    font-size: 0.88rem;
+    font-weight: 750;
+  }
+
+  .customer-menu-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 110;
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    border-radius: 0;
+    background: rgba(2, 18, 31, 0.55);
+  }
+
+  .customer-side {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 120;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    width: min(310px, 88vw);
+    height: 100dvh;
+    padding: 18px 14px 24px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    transform: translateX(-105%);
+    visibility: hidden;
+    pointer-events: none;
+    transition:
+      transform 0.2s ease,
+      visibility 0.2s;
+    box-shadow: 12px 0 30px rgba(0, 0, 0, 0.18);
+  }
+
+  .customer-side.is-open {
+    transform: translateX(0);
+    visibility: visible;
+    pointer-events: auto;
+  }
+
+  .customer-side-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .customer-side .customer-home {
+    position: static;
+    z-index: auto;
+    display: flex;
+    flex: 1 1 auto;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 9px;
+    width: auto !important;
+    min-width: 0;
+    min-height: 44px;
+    margin: 0;
+    padding: 9px 8px !important;
+    background: transparent;
+  }
+
+  .customer-side .customer-home span,
+  .customer-side .customer-side-close span {
+    display: inline !important;
+  }
+
+  .customer-side h2 {
+    display: block;
+    margin-top: 24px;
+    margin-bottom: 12px;
+  }
+
+  .customer-side nav {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 5px;
+    width: 100%;
+  }
+
+  .customer-side nav a {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    flex: auto;
+    gap: 12px;
+    width: 100%;
+    min-height: 46px;
+    padding: 10px 12px;
+    white-space: normal;
+    font-size: 0.9rem;
+  }
+
+  .customer-side nav a span {
+    display: inline;
+    font-size: inherit;
+  }
+
+  .customer-side .customer-logout {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 12px;
+    width: 100%;
+    min-height: 46px;
+    height: auto;
+    margin-top: 18px;
+    padding: 10px 12px;
+    white-space: normal;
+  }
+
+  .customer-side .customer-logout span {
+    display: inline;
+    font-size: 0.9rem;
+  }
+
+  .customer-main {
+    padding: 20px 14px 36px;
+  }
+}
+
+@media (max-width: 520px) {
+  .customer-side nav a {
+    width: 100%;
+    justify-content: flex-start;
+    padding: 10px 12px;
+  }
+
+  .customer-side nav a span {
+    display: inline;
+    font-size: 0.9rem;
+  }
+
+  .customer-side .customer-home {
+    width: auto !important;
+  }
+
+  .customer-main {
+    padding-inline: 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .customer-side {
+    transition: none;
+  }
+}

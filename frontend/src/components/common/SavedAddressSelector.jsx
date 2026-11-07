@@ -9,6 +9,7 @@ export default function SavedAddressSelector({
   onChange,
   className = "",
   disabled = false,
+  onLoadingChange,
 }) {
   const navigate = useNavigate();
 
@@ -18,16 +19,22 @@ export default function SavedAddressSelector({
   const [retry, setRetry] = useState(0);
 
   const currentValue = useRef(value);
+  const changeHandler = useRef(onChange);
+  const loadingHandler = useRef(onLoadingChange);
+  const userEdited = useRef(false);
 
   useEffect(() => {
     currentValue.current = value;
-  }, [value]);
+    changeHandler.current = onChange;
+    loadingHandler.current = onLoadingChange;
+  }, [value, onChange, onLoadingChange]);
 
   useEffect(() => {
     const controller = new AbortController();
 
     async function fetchAddresses() {
       setLoading(true);
+      loadingHandler.current?.(true);
       setError("");
 
       try {
@@ -51,12 +58,18 @@ export default function SavedAddressSelector({
         setAddresses(savedAddresses);
 
         const defaultAddress =
-          savedAddresses.find((item) => Boolean(item.isDefault)) ||
-          savedAddresses[0];
+          savedAddresses.find(
+            (item) => item.default === true || item.isDefault === true,
+          ) || savedAddresses[0];
 
-        // Only fill the field if the user has not entered an address
-        if (defaultAddress && !currentValue.current?.trim()) {
-          onChange(defaultAddress.address);
+        if (
+          defaultAddress &&
+          !userEdited.current &&
+          !currentValue.current?.trim()
+        ) {
+          currentValue.current = defaultAddress.address;
+
+          changeHandler.current(defaultAddress.address);
         }
       } catch (requestError) {
         if (controller.signal.aborted) return;
@@ -79,6 +92,7 @@ export default function SavedAddressSelector({
       } finally {
         if (!controller.signal.aborted) {
           setLoading(false);
+          loadingHandler.current?.(false);
         }
       }
     }
@@ -86,7 +100,13 @@ export default function SavedAddressSelector({
     fetchAddresses();
 
     return () => controller.abort();
-  }, [navigate, onChange, retry]);
+  }, [navigate, retry]);
+
+  function updateAddress(nextValue) {
+    userEdited.current = true;
+    currentValue.current = nextValue;
+    changeHandler.current(nextValue);
+  }
 
   const selectedAddress = addresses.some((item) => item.address === value)
     ? value
@@ -100,7 +120,7 @@ export default function SavedAddressSelector({
         <select
           className="form-control"
           value={selectedAddress}
-          onChange={(event) => onChange(event.target.value)}
+          onChange={(event) => updateAddress(event.target.value)}
           disabled={disabled || loading}
         >
           <option value="">
@@ -112,7 +132,7 @@ export default function SavedAddressSelector({
           {addresses.map((item) => (
             <option key={item.id} value={item.address}>
               {item.label || "Saved address"}
-              {item.isDefault ? " (Default)" : ""}
+              {item.default || item.isDefault ? " (Default)" : ""}
               {" - "}
               {item.address}
             </option>
@@ -145,8 +165,9 @@ export default function SavedAddressSelector({
           className="form-control"
           rows={3}
           value={value}
-          onChange={(event) => onChange(event.target.value)}
+          onChange={(event) => updateAddress(event.target.value)}
           placeholder="House/Unit, Street, Barangay, City, Province"
+          maxLength={2000}
           required
           disabled={disabled}
         />

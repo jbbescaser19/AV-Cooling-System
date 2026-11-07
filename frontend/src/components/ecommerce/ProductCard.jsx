@@ -22,6 +22,8 @@ export default function ProductCard({ product }) {
 
   const [purchaseMode, setPurchaseMode] = useState(null);
   const [added, setAdded] = useState(false);
+  const [cartError, setCartError] = useState("");
+  const [adding, setAdding] = useState(false);
   const [failedImageSrc, setFailedImageSrc] = useState("");
 
   const productImage = getProductImage(product);
@@ -46,11 +48,23 @@ export default function ProductCard({ product }) {
     ? Math.round((savings / previewVariant.srp) * 100)
     : 0;
 
-  const handleAddToCart = ({ variant, quantity }) => {
-    addCartItem(product, variant, quantity);
-
-    setPurchaseMode(null);
-    setAdded(true);
+  const handleAddToCart = async ({ variant, quantity }) => {
+    if (adding) return;
+    setAdding(true);
+    setCartError("");
+    try {
+      await addCartItem(product, variant, quantity);
+      setPurchaseMode(null);
+      setAdded(true);
+    } catch (error) {
+      setCartError(
+        error.response?.data?.message || error.message || "Unable to add item.",
+      );
+      setPurchaseMode(null);
+      setAdded(false);
+    } finally {
+      setAdding(false);
+    }
   };
 
   const handleOrderNow = async ({ variant, quantity }) => {
@@ -147,7 +161,14 @@ export default function ProductCard({ product }) {
               <div className="stock">Availability confirmed before order</div>
 
               {added && (
-                <div className="product-added-note">Added to cart.</div>
+                <div className="product-added-note" role="status">
+                  Added to cart.
+                </div>
+              )}
+              {cartError && (
+                <p role="alert" style={{ color: "#a52a2a" }}>
+                  {cartError}
+                </p>
               )}
             </>
           )}
@@ -177,6 +198,7 @@ export default function ProductCard({ product }) {
                   type="button"
                   onClick={() => {
                     setAdded(false);
+                    setCartError("");
                     setPurchaseMode("cart");
                   }}
                 >

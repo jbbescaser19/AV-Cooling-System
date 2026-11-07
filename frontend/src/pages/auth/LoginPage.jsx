@@ -1,3 +1,4 @@
+import { syncGuestCart } from "../../utils/cartStore";
 import { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Mail, LockKeyhole, Eye, EyeOff, Snowflake } from "lucide-react";
@@ -52,8 +53,20 @@ export default function LoginPage() {
         return;
       }
 
-      // Continue the pending action, or go to /shop if none exists.
-      continuePendingAction(navigate);
+      try {
+        await syncGuestCart();
+        continuePendingAction(navigate);
+      } catch (syncError) {
+        // The user is logged in, but guest items remain safely in localStorage.
+        navigate("/cart", {
+          replace: true,
+          state: {
+            cartWarning:
+              syncError.response?.data?.message ||
+              "Signed in, but your guest cart could not be synced. Remove items or retry.",
+          },
+        });
+      }
     } catch (error) {
       setError(
         error.response?.data?.message ||

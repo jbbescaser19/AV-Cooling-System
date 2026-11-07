@@ -1,90 +1,729 @@
-import { useState } from "react";
-import { Package } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+
+import {
+  ChevronRight,
+  Clock3,
+  MapPin,
+  Package,
+  Pencil,
+  ShoppingBag,
+  XCircle,
+} from "lucide-react";
+
+import api from "../../../api/api.js";
 
 import CustomerDialog from "../../components/customer/CustomerDialog";
 import CustomerPageHeader from "../../components/customer/CustomerPageHeader";
 import CustomerStatusBadge from "../../components/customer/CustomerStatusBadge";
-import { seedOrders } from "../../data/customerAccountMockData";
+import SavedAddressSelector from "../../components/common/SavedAddressSelector";
+
 import { formatCustomerMoney } from "../../utils/customerAccountUtils";
-import { loadMock } from "../../utils/prototypeStore";
+
+import "../../styles/customer/order-management.css";
+
+const FILTERS = [
+  { id: "all", label: "All orders" },
+  { id: "active", label: "Active" },
+  { id: "completed", label: "Completed" },
+  { id: "cancelled", label: "Cancelled" },
+];
+
+const CANCEL_REASONS = [
+  { value: "CHANGED_MIND", label: "Changed my mind" },
+  { value: "WRONG_DETAILS", label: "Wrong order details" },
+  { value: "ORDERED_BY_MISTAKE", label: "Ordered by mistake" },
+  { value: "OTHER", label: "Other reason" },
+];
+
+const formatDate = (date) => {
+  if (!date) return "Not available";
+
+  const parsed = new Date(date);
+
+  return Number.isNaN(parsed.getTime())
+    ? String(date)
+    : parsed.toLocaleDateString("en-PH", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      });
+};
+
+const formatSchedule = (value) =>
+  value ? String(value).replace("T", " · ").slice(0, 18) : "Not specified";
+
+function draftFromOrder(order) {
+  return {
+    recipientName: order.recipientName || "",
+    contactNumber: order.contactNumber || "",
+    fulfillment: order.fulfillment || "DELIVERY",
+    deliveryAddress: order.deliveryAddress || "",
+    customerNotes: order.customerNotes || "",
+    preferredSchedule: order.preferredSchedule || "",
+  };
+}
 
 export default function OrdersPage() {
-  const [selected, setSelected] = useState(null);
-  const items = [...loadMock("av_customer_orders", []), ...seedOrders];
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const [retry, setRetry] = useState(0);
+  const [filter, setFilter] = useState("all");
+
+  const [selectedNumber, setSelectedNumber] = useState(null);
+  const [mode, setMode] = useState("details");
+  const [draft, setDraft] = useState(null);
+
+  const [reason, setReason] = useState("CHANGED_MIND");
+  const [reasonDetails, setReasonDetails] = useState("");
+
+  const [actionError, setActionError] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    setLoading(true);
+    setError("");
+
+    api
+      .get("/api/customer/orders", {
+        signal: controller.signal,
+      })
+      .then((response) => {
+        if (!controller.signal.aborted) {
+          setOrders(response.data.orders || []);
+        }
+      })
+      .catch((requestError) => {
+        if (!controller.signal.aborted) {
+          setError(
+            requestError.response?.data?.message || "Unable to load orders.",
+          );
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
+      });
+
+    return () => controller.abort();
+  }, [retry]);
+
+  const selected = orders.find((order) => order.orderNumber === selectedNumber);
+
+  const filtered = useMemo(() => {
+    return orders.filter((order) => {
+      if (filter === "completed") {
+        return order.status === "COMPLETED";
+      }
+
+      if (filter === "cancelled") {
+        return order.status === "CANCELLED";
+      }
+
+      if (filter === "active") {
+        return !["COMPLETED", "CANCELLED"].includes(order.status);
+      }
+
+      return true;
+    });
+  }, [filter, orders]);
+
+  function openOrder(order) {
+    setSelectedNumber(order.orderNumber);
+    setDraft(draftFromOrder(order));
+    setMode("details");
+    setActionError("");
+    setMessage("");
+  }
+
+  function openEdit() {
+    if (!selected?.canManage) return;
+
+    setDraft(draftFromOrder(selected));
+    setActionError("");
+    setMode("edit");
+  }
+
+  function openCancel() {
+    if (!selected?.canManage) return;
+
+    setReason("CHANGED_MIND");
+    setReasonDetails("");
+    setActionError("");
+    setMode("cancel");
+  }
+
+  function onUpdatedOrder(nextOrder) {
+    setOrders((previous) =>
+      previous.map((order) =>
+        order.orderNumber === nextOrder.orderNumber ? nextOrder : order,
+      ),
+    );
+
+    setMode("details");
+    setActionError("");
+  }
+
+  async function saveChanges(event) {
+    event.preventDefault();
+
+    if (!selected?.canManage || saving || !draft) return;
+
+    setSaving(true);
+    setActionError("");
+
+    try {
+      const response = await api.patch(
+        `/api/customer/orders/${encodeURIComponent(selected.orderNumber)}`,
+        {
+          ...draft,
+          recipientName: draft.recipientName.trim(),
+          contactNumber: draft.contactNumber.trim(),
+
+          deliveryAddress:
+            draft.fulfillment === "DELIVERY"
+              ? draft.deliveryAddress.trim()
+              : null,
+
+          customerNotes: draft.customerNotes.trim(),
+          preferredSchedule: draft.preferredSchedule || null,
+        },
+      );
+
+      onUpdatedOrder(response.data.order);
+      setMessage("Order details updated successfully.");
+    } catch (requestError) {
+      setActionError(
+        requestError.response?.data?.message || "Unable to update this order.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function confirmCancellation(event) {
+    event.preventDefault();
+
+    if (!selected?.canManage || saving) return;
+
+    setSaving(true);
+    setActionError("");
+
+    try {
+      const response = await api.post(
+        `/api/customer/orders/${encodeURIComponent(
+          selected.orderNumber,
+        )}/cancel`,
+        {
+          reason,
+          details: reasonDetails.trim(),
+        },
+      );
+
+      onUpdatedOrder(response.data.order);
+
+      setMessage("Order cancelled. Your order history has been preserved.");
+    } catch (requestError) {
+      setActionError(
+        requestError.response?.data?.message || "Unable to cancel this order.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function setField(field, value) {
+    setDraft((previous) => ({
+      ...previous,
+      [field]: value,
+    }));
+  }
 
   return (
-    <div className="customer-module">
+    <div className="customer-module customer-orders">
       <CustomerPageHeader
         Icon={Package}
-        title="Orders"
-        copy="Track current and previous AV Cooling orders."
+        title="My Orders"
+        copy="View your purchases, update pending details, or cancel before processing."
       />
 
-      <div className="customer-record-list">
-        {items.map((order) => (
+      {message && (
+        <p className="order-notice" role="status">
+          {message}
+        </p>
+      )}
+
+      {loading && (
+        <p className="order-loading" role="status">
+          Loading your orders…
+        </p>
+      )}
+
+      {!loading && error && (
+        <div className="surface order-empty" role="alert">
+          <p>{error}</p>
+
           <button
+            className="order-button order-button--secondary"
             type="button"
-            className="surface customer-record customer-record-button"
-            key={order.id}
-            onClick={() => setSelected(order)}
+            onClick={() => setRetry((value) => value + 1)}
           >
-            <div>
-              <strong>{order.id}</strong>
-              <span>
-                {order.date} · {order.type}
-              </span>
-            </div>
-
-            <div>
-              <b>
-                {typeof order.total === "number"
-                  ? formatCustomerMoney(order.total)
-                  : order.total}
-              </b>
-
-              <CustomerStatusBadge>{order.status}</CustomerStatusBadge>
-            </div>
+            Try again
           </button>
-        ))}
-      </div>
+        </div>
+      )}
 
-      {selected && (
-        <CustomerDialog title={selected.id} onClose={() => setSelected(null)}>
-          <div className="customer-detail-grid">
-            <div>
-              <span>Status</span>
-              <strong>{selected.status}</strong>
-            </div>
-
-            <div>
-              <span>Fulfillment</span>
-              <strong>{selected.type}</strong>
-            </div>
-
-            <div>
-              <span>Payment</span>
-              <strong>{selected.payment || "—"}</strong>
-            </div>
-
-            <div>
-              <span>Total</span>
-              <strong>
-                {typeof selected.total === "number"
-                  ? formatCustomerMoney(selected.total)
-                  : selected.total}
-              </strong>
-            </div>
+      {!loading && !error && (
+        <>
+          <div
+            className="order-filters"
+            role="group"
+            aria-label="Filter orders"
+          >
+            {FILTERS.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                className={`order-filter${
+                  filter === option.id ? " order-filter--active" : ""
+                }`}
+                aria-pressed={filter === option.id}
+                onClick={() => setFilter(option.id)}
+              >
+                {option.label}
+              </button>
+            ))}
           </div>
 
-          {selected.items?.map((item, index) => (
-            <div className="customer-line-item" key={item.id || index}>
-              <span>
-                {item.qty} × {item.name} {item.hp}
-              </span>
+          {filtered.length === 0 ? (
+            <div className="surface order-empty">
+              <ShoppingBag size={25} aria-hidden="true" />
 
-              <strong>{formatCustomerMoney(item.price * item.qty)}</strong>
+              <strong>
+                {orders.length ? "No orders in this category" : "No orders yet"}
+              </strong>
+
+              <p>
+                {orders.length
+                  ? "Choose another filter to see your orders."
+                  : "Your new orders will appear here."}
+              </p>
             </div>
-          ))}
+          ) : (
+            <div className="order-list">
+              {filtered.map((order) => (
+                <article className="surface order-card" key={order.orderId}>
+                  <div className="order-card-top">
+                    <div className="order-card-title">
+                      <span className="order-muted">
+                        Order placed {formatDate(order.orderedAt)}
+                      </span>
+
+                      <strong>{order.orderNumber}</strong>
+                    </div>
+
+                    <CustomerStatusBadge>{order.status}</CustomerStatusBadge>
+                  </div>
+
+                  <div className="order-card-meta">
+                    <span>
+                      {order.items?.length || 0} product
+                      {order.items?.length === 1 ? "" : "s"}
+                    </span>
+
+                    <span aria-hidden="true">·</span>
+
+                    <span>
+                      {order.fulfillment === "PICKUP"
+                        ? "Store pickup"
+                        : "Delivery"}
+                    </span>
+                  </div>
+
+                  <div className="order-card-bottom">
+                    <div className="order-card-price">
+                      <span className="order-muted">Total</span>
+
+                      <strong>
+                        {formatCustomerMoney(Number(order.total))}
+                      </strong>
+                    </div>
+
+                    <button
+                      className="order-button order-button--secondary"
+                      type="button"
+                      onClick={() => openOrder(order)}
+                    >
+                      Details
+                      <ChevronRight size={15} aria-hidden="true" />
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      {selected && (
+        <CustomerDialog
+          title={
+            mode === "edit"
+              ? "Edit order details"
+              : mode === "cancel"
+                ? "Cancel order"
+                : "Order details"
+          }
+          onClose={() => {
+            if (!saving) {
+              setSelectedNumber(null);
+            }
+          }}
+        >
+          <div className="order-modal-content">
+            <div className="order-modal-intro">
+              <span className="order-muted">{selected.orderNumber}</span>
+
+              <CustomerStatusBadge>{selected.status}</CustomerStatusBadge>
+            </div>
+
+            {actionError && (
+              <p className="order-error" role="alert">
+                {actionError}
+              </p>
+            )}
+
+            {mode === "details" && (
+              <>
+                {message && (
+                  <p className="order-notice" role="status">
+                    {message}
+                  </p>
+                )}
+
+                <div className="order-detail-list">
+                  <div>
+                    <span>Placed</span>
+                    <strong>{formatDate(selected.orderedAt)}</strong>
+                  </div>
+
+                  <div>
+                    <span>Payment</span>
+                    <strong>
+                      {selected.paymentMethod}
+                      {" · "}
+                      {selected.paymentStatus}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>Method</span>
+                    <strong>
+                      {selected.fulfillment === "PICKUP"
+                        ? "Store pickup"
+                        : "Delivery"}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>Recipient</span>
+                    <strong>{selected.recipientName}</strong>
+                  </div>
+
+                  <div>
+                    <span>Phone</span>
+                    <strong>{selected.contactNumber}</strong>
+                  </div>
+
+                  {selected.deliveryAddress && (
+                    <div>
+                      <span>Address</span>
+                      <strong>{selected.deliveryAddress}</strong>
+                    </div>
+                  )}
+
+                  <div>
+                    <span>Preferred schedule</span>
+                    <strong>
+                      {formatSchedule(selected.preferredSchedule)}
+                    </strong>
+                  </div>
+
+                  {selected.customerNotes && (
+                    <div>
+                      <span>Notes</span>
+                      <strong>{selected.customerNotes}</strong>
+                    </div>
+                  )}
+                </div>
+
+                <div className="order-modal-section">
+                  <h3>Products</h3>
+
+                  {(selected.items || []).map((item) => (
+                    <div
+                      className="order-product"
+                      key={`${item.variantId}-${item.qty}`}
+                    >
+                      <div>
+                        <strong>{item.name}</strong>
+                        <span>
+                          {item.hp} · Qty {item.qty}
+                        </span>
+                      </div>
+
+                      <strong>
+                        {formatCustomerMoney(Number(item.lineTotal))}
+                      </strong>
+                    </div>
+                  ))}
+
+                  <div className="order-product order-product--total">
+                    <strong>Order total</strong>
+
+                    <strong>
+                      {formatCustomerMoney(Number(selected.total))}
+                    </strong>
+                  </div>
+                </div>
+
+                {!!selected.history?.length && (
+                  <div className="order-modal-section">
+                    <h3>Order activity</h3>
+
+                    <ol className="order-timeline">
+                      {selected.history.map((entry, index) => (
+                        <li key={`${entry.changedAt}-${index}`}>
+                          <span>{entry.notes || entry.newStatus}</span>
+
+                          <small>{formatDate(entry.changedAt)}</small>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                )}
+
+                {selected.canManage ? (
+                  <div className="order-dialog-actions">
+                    <button
+                      className="order-button order-button--primary"
+                      type="button"
+                      onClick={openEdit}
+                    >
+                      <Pencil size={15} />
+                      Edit details
+                    </button>
+
+                    <button
+                      className="order-button order-button--danger"
+                      type="button"
+                      onClick={openCancel}
+                    >
+                      <XCircle size={15} />
+                      Cancel order
+                    </button>
+                  </div>
+                ) : (
+                  <p className="order-helper">
+                    <Clock3 size={15} />
+                    Online changes are unavailable for this order. Contact the
+                    store for assistance.
+                  </p>
+                )}
+              </>
+            )}
+
+            {mode === "edit" && draft && (
+              <form className="order-edit-form" onSubmit={saveChanges}>
+                <p className="order-helper">
+                  Changes are allowed before staff begin processing your unpaid
+                  order. Products and prices cannot be changed here.
+                </p>
+
+                <div className="order-form-grid">
+                  <label className="order-field">
+                    Recipient name
+                    <input
+                      className="form-control"
+                      value={draft.recipientName}
+                      required
+                      maxLength={150}
+                      onChange={(event) =>
+                        setField("recipientName", event.target.value)
+                      }
+                      disabled={saving}
+                    />
+                  </label>
+
+                  <label className="order-field">
+                    Contact number
+                    <input
+                      className="form-control"
+                      type="tel"
+                      inputMode="tel"
+                      required
+                      minLength={7}
+                      maxLength={30}
+                      pattern="[+0-9 ()-]{7,30}"
+                      value={draft.contactNumber}
+                      onChange={(event) =>
+                        setField("contactNumber", event.target.value)
+                      }
+                      disabled={saving}
+                    />
+                  </label>
+
+                  <label className="order-field">
+                    Fulfillment method
+                    <select
+                      className="form-control"
+                      value={draft.fulfillment}
+                      disabled={saving}
+                      onChange={(event) =>
+                        setField("fulfillment", event.target.value)
+                      }
+                    >
+                      <option value="DELIVERY">Delivery</option>
+
+                      <option value="PICKUP">Store pickup</option>
+                    </select>
+                  </label>
+
+                  <label className="order-field">
+                    Preferred schedule (optional)
+                    <input
+                      className="form-control"
+                      type="datetime-local"
+                      value={draft.preferredSchedule}
+                      onChange={(event) =>
+                        setField("preferredSchedule", event.target.value)
+                      }
+                      disabled={saving}
+                    />
+                  </label>
+                </div>
+
+                {draft.fulfillment === "DELIVERY" && (
+                  <div className="order-edit-address">
+                    <div className="order-field-heading">
+                      <MapPin size={15} />
+                      Delivery address
+                    </div>
+
+                    <SavedAddressSelector
+                      title="Choose a saved or new address"
+                      value={draft.deliveryAddress}
+                      onChange={(value) => setField("deliveryAddress", value)}
+                      disabled={saving}
+                    />
+                  </div>
+                )}
+
+                <label className="order-field">
+                  Additional notes (optional)
+                  <textarea
+                    className="form-control"
+                    rows={3}
+                    maxLength={1000}
+                    value={draft.customerNotes}
+                    disabled={saving}
+                    onChange={(event) =>
+                      setField("customerNotes", event.target.value)
+                    }
+                  />
+                </label>
+
+                <div className="order-dialog-actions">
+                  <button
+                    className="order-button order-button--secondary"
+                    type="button"
+                    disabled={saving}
+                    onClick={() => {
+                      setActionError("");
+                      setMode("details");
+                    }}
+                  >
+                    Back
+                  </button>
+
+                  <button
+                    className="order-button order-button--primary"
+                    type="submit"
+                    disabled={saving}
+                  >
+                    {saving ? "Saving…" : "Save changes"}
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {mode === "cancel" && (
+              <form className="order-edit-form" onSubmit={confirmCancellation}>
+                <p className="order-cancel-note">
+                  Cancel this order? This cannot be undone. No cash payment has
+                  been collected.
+                </p>
+
+                <label className="order-field">
+                  Reason for cancellation
+                  <select
+                    className="form-control"
+                    value={reason}
+                    disabled={saving}
+                    onChange={(event) => setReason(event.target.value)}
+                  >
+                    {CANCEL_REASONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="order-field">
+                  Additional details{" "}
+                  {reason === "OTHER" ? "(required)" : "(optional)"}
+                  <textarea
+                    className="form-control"
+                    rows={3}
+                    maxLength={300}
+                    required={reason === "OTHER"}
+                    minLength={reason === "OTHER" ? 5 : undefined}
+                    value={reasonDetails}
+                    disabled={saving}
+                    onChange={(event) => setReasonDetails(event.target.value)}
+                    placeholder="Briefly describe your reason"
+                  />
+                </label>
+
+                <div className="order-dialog-actions">
+                  <button
+                    className="order-button order-button--secondary"
+                    type="button"
+                    disabled={saving}
+                    onClick={() => {
+                      setActionError("");
+                      setMode("details");
+                    }}
+                  >
+                    Keep order
+                  </button>
+
+                  <button
+                    className="order-button order-button--danger-solid"
+                    type="submit"
+                    disabled={saving}
+                  >
+                    {saving ? "Cancelling…" : "Confirm cancellation"}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
         </CustomerDialog>
       )}
     </div>

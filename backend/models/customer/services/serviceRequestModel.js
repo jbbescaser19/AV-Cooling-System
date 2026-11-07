@@ -8,7 +8,8 @@ export function serviceRequestModel(db) {
            c.status AS customerStatus,
            u.status AS userStatus
          FROM customers AS c
-         INNER JOIN users AS u ON u.user_id = c.user_id
+         INNER JOIN users AS u
+           ON u.user_id = c.user_id
          WHERE u.user_id = ?
            AND u.account_type = 'CUSTOMER'
          LIMIT 1`,
@@ -93,6 +94,7 @@ export function serviceRequestModel(db) {
          INNER JOIN service_types AS st
            ON st.service_type_id = sr.service_type_id
          WHERE sr.customer_id = ?
+           AND sr.customer_deleted_at IS NULL
          ORDER BY sr.service_request_id DESC
          LIMIT 100`,
         [customerId],
