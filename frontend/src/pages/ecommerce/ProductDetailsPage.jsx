@@ -13,9 +13,12 @@ import {
 
 import ProductPurchaseDialog from "../../components/ecommerce/ProductPurchaseDialog";
 
-import { readCatalogProducts } from "../../utils/catalogStore";
+import useStorefrontCatalog from "../../hooks/useStorefrontCatalog";
+import api from "../../../api/api.js";
 
-import { addCartItem, hasCustomerSession } from "../../utils/cartStore";
+import { addCartItem } from "../../utils/cartStore";
+
+import { getProductImage } from "../../utils/productImages";
 
 import {
   PENDING_ACTIONS,
@@ -33,9 +36,10 @@ export default function ProductDetailsPage() {
 
   const navigate = useNavigate();
 
+  const { products, status, refresh } = useStorefrontCatalog();
   const product = useMemo(
-    () => readCatalogProducts().find((item) => item.id === productId),
-    [productId],
+    () => products.find((item) => item.id === productId),
+    [products, productId],
   );
 
   const [variantIndex, setVariantIndex] = useState(0);
@@ -43,8 +47,12 @@ export default function ProductDetailsPage() {
   const [purchaseMode, setPurchaseMode] = useState(null);
 
   const [added, setAdded] = useState(false);
-  const [cartError, setCartError] = useState("");
-  const [adding, setAdding] = useState(false);
+
+  const [failedImageSrc, setFailedImageSrc] = useState("");
+
+  const productImage = getProductImage(product);
+
+  const showPhoto = Boolean(productImage) && failedImageSrc !== productImage;
 
   if (!product) {
     return (
@@ -66,46 +74,43 @@ export default function ProductDetailsPage() {
 
   const variant = quotationOnly ? null : product.variants[variantIndex];
 
-  const savings = variant ? variant.srp - variant.price : 0;
+  const savings = variant ? Math.max(0, variant.srp - variant.price) : 0;
+  const inStock =
+    !quotationOnly && product.variants.some((item) => item.stock > 0);
+  const selectedInStock =
+    !quotationOnly && status === "ready" && variant?.stock > 0;
+  const allOutOfStock = !quotationOnly && status === "ready" && !inStock;
 
-  const handleAddToCart = async ({ variant: selectedVariant, quantity }) => {
-    if (adding) return;
-    setAdding(true);
-    setCartError("");
+  const handleAddToCart = ({ variant: selectedVariant, quantity }) => {
     try {
-      await addCartItem(product, selectedVariant, quantity);
+      addCartItem(product, selectedVariant, quantity);
       setPurchaseMode(null);
       setAdded(true);
     } catch (error) {
-      setCartError(
-        error.response?.data?.message || error.message || "Unable to add item.",
-      );
-      setPurchaseMode(null);
-      setAdded(false);
-    } finally {
-      setAdding(false);
+      window.alert(error.message || "This horsepower is unavailable.");
     }
   };
 
   const handleOrderNow = async ({ variant: selectedVariant, quantity }) => {
+    if (!selectedVariant?.stock || selectedVariant.stock < quantity) return;
     const intent = {
       productId: product.id,
       variant: selectedVariant.hp,
       quantity,
     };
     try {
-      if (!(await hasCustomerSession())) {
-        savePendingAction({ type: PENDING_ACTIONS.ORDER_NOW, ...intent });
-        setPurchaseMode(null);
-        navigate("/login");
-        return;
-      }
+      await api.get("/api/auth/customer/session");
       saveDirectCheckout(intent);
       setPurchaseMode(null);
       navigate("/checkout");
     } catch (error) {
-      setPurchaseMode(null);
-      setCartError(error.message || "Cannot verify your session.");
+      if (error.response?.status === 401) {
+        savePendingAction({ type: PENDING_ACTIONS.ORDER_NOW, ...intent });
+        setPurchaseMode(null);
+        navigate("/login");
+      } else {
+        window.alert("Unable to verify your account. Please try again.");
+      }
     }
   };
 
@@ -130,7 +135,25 @@ export default function ProductDetailsPage() {
           <div className="product-detail-shell">
             <aside className="surface product-detail-visual">
               <div className="product-detail-hero">
-                <Wind size={112} />
+                {allOutOfStock && (
+                  <span className="detail-out-stock-badge">Out of Stock</span>
+                )}
+                {showPhoto ? (
+                  <img
+                    className={`product-detail-photo${
+                      product.id === "floor-mounted-commercial"
+                        ? " product-detail-photo--tower"
+                        : ""
+                    }`}
+                    src={productImage}
+                    alt={`${product.name} air conditioner`}
+                    loading="eager"
+                    decoding="async"
+                    onError={() => setFailedImageSrc(productImage)}
+                  />
+                ) : (
+                  <Wind size={112} aria-hidden="true" />
+                )}
 
                 <small>{product.category}</small>
               </div>
@@ -152,7 +175,15 @@ export default function ProductDetailsPage() {
                   <span>Availability</span>
 
                   <strong>
-                    {quotationOnly ? "By quotation" : "Confirm before order"}
+                    {quotationOnly
+                      ? "By quotation"
+                      : status === "error"
+                        ? "Unavailable for ordering"
+                        : status === "loading"
+                          ? "Checking stock…"
+                          : allOutOfStock
+                            ? "Out of Stock"
+                            : `${product.variants.filter((item) => item.stock > 0).length} HP options in stock`}
                   </strong>
                 </div>
               </div>
@@ -194,11 +225,14 @@ export default function ProductDetailsPage() {
                       {product.variants.map((item, index) => (
                         <button
                           type="button"
-                          className={index === variantIndex ? "active" : ""}
+                          className={`${index === variantIndex ? "active" : ""} ${item.stock === 0 ? "is-out-of-stock" : ""}`}
                           key={item.hp}
                           onClick={() => setVariantIndex(index)}
                         >
                           {item.hp}
+                          {status === "ready" && item.stock === 0 && (
+                            <small>Out of Stock</small>
+                          )}
                         </button>
                       ))}
                     </div>
@@ -208,6 +242,27 @@ export default function ProductDetailsPage() {
                     <div className="detail-kicker">Current selection</div>
 
                     <h2>{variant.hp}</h2>
+                    <p
+                      className={`detail-stock-status ${!selectedInStock ? "is-unavailable" : ""}`}
+                      role="status"
+                    >
+                      {status === "error"
+                        ? "Stock information unavailable — ordering disabled."
+                        : status === "loading"
+                          ? "Checking stock availability…"
+                          : selectedInStock
+                            ? `${variant.stock} unit${variant.stock === 1 ? "" : "s"} available`
+                            : "Out of Stock — please choose another horsepower."}
+                    </p>
+                    {status === "error" && (
+                      <button
+                        type="button"
+                        className="btn btn-soft"
+                        onClick={refresh}
+                      >
+                        Retry stock check
+                      </button>
+                    )}
 
                     <div className="detail-price">
                       <strong>{peso(variant.price)}</strong>
@@ -218,14 +273,7 @@ export default function ProductDetailsPage() {
                     </div>
 
                     {added && (
-                      <p className="customer-success-note" role="status">
-                        Added to cart.
-                      </p>
-                    )}
-                    {cartError && (
-                      <p role="alert" style={{ color: "#a52a2a" }}>
-                        {cartError}
-                      </p>
+                      <p className="customer-success-note">Added to cart.</p>
                     )}
                   </section>
 
@@ -287,23 +335,28 @@ export default function ProductDetailsPage() {
                     <button
                       className="btn btn-soft"
                       type="button"
+                      disabled={!selectedInStock}
                       onClick={() => {
                         setAdded(false);
-                        setCartError("");
                         setPurchaseMode("cart");
                       }}
                     >
                       <ShoppingCart size={17} />
-                      Add to Cart
+                      {status === "ready" && !selectedInStock
+                        ? "Out of Stock"
+                        : "Add to Cart"}
                     </button>
 
                     <button
                       className="btn btn-dark"
                       type="button"
+                      disabled={!selectedInStock}
                       onClick={() => setPurchaseMode("order")}
                     >
                       <Zap size={17} />
-                      Order Now
+                      {status === "ready" && !selectedInStock
+                        ? "Unavailable"
+                        : "Order Now"}
                     </button>
 
                     <Link className="btn btn-soft" to="/contact">
@@ -317,7 +370,7 @@ export default function ProductDetailsPage() {
         </div>
       </section>
 
-      {purchaseMode && !quotationOnly && (
+      {purchaseMode && selectedInStock && (
         <ProductPurchaseDialog
           product={product}
           mode={purchaseMode}

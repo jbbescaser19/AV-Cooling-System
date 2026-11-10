@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { parseBookingStart } from "../../scheduling/bookingScheduleValidator.js";
 
 const phone = z
   .string()
@@ -8,39 +9,26 @@ const phone = z
   .regex(/^[+0-9 ()-]+$/);
 
 function futurePhilippineDateTime(value) {
-  if (value === null) return true;
-  if (typeof value !== "string") return false;
-
-  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(value);
-  if (!match) return false;
-
-  const [, year, month, day, hour, minute] = match.map(Number);
-  const utc = Date.UTC(year, month - 1, day, hour, minute);
-  const date = new Date(utc);
-
-  return (
-    date.getUTCFullYear() === year &&
-    date.getUTCMonth() === month - 1 &&
-    date.getUTCDate() === day &&
-    date.getUTCHours() === hour &&
-    date.getUTCMinutes() === minute &&
-    utc - 8 * 60 * 60 * 1000 > Date.now()
-  );
+  try {
+    parseBookingStart(value);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 const editSchema = z
   .object({
     recipientName: z.string().trim().min(2).max(150),
     contactNumber: phone,
-    fulfillment: z.enum(["DELIVERY", "PICKUP"]),
+    fulfillment: z.literal("DELIVERY"),
     deliveryAddress: z.string().trim().max(2000).nullable(),
     customerNotes: z.string().trim().max(1000),
     preferredSchedule: z
       .string()
-      .nullable()
       .refine(
         futurePhilippineDateTime,
-        "Choose a future schedule in Philippine time, or leave it blank.",
+        "Choose a future available appointment from the calendar.",
       ),
   })
   .strict()
@@ -77,9 +65,7 @@ const cancelSchema = z
 
 function validate(schema, value) {
   const result = schema.safeParse(value);
-
   if (result.success) return result.data;
-
   const error = new Error(
     result.error.issues[0]?.message || "Invalid order details.",
   );

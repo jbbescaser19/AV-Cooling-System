@@ -2,7 +2,7 @@ export const brandOrder = [
   "Midea",
   "Daikin",
   "Carrier",
-  "Carrier Floor Mounted",
+  "Commercial",
   "Hisense",
   "Matrix",
 ];
@@ -20,7 +20,7 @@ const daikinWarranty = [
 ];
 
 const standardInclusions = [
-  "Free Installation up to 10ft",
+  "Free standard installation (up to 10ft)",
   "Copper Tube 10ft with Rubber Insulation",
   "Communication Wire 10ft",
   "Outdoor Bracket",
@@ -29,7 +29,7 @@ const standardInclusions = [
 ];
 
 const nemaInclusions = [
-  "Free Installation up to 10ft",
+  "Free standard installation (up to 10ft)",
   "Copper Tube 10ft with Rubber Insulation",
   "Communication Wire 10ft",
   "Outdoor Bracket (L-Type)",
@@ -38,9 +38,9 @@ const nemaInclusions = [
 ];
 
 const additionalCharges = [
-  "Excess Copper Tube: ₱450/ft",
-  "Electrical: ₱1,500 for first 10ft",
-  "Excess Wire: ₱250/ft",
+  "Excess Copper Tube: ₱450/ft (if needed)",
+  "Electrical Work: ₱1,500 for first 10ft (if needed)",
+  "Excess Wire: ₱250/ft (if needed)",
 ];
 
 export const products = [
@@ -72,10 +72,10 @@ export const products = [
     inclusions: nemaInclusions,
     additionalCharges,
     variants: [
-      { hp: "0.8HP", srp: 30800, price: 25499 },
-      { hp: "1.0HP", srp: 33600, price: 29499 },
-      { hp: "1.5HP", srp: 35700, price: 31489 },
-      { hp: "2.0HP", srp: 51100, price: 42999 },
+      { hp: "0.8HP", srp: 30800, price: 27499 },
+      { hp: "1.0HP", srp: 33600, price: 31499 },
+      { hp: "1.5HP", srp: 35700, price: 33489 },
+      { hp: "2.0HP", srp: 51100, price: 44999 },
     ],
   },
   {
@@ -88,12 +88,12 @@ export const products = [
     inclusions: nemaInclusions,
     additionalCharges,
     variants: [
-      { hp: "0.8HP", srp: 33500, price: 27999 },
-      { hp: "1.0HP", srp: 37800, price: 30999 },
-      { hp: "1.5HP", srp: 42400, price: 34999 },
-      { hp: "2.0HP", srp: 55400, price: 44999 },
-      { hp: "2.5HP", srp: 64200, price: 52499 },
-      { hp: "3.0HP", srp: 89500, price: 71499 },
+      { hp: "0.8HP", srp: 33500, price: 30999 },
+      { hp: "1.0HP", srp: 37800, price: 33999 },
+      { hp: "1.5HP", srp: 42400, price: 37999 },
+      { hp: "2.0HP", srp: 55400, price: 47999 },
+      { hp: "2.5HP", srp: 64200, price: 55499 },
+      { hp: "3.0HP", srp: 89500, price: 74499 },
     ],
   },
   {
@@ -107,11 +107,11 @@ export const products = [
     inclusions: nemaInclusions,
     additionalCharges,
     variants: [
-      { hp: "1.0HP", srp: 46200, price: 34499 },
-      { hp: "1.5HP", srp: 51900, price: 42499 },
-      { hp: "2.0HP", srp: 66500, price: 54499 },
-      { hp: "2.5HP", srp: 77300, price: 62999 },
-      { hp: "3.0HP", srp: 107700, price: 87499 },
+      { hp: "1.0HP", srp: 46200, price: 37499 },
+      { hp: "1.5HP", srp: 51900, price: 45499 },
+      { hp: "2.0HP", srp: 66500, price: 57499 },
+      { hp: "2.5HP", srp: 77300, price: 65999 },
+      { hp: "3.0HP", srp: 107700, price: 90499 },
     ],
   },
   {
@@ -125,11 +125,11 @@ export const products = [
     inclusions: nemaInclusions,
     additionalCharges,
     variants: [
-      { hp: "1.0HP", srp: 59600, price: 48499 },
-      { hp: "1.5HP", srp: 65900, price: 52999 },
-      { hp: "2.0HP", srp: 84300, price: 67999 },
-      { hp: "2.5HP", srp: 98100, price: 79499 },
-      { hp: "3.0HP", srp: 132100, price: 105999 },
+      { hp: "1.0HP", srp: 59600, price: 51499 },
+      { hp: "1.5HP", srp: 65900, price: 55999 },
+      { hp: "2.0HP", srp: 84300, price: 70999 },
+      { hp: "2.5HP", srp: 98100, price: 82499 },
+      { hp: "3.0HP", srp: 132100, price: 108999 },
     ],
   },
   {
@@ -142,10 +142,10 @@ export const products = [
     inclusions: standardInclusions,
     additionalCharges,
     variants: [
-      { hp: "1.0HP", srp: 36500, price: 26999 },
-      { hp: "1.5HP", srp: 41000, price: 29999 },
-      { hp: "2.0HP", srp: 52200, price: 37999 },
-      { hp: "2.5HP", srp: 60500, price: 42499 },
+      { hp: "1.0HP", srp: 36500, price: 31700 },
+      { hp: "1.5HP", srp: 41000, price: 35400 },
+      { hp: "2.0HP", srp: 52200, price: 44800 },
+      { hp: "2.5HP", srp: 60500, price: 54100 },
     ],
   },
   {
@@ -158,11 +158,10 @@ export const products = [
     inclusions: standardInclusions,
     additionalCharges,
     variants: [
-      { hp: "1.0HP", srp: 36500, price: 28999 },
-      { hp: "1.5HP", srp: 41000, price: 31499 },
-      { hp: "2.0HP", srp: 52200, price: 40999 },
-      { hp: "2.5HP", srp: 60500, price: 44499 },
-      { hp: "3.0HP", srp: 105500, price: 78999 },
+      { hp: "1.5HP", srp: 41000, price: 34300 },
+      { hp: "2.0HP", srp: 52200, price: 46500 },
+      { hp: "2.5HP", srp: 60500, price: 53800 },
+      { hp: "3.0HP", srp: 105500, price: 89300 },
     ],
   },
   {
@@ -176,15 +175,15 @@ export const products = [
     inclusions: standardInclusions,
     additionalCharges,
     variants: [
-      { hp: "1.0HP", srp: 39798, price: 34999 },
-      { hp: "1.5HP", srp: 44998, price: 39499 },
-      { hp: "2.0HP", srp: 60298, price: 49999 },
-      { hp: "2.5HP", srp: 70498, price: 59999 },
+      { hp: "1.0HP", srp: 39798, price: 36300 },
+      { hp: "1.5HP", srp: 44998, price: 39800 },
+      { hp: "2.0HP", srp: 60298, price: 53600 },
+      { hp: "2.5HP", srp: 70498, price: 62600 },
     ],
   },
   {
     id: "floor-mounted-commercial",
-    brand: "Carrier Floor Mounted",
+    brand: "Commercial",
     tagline: "Commercial · Heavy-Duty Cooling",
     name: "Floor Mounted Commercial",
     category: "Floor Mounted",
@@ -204,10 +203,10 @@ export const products = [
     inclusions: nemaInclusions,
     additionalCharges,
     variants: [
-      { hp: "1.0HP", srp: 34995, price: 21499 },
-      { hp: "1.5HP", srp: 37995, price: 22999 },
-      { hp: "2.0HP", srp: 49995, price: 28499 },
-      { hp: "2.5HP", srp: 56995, price: 34499 },
+      { hp: "1.0HP", srp: 34995, price: 22499 },
+      { hp: "1.5HP", srp: 37995, price: 23300 },
+      { hp: "2.0HP", srp: 49995, price: 30300 },
+      { hp: "2.5HP", srp: 56995, price: 36100 },
       { hp: "3.5HP", srp: 87995, price: 50499 },
     ],
   },

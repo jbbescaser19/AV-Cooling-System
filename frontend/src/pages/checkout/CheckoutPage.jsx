@@ -1,187 +1,141 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-
 import api from "../../../api/api.js";
-
 import SavedAddressSelector from "../../components/common/SavedAddressSelector";
-import CheckoutPhoneSelector from "../../components/checkout/CheckoutPhoneSelector";
-
+import AvailabilityPicker from "../../components/scheduling/AvailabilityPicker";
+import useStorefrontCatalog from "../../hooks/useStorefrontCatalog";
 import { getCart } from "../../utils/cartStore";
-import { readCatalogProducts } from "../../utils/catalogStore";
-
-import {
-  cartItemKey,
-  clearCheckoutSelection,
-  readCheckoutSelection,
-} from "../../utils/checkoutSelection";
-
+import { getDefaultCustomerAddress } from "../../utils/addressStore";
 import {
   clearDirectCheckout,
   getDirectCheckout,
 } from "../../utils/purchaseFlow";
-
 import "../../styles/ecommerce/pages.css";
 import "../../styles/ecommerce/checkout.css";
 
-const money = (number) =>
-  `₱${Number(number || 0).toLocaleString("en-PH", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
+const money = (value) =>
+  `₱${Number(value || 0).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
-
-  const checkoutId = useRef(crypto.randomUUID());
-
+  const requestId = useRef(crypto.randomUUID());
   const directIntent = useMemo(() => getDirectCheckout(), []);
-
-  const checkoutKeys = useMemo(() => readCheckoutSelection() || [], []);
-
   const [cart, setCart] = useState([]);
   const [loading, setLoading] = useState(!directIntent);
   const [error, setError] = useState("");
   const [loadError, setLoadError] = useState("");
   const [placing, setPlacing] = useState(false);
-
-  const [fulfillment, setFulfillment] = useState("DELIVERY");
   const [recipientName, setRecipientName] = useState("");
   const [contactNumber, setContactNumber] = useState("");
-
-  const [address, setAddress] = useState("");
-  const [addressLoading, setAddressLoading] = useState(true);
-
+  const [address, setAddress] = useState(
+    () => getDefaultCustomerAddress()?.address || "",
+  );
   const [notes, setNotes] = useState("");
   const [schedule, setSchedule] = useState("");
+  const {
+    products,
+    status: stockStatus,
+    refresh: refreshStock,
+  } = useStorefrontCatalog();
 
   useEffect(() => {
     if (directIntent) return undefined;
-
     let active = true;
-
+    setLoading(true);
     getCart()
       .then((result) => {
         if (!active) return;
-
         if (!result.authenticated || result.syncError) {
-          setLoadError(result.syncError || "Please sign in before checkout.");
+          setLoadError(result.syncError || "Please log in to check out.");
         } else {
           setCart(result.items);
         }
       })
       .catch((err) => {
-        if (active) {
-          setLoadError(
-            err.response?.data?.message ||
-              err.message ||
-              "Unable to load your cart.",
-          );
-        }
+        if (active)
+          setLoadError(err.response?.data?.message || "Cannot load your cart.");
       })
       .finally(() => {
         if (active) setLoading(false);
       });
-
     return () => {
       active = false;
     };
   }, [directIntent]);
 
-  const directItem = useMemo(() => {
-    if (!directIntent) return null;
+  const availability = useMemo(
+    () =>
+      new Map(
+        products.flatMap((p) =>
+          (p.variants || []).map((v) => [
+            `${p.id}:${v.hp}`,
+            { ...v, name: p.name, productId: p.id },
+          ]),
+        ),
+      ),
+    [products],
+  );
 
-    const product = readCatalogProducts().find(
-      (entry) => entry.id === directIntent.productId,
-    );
-
-    const variant = product?.variants?.find(
-      (entry) => entry.hp === directIntent.variant,
-    );
-
-    const qty = Number(directIntent.quantity);
-
-    if (!product || !variant || !Number.isInteger(qty) || qty < 1 || qty > 99) {
-      return null;
-    }
-
-    return {
-      productId: product.id,
-      name: product.name,
-      hp: variant.hp,
-      qty,
-      price: variant.price,
-    };
-  }, [directIntent]);
-
-  const isDirect = Boolean(directIntent);
-
-  const selectedSet = useMemo(() => new Set(checkoutKeys), [checkoutKeys]);
-
-  const items = isDirect
-    ? directItem
-      ? [directItem]
+  const directItem = directIntent
+    ? availability.get(`${directIntent.productId}:${directIntent.variant}`)
+    : null;
+  const directQty = Number(directIntent?.quantity);
+  const items = directIntent
+    ? directItem &&
+      Number.isInteger(directQty) &&
+      directQty >= 1 &&
+      directQty <= 99
+      ? [{ ...directItem, hp: directIntent.variant, qty: directQty }]
       : []
-    : cart.filter((item) => selectedSet.has(cartItemKey(item)));
+    : cart;
 
-  const missingItems =
-    !isDirect &&
-    (checkoutKeys.length === 0 || items.length !== checkoutKeys.length);
-
+  const insufficient =
+    stockStatus !== "ready" ||
+    items.some((item) => {
+      const stock = availability.get(`${item.productId}:${item.hp}`)?.stock;
+      return !Number.isInteger(stock) || stock < Number(item.qty);
+    });
   const subtotal = items.reduce(
     (sum, item) => sum + Number(item.price) * Number(item.qty),
     0,
   );
-
-  const unitCount = items.reduce((sum, item) => sum + Number(item.qty), 0);
-
+  const count = items.reduce((sum, item) => sum + Number(item.qty), 0);
   const ready =
     !loading &&
     !loadError &&
-    !missingItems &&
     items.length > 0 &&
-    unitCount <= 99 &&
-    (fulfillment !== "DELIVERY" || !addressLoading);
+    !insufficient &&
+    count <= 99 &&
+    Boolean(schedule);
 
-  async function placeOrder(event) {
+  async function place(event) {
     event.preventDefault();
-
     if (placing || !ready) return;
-
-    if (!/^[+0-9 ()-]{7,30}$/.test(contactNumber.trim())) {
-      setError("Enter a valid contact number for this order.");
+    if (address.trim().length < 10) {
+      setError("Enter your complete delivery address.");
       return;
     }
-
-    if (fulfillment === "DELIVERY" && !address.trim()) {
-      setError(
-        "Select a saved delivery address or enter an address for this order.",
-      );
-      return;
-    }
-
     setPlacing(true);
     setError("");
-
     try {
       const base = {
-        requestId: checkoutId.current,
+        requestId: requestId.current,
         recipientName: recipientName.trim(),
         contactNumber: contactNumber.trim(),
-        fulfillment,
+        fulfillment: "DELIVERY",
         paymentCode: "CASH",
         expectedTotal: Math.round(subtotal * 100) / 100,
-        deliveryAddress: fulfillment === "DELIVERY" ? address.trim() : null,
+        deliveryAddress: address.trim(),
         customerNotes: notes.trim(),
         preferredSchedule: schedule || null,
       };
-
-      const payload = isDirect
+      const payload = directIntent
         ? {
             ...base,
             source: "DIRECT",
             productId: directIntent.productId,
             hp: directIntent.variant,
-            quantity: directItem.qty,
+            quantity: directQty,
           }
         : {
             ...base,
@@ -191,227 +145,176 @@ export default function CheckoutPage() {
               quantity: Number(item.qty),
             })),
           };
-
-      const response = await api.post("/api/customer/orders", payload);
-
-      if (!response.data?.success || !response.data?.order?.orderNumber) {
-        throw new Error("The server did not confirm the order. Please retry.");
-      }
-
-      if (isDirect) {
-        clearDirectCheckout();
-      } else {
-        clearCheckoutSelection();
-      }
-
+      const { data } = await api.post("/api/customer/orders", payload);
+      if (!data?.success || !data.order?.orderNumber)
+        throw new Error("Order was not confirmed. Please retry.");
+      if (directIntent) clearDirectCheckout();
       window.dispatchEvent(new Event("av-cart-updated"));
-
       navigate(
-        `/order-confirmation/${encodeURIComponent(
-          response.data.order.orderNumber,
-        )}`,
+        `/order-confirmation/${encodeURIComponent(data.order.orderNumber)}`,
         { replace: true },
       );
-    } catch (requestError) {
+    } catch (err) {
       setError(
-        requestError.response?.data?.message ||
-          requestError.message ||
-          "Order could not be placed. Your cart has not been cleared.",
+        err.response?.data?.message ||
+          err.message ||
+          "Could not place order. Please try again.",
       );
+      // Re-check because another customer may have purchased the last unit.
+      refreshStock();
     } finally {
       setPlacing(false);
     }
   }
 
   return (
-    <section className="page-shell checkout-page">
+    <section className="page-shell">
       <div className="container">
-        <div className="page-intro checkout-heading">
+        <div className="page-intro">
           <div>
-            <div className="eyebrow">Secure order request</div>
-
-            <h1 className="page-title">Checkout</h1>
-
+            <div className="eyebrow">Checkout</div>
+            <h1 className="page-title">Delivery and payment</h1>
             <p className="section-copy">
-              Review your selected products and submit your order. Payment is
-              collected on delivery or pickup.
+              Your order is saved to MySQL after a final inventory check. Cash
+              payment is collected when arranged with the store.
             </p>
           </div>
         </div>
-
-        {loadError && (
-          <div className="surface checkout-alert" role="alert">
-            <p>{loadError}</p>
-
-            {!isDirect && <Link to="/cart">Review cart</Link>}
+        {(error || loadError || insufficient) && (
+          <div
+            className="surface"
+            role="alert"
+            style={{
+              padding: 16,
+              marginBottom: 14,
+              border: "1px solid #e2bcc0",
+            }}
+          >
+            {error ||
+              loadError ||
+              (stockStatus !== "ready"
+                ? "Checking product stock. Ordering is disabled until availability is confirmed."
+                : "One of these products is out of stock or you requested more than is available.")}
+            <div>
+              <button
+                type="button"
+                className="btn btn-soft"
+                onClick={refreshStock}
+              >
+                Check stock again
+              </button>
+              <Link
+                to={directIntent ? "/shop" : "/cart"}
+                style={{ marginLeft: 12 }}
+              >
+                Review products
+              </Link>
+            </div>
           </div>
         )}
-
-        {error && (
-          <div className="surface checkout-alert" role="alert">
-            <p>{error}</p>
-          </div>
-        )}
-
-        {!isDirect && missingItems && !loading && (
-          <div className="surface checkout-alert" role="alert">
-            Choose the items you want to buy before checking out.{" "}
-            <Link to="/cart">Return to cart</Link>
-          </div>
-        )}
-
-        <form className="checkout-layout" onSubmit={placeOrder}>
+        <form className="checkout-layout" onSubmit={place}>
           <div className="checkout-main">
             <section className="surface checkout-section">
               <h2>1. Contact details</h2>
-
               <div className="checkout-form-grid">
-                <label className="checkout-input-field">
+                <label className="form-group">
                   Full name
                   <input
                     className="form-control"
-                    autoComplete="name"
-                    maxLength={150}
                     value={recipientName}
-                    onChange={(event) => setRecipientName(event.target.value)}
-                    placeholder="Recipient's full name"
+                    onChange={(e) => setRecipientName(e.target.value)}
                     required
+                    minLength={2}
+                    maxLength={150}
+                    autoComplete="name"
                     disabled={placing}
                   />
                 </label>
-
-                <CheckoutPhoneSelector
-                  value={contactNumber}
-                  onChange={setContactNumber}
-                  disabled={placing}
-                />
-              </div>
-            </section>
-
-            <section className="surface checkout-section">
-              <h2>2. Fulfillment</h2>
-
-              <div className="checkout-form-grid">
-                <label className="checkout-input-field">
-                  Method
-                  <select
-                    className="form-control"
-                    value={fulfillment}
-                    onChange={(event) => setFulfillment(event.target.value)}
-                    disabled={placing}
-                  >
-                    <option value="DELIVERY">Delivery</option>
-
-                    <option value="PICKUP">Store pickup</option>
-                  </select>
-                </label>
-
-                <label className="checkout-input-field">
-                  Payment
-                  <select className="form-control" value="CASH" disabled>
-                    <option value="CASH">Cash on delivery / pickup</option>
-                  </select>
-                </label>
-              </div>
-
-              {fulfillment === "DELIVERY" && (
-                <div className="checkout-address-field">
-                  <SavedAddressSelector
-                    title="Delivery address"
-                    value={address}
-                    onChange={setAddress}
-                    onLoadingChange={setAddressLoading}
-                    disabled={placing}
-                  />
-                </div>
-              )}
-
-              <p className="checkout-small-print">
-                No online payment is collected. Staff will confirm availability
-                and any delivery charges.
-              </p>
-            </section>
-
-            <section className="surface checkout-section">
-              <h2>3. Schedule and notes</h2>
-
-              <div className="checkout-form-grid">
-                <label className="checkout-input-field">
-                  Preferred date and time (optional)
+                <label className="form-group">
+                  Phone number
                   <input
                     className="form-control"
-                    type="datetime-local"
-                    value={schedule}
-                    onChange={(event) => setSchedule(event.target.value)}
+                    type="tel"
+                    value={contactNumber}
+                    onChange={(e) => setContactNumber(e.target.value)}
+                    required
+                    minLength={7}
+                    maxLength={30}
+                    placeholder="09XXXXXXXXX"
+                    autoComplete="tel"
                     disabled={placing}
                   />
                 </label>
-
-                <label className="checkout-input-field">
+              </div>
+            </section>
+            <section className="surface checkout-section">
+              <h2>2. Delivery and payment</h2>
+              <p>
+                Delivery with installation, subject to staff confirmation.
+                Payment: Cash (pending until collected).
+              </p>
+              <SavedAddressSelector
+                title="Delivery address"
+                value={address}
+                onChange={setAddress}
+                disabled={placing}
+              />
+            </section>
+            <section className="surface checkout-section">
+              <h2>3. Preferred schedule and notes</h2>
+              <div className="checkout-form-grid">
+                <AvailabilityPicker
+                  value={schedule}
+                  onChange={setSchedule}
+                  disabled={placing}
+                  label="Choose an available installation appointment"
+                />
+                <label className="form-group">
                   Notes (optional)
                   <textarea
                     className="form-control"
-                    rows={2}
+                    rows={3}
                     maxLength={1000}
                     value={notes}
-                    onChange={(event) => setNotes(event.target.value)}
-                    placeholder="Delivery instructions or pickup details"
+                    onChange={(e) => setNotes(e.target.value)}
                     disabled={placing}
                   />
                 </label>
               </div>
             </section>
           </div>
-
-          <aside className="surface checkout-summary checkout-order-summary">
-            <div className="checkout-summary-heading">
-              <h2>Order summary</h2>
-
-              <span>
-                {loading
-                  ? "Loading…"
-                  : `${items.length} product${items.length === 1 ? "" : "s"}`}
-              </span>
-            </div>
-
-            {items.map((item) => (
-              <div className="checkout-summary-row" key={cartItemKey(item)}>
+          <aside className="surface checkout-summary">
+            <h2>Order summary</h2>
+            {items.map((item, i) => (
+              <div
+                className="checkout-summary-row"
+                key={`${item.productId}-${item.hp}-${i}`}
+              >
                 <span>
                   {item.name} · {item.hp} × {item.qty}
                 </span>
-
-                <strong>{money(Number(item.price) * Number(item.qty))}</strong>
+                <strong>{money(item.price * item.qty)}</strong>
               </div>
             ))}
-
-            {!items.length && (
-              <p className="checkout-small-print">No products selected.</p>
-            )}
-
-            <div className="checkout-summary-row checkout-grand-total">
-              <span>Product total</span>
-
+            {!items.length && <p>No products selected.</p>}
+            <div
+              className="checkout-summary-row"
+              style={{ borderTop: "1px solid #d8e6ec", paddingTop: 12 }}
+            >
+              <span>Subtotal</span>
               <strong>{money(subtotal)}</strong>
             </div>
-
-            <p className="checkout-small-print">
-              The server checks product prices before saving your order.
-              Delivery fees, if any, are confirmed separately.
+            <p style={{ fontSize: ".79rem" }}>
+              Availability and total are rechecked on the server before the
+              order is saved.
             </p>
-
             <button
-              className="btn btn-dark checkout-place-button"
+              className="btn btn-dark"
               type="submit"
               disabled={!ready || placing}
             >
-              {placing ? "Submitting order…" : "Place order"}
+              {placing ? "Placing order…" : "Place Order"}
             </button>
-
-            {!isDirect && (
-              <Link className="checkout-back-link" to="/cart">
-                Back to selected cart
-              </Link>
-            )}
           </aside>
         </form>
       </div>

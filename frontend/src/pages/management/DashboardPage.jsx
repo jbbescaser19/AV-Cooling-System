@@ -1,813 +1,855 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import {
-  Activity,
-  Archive,
   ArrowRight,
-  ArrowUpRight,
-  Banknote,
-  Bell,
-  CalendarDays,
-  ClipboardList,
-  Package,
-  ShoppingCart,
+  CalendarClock,
+  CheckCircle2,
+  CircleAlert,
+  Clock3,
+  CreditCard,
+  LayoutDashboard,
+  PackageCheck,
+  RefreshCw,
+  ShoppingBag,
   TrendingUp,
-  Users,
+  UsersRound,
+  Wrench,
 } from "lucide-react";
 
-import {
-  orders as seedOrders,
-  notifications as seedNotifications,
-  serviceRequests as seedServices,
-  customers as seedCustomers,
-} from "../../data/mockManagement";
-
-import {
-  getPosOrders,
-  getStoredNotifications,
-} from "../../utils/managementStore";
-
-import { loadMock } from "../../utils/prototypeStore";
-import { readCatalogProducts } from "../../utils/catalogStore";
-
-import {
-  canManageArchive,
-  readArchive,
-  readArchivedInventoryKeys,
-} from "../../utils/archiveStore";
-
-import "../../styles/management/dashboard.css";
+import api from "../../../api/api.js";
+import TechnicianDashboard from "../../components/management/TechnicianDashboard";
+import "../../styles/management/dashboard-live.css";
 
 const money = (value) =>
-  `₱${Number(value || 0).toLocaleString("en-PH", {
-    maximumFractionDigits: 0,
-  })}`;
+  new Intl.NumberFormat("en-PH", {
+    style: "currency",
+    currency: "PHP",
+    maximumFractionDigits: 2,
+  }).format(Number(value) || 0);
 
-function statusClass(status) {
-  const value = String(status || "").toLowerCase();
+const number = (value) => Number(value || 0).toLocaleString("en-PH");
 
-  if (/(complete|delivered|paid|picked up)/.test(value)) {
-    return "success";
-  }
-
-  if (/(pending|processing)/.test(value)) {
-    return "warning";
-  }
-
-  return "info";
+function formatDate(value) {
+  if (!value) return "—";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? "—"
+    : new Intl.DateTimeFormat("en-PH", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      }).format(date);
 }
 
-function statusGroup(status) {
-  const value = String(status || "").toLowerCase();
+const PAYMENT_PERIODS = {
+  daily: { label: "Daily", length: 7, description: "Last 7 calendar days" },
+  weekly: {
+    label: "Weekly",
+    length: 8,
+    description: "Last 8 weeks · Monday to Sunday",
+  },
+  monthly: {
+    label: "Monthly",
+    length: 6,
+    description: "Last 6 calendar months",
+  },
+  yearly: { label: "Yearly", length: 5, description: "Last 5 calendar years" },
+};
 
-  if (/(complete|delivered|picked up)/.test(value)) {
-    return "Completed";
-  }
-
-  if (/(cancel|failed|rejected|refunded)/.test(value)) {
-    return "Cancelled / failed";
-  }
-
-  if (/(pending|awaiting)/.test(value)) {
-    return "Pending";
-  }
-
-  return "In progress";
-}
-
-function orderDate(value) {
-  if (!value) return null;
-
-  const normalized = String(value).replace(
-    /^(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})/,
-    "$1T$2",
+const chartDateLabel = (date, options) =>
+  new Intl.DateTimeFormat("en-PH", { timeZone: "UTC", ...options }).format(
+    date,
   );
 
-  const date = new Date(normalized);
+// Anchor chart labels to the dashboard's generated time in Philippine time.
+// UTC arithmetic below prevents a browser timezone from shifting bucket keys.
+function dashboardDate(generatedAt) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Manila",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date(generatedAt || Date.now()));
 
-  return Number.isNaN(date.getTime()) ? null : date;
+  const part = (name) =>
+    Number(parts.find((item) => item.type === name)?.value);
+  return new Date(Date.UTC(part("year"), part("month") - 1, part("day")));
 }
 
-function monthlyOrderValues(orders) {
-  const today = new Date();
+function paymentSeries(items, period, generatedAt) {
+  const { length } = PAYMENT_PERIODS[period];
+  const lookup = new Map(
+    (Array.isArray(items) ? items : []).map((item) => [
+      String(item.key ?? item.month),
+      item,
+    ]),
+  );
+  const today = dashboardDate(generatedAt);
 
-  const months = Array.from({ length: 6 }, (_, index) => {
-    const date = new Date(
-      today.getFullYear(),
-      today.getMonth() - (5 - index),
-      1,
-    );
+  return Array.from({ length }, (_, index) => {
+    const offset = length - 1 - index;
+    let date;
+    let key;
+    let label;
+    let title;
 
+    if (period === "daily") {
+      date = new Date(today);
+      date.setUTCDate(date.getUTCDate() - offset);
+      key = date.toISOString().slice(0, 10);
+      label = chartDateLabel(date, { month: "short", day: "numeric" });
+      title = chartDateLabel(date, { dateStyle: "full" });
+    } else if (period === "weekly") {
+      date = new Date(today);
+      date.setUTCDate(
+        date.getUTCDate() - ((date.getUTCDay() + 6) % 7) - offset * 7,
+      );
+      key = date.toISOString().slice(0, 10);
+      label = chartDateLabel(date, { month: "short", day: "numeric" });
+      const sunday = new Date(date);
+      sunday.setUTCDate(date.getUTCDate() + 6);
+      title = `${chartDateLabel(date, { month: "short", day: "numeric", year: "numeric" })} – ${chartDateLabel(sunday, { month: "short", day: "numeric", year: "numeric" })}`;
+    } else if (period === "monthly") {
+      date = new Date(
+        Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - offset, 1),
+      );
+      key = date.toISOString().slice(0, 7);
+      label = chartDateLabel(date, { month: "short" });
+      title = chartDateLabel(date, { month: "long", year: "numeric" });
+    } else {
+      date = new Date(Date.UTC(today.getUTCFullYear() - offset, 0, 1));
+      key = String(date.getUTCFullYear());
+      label = key;
+      title = key;
+    }
+
+    const record = lookup.get(key);
     return {
-      key: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
-        2,
-        "0",
-      )}`,
-      label: date.toLocaleDateString("en-PH", {
-        month: "short",
-      }),
-      total: 0,
-      count: 0,
+      key,
+      label,
+      title,
+      amount: Number(record?.amount) || 0,
+      paymentCount: Number(record?.paymentCount) || 0,
     };
   });
-
-  for (const order of orders) {
-    const date = orderDate(order.createdAt);
-
-    if (!date) continue;
-
-    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
-      2,
-      "0",
-    )}`;
-
-    const month = months.find((item) => item.key === key);
-
-    if (!month) continue;
-
-    month.total += Math.max(0, Number(order.total) || 0);
-    month.count += 1;
-  }
-
-  return months;
 }
 
-function smoothLine(points) {
-  if (!points.length) return "";
+function Metric({ icon: Icon, label, value, description, to, tone = "blue" }) {
+  return (
+    <article className="live-dashboard__metric">
+      <div className="live-dashboard__metric-top">
+        <span
+          className={`live-dashboard__metric-icon live-dashboard__tone-${tone}`}
+        >
+          <Icon size={20} aria-hidden="true" />
+        </span>
 
-  if (points.length === 1) {
-    return `M ${points[0].x} ${points[0].y}`;
-  }
-
-  let path = `M ${points[0].x} ${points[0].y}`;
-
-  for (let i = 0; i < points.length - 1; i += 1) {
-    const a = points[i];
-    const b = points[i + 1];
-    const midpoint = (a.x + b.x) / 2;
-
-    path += ` C ${midpoint} ${a.y}, ${midpoint} ${b.y}, ${b.x} ${b.y}`;
-  }
-
-  return path;
-}
-
-function OrderTrendChart({ months }) {
-  const maximum = Math.max(0, ...months.map((month) => month.total));
-
-  const total = months.reduce((sum, month) => sum + month.total, 0);
-
-  const count = months.reduce((sum, month) => sum + month.count, 0);
-
-  if (!maximum) {
-    return (
-      <div className="dashboard-chart-empty dashboard-chart-empty--trend">
-        <TrendingUp size={24} aria-hidden="true" />
-        <strong>No order trend yet</strong>
-        <span>Dated orders from the last six months will appear here.</span>
+        {to && (
+          <Link
+            to={to}
+            aria-label={`Open ${label}`}
+            className="live-dashboard__metric-link"
+          >
+            <ArrowRight size={18} />
+          </Link>
+        )}
       </div>
-    );
-  }
 
-  const width = 680;
-  const baseline = 192;
-  const top = 24;
-  const left = 18;
-  const right = 660;
-  const chartHeight = baseline - top;
+      <span className="live-dashboard__metric-label">{label}</span>
 
-  const points = months.map((month, index) => ({
-    ...month,
-    x: left + ((right - left) * index) / Math.max(1, months.length - 1),
-    y: baseline - (month.total / maximum) * (chartHeight - 15),
-  }));
+      <strong className="live-dashboard__metric-number">{value}</strong>
 
-  const linePath = smoothLine(points);
+      <span className="live-dashboard__metric-description">{description}</span>
+    </article>
+  );
+}
 
-  const areaPath = `${linePath} L ${
-    points[points.length - 1].x
-  } ${baseline} L ${points[0].x} ${baseline} Z`;
+function PaymentChart({ trends, monthlyItems, generatedAt }) {
+  const [period, setPeriod] = useState("monthly");
+  const source = trends?.[period] ?? (period === "monthly" ? monthlyItems : []);
+  const series = useMemo(
+    () => paymentSeries(source, period, generatedAt),
+    [source, period, generatedAt],
+  );
+  const maximum = Math.max(0, ...series.map((item) => item.amount));
+  const sum = series.reduce((total, item) => total + item.amount, 0);
+  const count = series.reduce((total, item) => total + item.paymentCount, 0);
 
   return (
-    <div className="dashboard-trend">
-      <div className="dashboard-trend-summary">
+    <section
+      className="live-dashboard__panel"
+      aria-labelledby="payment-trend-heading"
+    >
+      <div className="live-dashboard__panel-heading live-dashboard__trend-heading">
         <div>
-          <span>Total order value</span>
-          <strong>{money(total)}</strong>
+          <h2 id="payment-trend-heading">Paid payments over time</h2>
+          <p>
+            {PAYMENT_PERIODS[period].description} · Recorded payments marked
+            PAID
+          </p>
         </div>
 
-        <span className="dashboard-trend-orders">
-          <ShoppingCart size={14} aria-hidden="true" />
-          {count} orders
-        </span>
+        <div className="live-dashboard__trend-summary">
+          <strong className="live-dashboard__panel-emphasis">
+            {money(sum)}
+          </strong>
+          <small>
+            {number(count)} paid {count === 1 ? "payment" : "payments"}
+          </small>
+        </div>
       </div>
 
       <div
-        className="dashboard-line-chart"
-        role="img"
-        aria-label={`Monthly order value: ${months
-          .map((item) => `${item.label} ${money(item.total)}`)
-          .join(", ")}`}
+        className="live-dashboard__period-picker"
+        role="group"
+        aria-label="Paid payment chart period"
       >
-        <svg viewBox={`0 0 ${width} 218`} preserveAspectRatio="none">
-          <defs>
-            <linearGradient
-              id="dashboard-trend-area"
-              x1="0"
-              y1="0"
-              x2="0"
-              y2="1"
-            >
-              <stop offset="0%" stopColor="#19a8d0" stopOpacity=".27" />
-              <stop offset="100%" stopColor="#19a8d0" stopOpacity=".012" />
-            </linearGradient>
-          </defs>
-
-          {[0, 0.5, 1].map((ratio) => (
-            <line
-              key={ratio}
-              className="dashboard-gridline"
-              x1="0"
-              x2={width}
-              y1={baseline - (chartHeight - 15) * ratio}
-              y2={baseline - (chartHeight - 15) * ratio}
-            />
-          ))}
-
-          <path d={areaPath} fill="url(#dashboard-trend-area)" />
-
-          <path className="dashboard-line-path" d={linePath} />
-
-          {points.map((point) => (
-            <g key={point.key}>
-              <circle
-                className="dashboard-line-halo"
-                cx={point.x}
-                cy={point.y}
-                r="9"
-              />
-
-              <circle
-                className="dashboard-line-point"
-                cx={point.x}
-                cy={point.y}
-                r="4.5"
-              >
-                <title>
-                  {`${point.label}: ${money(
-                    point.total,
-                  )} (${point.count} orders)`}
-                </title>
-              </circle>
-            </g>
-          ))}
-        </svg>
-      </div>
-
-      <div className="dashboard-line-labels" aria-hidden="true">
-        {months.map((month) => (
-          <span key={month.key}>{month.label}</span>
+        {Object.entries(PAYMENT_PERIODS).map(([key, config]) => (
+          <button
+            type="button"
+            key={key}
+            className={period === key ? "is-active" : ""}
+            aria-pressed={period === key}
+            onClick={() => setPeriod(key)}
+          >
+            {config.label}
+          </button>
         ))}
       </div>
 
-      <p className="dashboard-chart-caption">
-        Order totals from dated sample and saved orders. This is not a verified
-        payments report.
+      {maximum === 0 ? (
+        <div className="live-dashboard__chart-empty">
+          <TrendingUp size={27} aria-hidden="true" />
+          <strong>No paid payments in this period</strong>
+          <p>
+            Choose another period or record a payment as PAID to see it here.
+          </p>
+        </div>
+      ) : (
+        <div className="live-dashboard__chart-scroll">
+          <div
+            className="live-dashboard__chart"
+            style={{
+              "--paid-chart-columns": series.length,
+              "--paid-chart-min-width": `${series.length * 73}px`,
+            }}
+            role="img"
+            aria-label={series
+              .map(
+                (item) =>
+                  `${item.title}: ${money(item.amount)} (${number(item.paymentCount)} payments)`,
+              )
+              .join(", ")}
+          >
+            {series.map((item) => (
+              <div key={item.key} className="live-dashboard__chart-column">
+                <div className="live-dashboard__chart-bar-area">
+                  <div
+                    className="live-dashboard__chart-bar"
+                    style={{
+                      height:
+                        item.amount === 0
+                          ? "0%"
+                          : `${Math.max(4, (item.amount / maximum) * 100)}%`,
+                    }}
+                    title={`${item.title}: ${money(item.amount)} · ${number(item.paymentCount)} paid payments`}
+                  />
+                </div>
+                <span title={item.title}>{item.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <p className="live-dashboard__footnote">
+        This chart includes PAID payment records only, not uncollected orders,
+        pending payments or estimated service revenue. Totals above show the
+        selected period.
       </p>
+    </section>
+  );
+}
+
+function StatusBreakdown({ title, summary }) {
+  const groups = [
+    {
+      label: "Pending",
+      value: summary.pending,
+      color: "#e59a43",
+    },
+    {
+      label: "In progress",
+      value: summary.active,
+      color: "#308fc2",
+    },
+    {
+      label: "Completed",
+      value: summary.completed,
+      color: "#20a080",
+    },
+    {
+      label: "Cancelled",
+      value: summary.cancelled,
+      color: "#98a5b7",
+    },
+  ];
+
+  return (
+    <div className="live-dashboard__breakdown-item">
+      <div className="live-dashboard__breakdown-title">
+        <strong>{title}</strong>
+        <span>{number(summary.total)} total</span>
+      </div>
+
+      <div
+        className="live-dashboard__breakdown-track"
+        role="img"
+        aria-label={groups
+          .map((group) => `${group.label}: ${group.value}`)
+          .join(", ")}
+      >
+        {groups
+          .filter((group) => group.value > 0)
+          .map((group) => (
+            <span
+              key={group.label}
+              style={{
+                width: `${(group.value / summary.total) * 100}%`,
+                backgroundColor: group.color,
+              }}
+            />
+          ))}
+      </div>
+
+      <div className="live-dashboard__breakdown-legend">
+        {groups.map((group) => (
+          <span key={group.label}>
+            <i
+              style={{
+                backgroundColor: group.color,
+              }}
+            />
+            {group.label}
+            <b>{number(group.value)}</b>
+          </span>
+        ))}
+      </div>
     </div>
   );
 }
 
-function BreakdownDonut({
-  data,
-  centerLabel,
-  centerValue,
-  ariaLabel,
-  stock = false,
-}) {
-  const total = data.reduce((sum, item) => sum + item.value, 0);
+function StatusPill({ status }) {
+  const normalized = String(status || "UNKNOWN").toUpperCase();
 
-  const circumference = 2 * Math.PI * 44;
-
-  let offset = 0;
-
-  const segments = data.map((item) => {
-    const length = total ? (item.value / total) * circumference : 0;
-
-    const segment = {
-      ...item,
-      length,
-      offset,
-    };
-
-    offset += length;
-
-    return segment;
-  });
+  const color =
+    normalized === "COMPLETED" || normalized === "PAID"
+      ? "green"
+      : normalized === "PENDING"
+        ? "amber"
+        : normalized === "CANCELLED" || normalized === "FAILED"
+          ? "grey"
+          : "blue";
 
   return (
-    <div className="dashboard-breakdown">
-      <div className="dashboard-donut-graphic">
-        <svg viewBox="0 0 120 120" role="img" aria-label={ariaLabel}>
-          <circle className="dashboard-donut-track" cx="60" cy="60" r="44" />
+    <span className={`live-dashboard__status live-dashboard__status-${color}`}>
+      {normalized.replaceAll("_", " ")}
+    </span>
+  );
+}
 
-          {segments
-            .filter((segment) => segment.value > 0)
-            .map((segment) => (
-              <circle
-                key={segment.label}
-                className="dashboard-donut-segment"
-                cx="60"
-                cy="60"
-                r="44"
-                stroke={segment.color}
-                strokeDasharray={`${Math.max(
-                  0,
-                  segment.length - (total > 1 ? 3 : 0),
-                )} ${circumference}`}
-                strokeDashoffset={-segment.offset}
-              >
-                <title>
-                  {segment.label}: {segment.value}
-                </title>
-              </circle>
-            ))}
-        </svg>
-
-        <div className="dashboard-donut-center">
-          <strong>{centerValue}</strong>
-          <span>{centerLabel}</span>
+function RecentRecords({ records }) {
+  return (
+    <section
+      className="live-dashboard__panel"
+      aria-labelledby="recent-records-heading"
+    >
+      <div className="live-dashboard__panel-heading">
+        <div>
+          <h2 id="recent-records-heading">Recently updated records</h2>
+          <p>Latest orders and service requests in MySQL</p>
         </div>
       </div>
 
-      <div className="dashboard-chart-legend">
-        {data.map((item) => (
-          <div key={item.label} className="dashboard-legend-row">
-            <span
-              className="dashboard-legend-dot"
-              style={{ background: item.color }}
-            />
+      {records.length === 0 ? (
+        <div className="live-dashboard__simple-empty">
+          No orders or service requests yet.
+        </div>
+      ) : (
+        <div className="live-dashboard__records">
+          {records.map((record) => {
+            const to =
+              record.kind === "ORDER"
+                ? "/management/orders"
+                : "/management/service-requests";
 
-            <span>{item.label}</span>
-            <strong>{item.value}</strong>
+            return (
+              <Link
+                key={`${record.kind}-${record.id}`}
+                to={to}
+                className="live-dashboard__record"
+              >
+                <span
+                  className={`live-dashboard__record-symbol ${
+                    record.kind === "SERVICE" ? "is-service" : ""
+                  }`}
+                >
+                  {record.kind === "SERVICE" ? (
+                    <Wrench size={19} />
+                  ) : (
+                    <ShoppingBag size={19} />
+                  )}
+                </span>
 
-            <small>
-              {total ? `${Math.round((item.value / total) * 100)}%` : "0%"}
-            </small>
-          </div>
-        ))}
+                <span className="live-dashboard__record-info">
+                  <strong>{record.reference}</strong>
 
-        {stock && (
-          <p className="dashboard-legend-note">
-            Based on this browser's prototype inventory quantities.
-          </p>
-        )}
+                  <small>
+                    {record.title} · {record.detail}
+                  </small>
+                </span>
+
+                <span className="live-dashboard__record-meta">
+                  <StatusPill status={record.status} />
+
+                  <small>{formatDate(record.updatedAt)}</small>
+                </span>
+
+                <ArrowRight
+                  className="live-dashboard__record-arrow"
+                  size={17}
+                  aria-hidden="true"
+                />
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function UpcomingServices({ items }) {
+  return (
+    <section
+      className="live-dashboard__panel"
+      aria-labelledby="upcoming-services-heading"
+    >
+      <div className="live-dashboard__panel-heading">
+        <div>
+          <h2 id="upcoming-services-heading">Upcoming service requests</h2>
+
+          <p>Preferred schedules · unconfirmed until accepted</p>
+        </div>
+
+        <Link
+          className="live-dashboard__subtle-link"
+          to="/management/service-requests"
+        >
+          View services <ArrowRight size={16} />
+        </Link>
       </div>
-    </div>
+
+      {items.length === 0 ? (
+        <div className="live-dashboard__simple-empty">
+          No upcoming pending or confirmed service requests.
+        </div>
+      ) : (
+        <div className="live-dashboard__upcoming-list">
+          {items.map((item) => (
+            <div key={item.id} className="live-dashboard__upcoming-row">
+              <span className="live-dashboard__upcoming-icon">
+                <CalendarClock size={18} />
+              </span>
+
+              <span className="live-dashboard__upcoming-details">
+                <strong>{item.serviceName}</strong>
+
+                <small>
+                  {item.customer} · Request #{item.id}
+                </small>
+
+                <small>{formatDate(item.preferredStart)}</small>
+              </span>
+
+              <StatusPill status={item.status} />
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
 
 export default function DashboardPage() {
-  const navigate = useNavigate();
-  const [, setRefreshNumber] = useState(0);
+  const [result, setResult] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [reload, setReload] = useState(0);
 
   useEffect(() => {
-    const refresh = () => {
-      setRefreshNumber((number) => number + 1);
-    };
+    const controller = new AbortController();
+
+    setLoading(true);
+    setError("");
+
+    api
+      .get("/api/management/dashboard", {
+        signal: controller.signal,
+      })
+      .then(({ data }) => {
+        if (!controller.signal.aborted) {
+          if (!data.success || !data.dashboard) {
+            throw new Error("Dashboard response was invalid.");
+          }
+
+          setResult(data);
+        }
+      })
+      .catch((requestError) => {
+        if (!controller.signal.aborted) {
+          if (
+            requestError.response?.status === 401 ||
+            requestError.response?.status === 403
+          ) {
+            setResult(null);
+          }
+
+          setError(
+            requestError.response?.data?.message ||
+              requestError.message ||
+              "Unable to load dashboard.",
+          );
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
+      });
+
+    return () => controller.abort();
+  }, [reload]);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === "visible") {
+        setReload((current) => current + 1);
+      }
+    }, 60000);
+
+    const refresh = () => setReload((current) => current + 1);
 
     window.addEventListener("av-management-updated", refresh);
 
-    window.addEventListener("storage", refresh);
-
     return () => {
-      window.removeEventListener("av-management-updated", refresh);
+      window.clearInterval(interval);
 
-      window.removeEventListener("storage", refresh);
+      window.removeEventListener("av-management-updated", refresh);
     };
   }, []);
 
-  const posOrders = getPosOrders();
+  const data = result?.dashboard;
+  const permissions = data?.permissions || {};
 
-  const orders = loadMock("av_managed_orders", seedOrders);
+  // Never show company-wide pending requests or forbidden links to technicians.
+  if (permissions.technician) {
+    return (
+      <TechnicianDashboard
+        summary={data.technician}
+        generatedAt={result?.generatedAt}
+        loading={loading}
+        error={error}
+        onRefresh={() => setReload((current) => current + 1)}
+      />
+    );
+  }
 
-  const allOrders = [...posOrders, ...orders];
+  const metrics = [];
 
-  const services = loadMock("av_module_service-requests", seedServices);
+  if (permissions.sales) {
+    metrics.push(
+      {
+        label: "All orders",
+        value: number(data.orders.total),
+        description: "Online and POS orders",
+        icon: ShoppingBag,
+        to: "/management/orders",
+      },
+      {
+        label: "Pending orders",
+        value: number(data.orders.pending),
+        description: "Waiting for action",
+        icon: Clock3,
+        to: "/management/orders",
+        tone: "amber",
+      },
+      {
+        label: "Paid payments",
+        value: money(data.payments.paidAmount),
+        description: `${number(
+          data.payments.paidCount,
+        )} recorded paid payments`,
+        icon: CreditCard,
+        tone: "green",
+      },
+      {
+        label: "Active customers",
+        value: number(data.customers.active),
+        description: "Active registered accounts",
+        icon: UsersRound,
+      },
+    );
+  }
 
-  const notifications = getStoredNotifications(seedNotifications);
+  if (permissions.services) {
+    metrics.push(
+      {
+        label: "Pending services",
+        value: number(data.services.pending),
+        description: "New requests to review",
+        icon: Wrench,
+        to: "/management/service-requests",
+        tone: "amber",
+      },
+      {
+        label: "Completed services",
+        value: number(data.services.completed),
+        description: "Service requests completed",
+        icon: CheckCircle2,
+        to: "/management/service-requests",
+        tone: "green",
+      },
+    );
+  }
 
-  const customers = loadMock("av_customers", seedCustomers);
+  if (permissions.inventory) {
+    metrics.push({
+      label: "Low-stock variants",
+      value: number(data.inventory.lowStock),
+      description: `${number(
+        data.inventory.tracked,
+      )} variants tracked in MySQL`,
+      icon: PackageCheck,
+      tone: data.inventory.lowStock > 0 ? "amber" : "blue",
+    });
+  }
 
-  const archivedInventory = new Set(readArchivedInventoryKeys());
+  const attentionItems = [];
 
-  const savedStock = loadMock("av_inventory_stock", {});
+  if (permissions.sales) {
+    attentionItems.push({
+      label: "Pending orders",
+      value: data.orders.pending,
+      to: "/management/orders",
+    });
+  }
 
-  const variants = readCatalogProducts().flatMap((product) =>
-    (product.variants || []).map((variant) => ({
-      key: `${product.id}:${variant.hp}`,
-    })),
-  );
-
-  const quantities = variants
-    .map(({ key }, index) => ({
-      key,
-      quantity: Number(
-        savedStock[key] ?? (index % 7 === 0 ? 2 : 8 + (index % 5)),
-      ),
-    }))
-    .filter(({ key }) => !archivedInventory.has(key))
-    .map(({ quantity }) => quantity);
-
-  const stockHealth = [
-    {
-      label: "Low (0–2)",
-      value: quantities.filter((quantity) => quantity <= 2).length,
-      color: "#e36e74",
-    },
-    {
-      label: "Reorder (3–5)",
-      value: quantities.filter((quantity) => quantity > 2 && quantity <= 5)
-        .length,
-      color: "#eeb65a",
-    },
-    {
-      label: "Healthy (6+)",
-      value: quantities.filter((quantity) => quantity > 5).length,
-      color: "#13a98c",
-    },
-  ];
-
-  const lowStockCount = stockHealth[0].value;
-
-  const monthlyValues = monthlyOrderValues(allOrders);
-
-  const statusData = [
-    {
-      label: "Completed",
-      value: allOrders.filter(
-        (order) => statusGroup(order.status) === "Completed",
-      ).length,
-      color: "#16aa91",
-    },
-    {
-      label: "In progress",
-      value: allOrders.filter(
-        (order) => statusGroup(order.status) === "In progress",
-      ).length,
-      color: "#3795dd",
-    },
-    {
-      label: "Pending",
-      value: allOrders.filter(
-        (order) => statusGroup(order.status) === "Pending",
-      ).length,
-      color: "#f0b45c",
-    },
-    {
-      label: "Cancelled",
-      value: allOrders.filter(
-        (order) => statusGroup(order.status) === "Cancelled / failed",
-      ).length,
-      color: "#e36e74",
-    },
-  ];
-
-  const walkInSales = posOrders.reduce(
-    (sum, order) => sum + Number(order.total || 0),
-    0,
-  );
-
-  const unread = notifications.filter((item) => !item.read).length;
-
-  const pendingServices = services.filter(
-    (service) => !/(completed|rejected)/i.test(String(service.status)),
-  ).length;
-
-  const archiveCount = readArchive().length;
-
-  const stats = [
-    {
-      icon: ShoppingCart,
-      label: "Orders",
-      value: allOrders.length,
-      path: "/management/orders",
-      tone: "blue",
-    },
-    {
-      icon: Banknote,
-      label: "Walk-in POS sales",
-      value: money(walkInSales),
-      path: "/management/pos",
-      tone: "teal",
-    },
-    {
-      icon: Package,
-      label: "Low stock",
-      value: lowStockCount,
-      path: "/management/inventory",
-      tone: "coral",
-    },
-    {
-      icon: CalendarDays,
+  if (permissions.services) {
+    attentionItems.push({
       label: "Pending services",
-      value: pendingServices,
-      path: "/management/service-requests",
-      tone: "amber",
-    },
-    {
-      icon: Users,
-      label: "Customers",
-      value: customers.length,
-      path: "/management/customers",
-      tone: "indigo",
-    },
-    {
-      icon: Bell,
-      label: "Unread alerts",
-      value: unread,
-      path: "/management/notifications",
-      tone: "purple",
-    },
-  ];
+      value: data.services.pending,
+      to: "/management/service-requests",
+    });
+  }
+
+  if (permissions.inventory && data.inventory.tracked > 0) {
+    attentionItems.push({
+      label: "Low-stock variants",
+      value: data.inventory.lowStock,
+      to: null,
+    });
+  }
+
+  const needsAttention = attentionItems.filter((item) => item.value > 0);
 
   return (
-    <div className="dashboard-page">
-      <header className="dashboard-hero">
-        <div className="dashboard-hero-content">
-          <span className="dashboard-hero-eyebrow">
-            <Activity size={15} aria-hidden="true" />
-            OPERATIONS OVERVIEW
+    <div className="live-dashboard">
+      <div className="live-dashboard__hero">
+        <div className="live-dashboard__hero-content">
+          <span className="live-dashboard__eyebrow">
+            <LayoutDashboard size={17} />
+            MANAGEMENT OVERVIEW
           </span>
 
-          <h1>Management dashboard</h1>
+          <h1>Business dashboard</h1>
 
           <p>
-            A clearer view of orders, sales activity, inventory, and the work
-            that needs attention.
+            Monitor your actual orders, payments, service requests and
+            operations in one place.
           </p>
 
-          <span className="dashboard-prototype-note">
-            Browser-based prototype data · Not a live financial report
+          <span className="live-dashboard__source">
+            <span />
+            Connected to MySQL · No sample statistics
           </span>
         </div>
 
-        {canManageArchive() && (
+        <div className="live-dashboard__hero-actions">
+          <span>
+            {result?.generatedAt
+              ? `Updated ${formatDate(result.generatedAt)}`
+              : "Live business overview"}
+          </span>
+
           <button
             type="button"
-            className="dashboard-archive-link"
-            onClick={() => navigate("/management/archive")}
+            onClick={() => setReload((current) => current + 1)}
+            disabled={loading}
           >
-            <Archive size={17} aria-hidden="true" />
-            View archive
-            <span>{archiveCount}</span>
-            <ArrowUpRight size={15} aria-hidden="true" />
+            <RefreshCw
+              size={17}
+              className={loading ? "live-dashboard__spin" : ""}
+            />
+
+            {loading ? "Refreshing…" : "Refresh dashboard"}
           </button>
-        )}
-
-        <div className="dashboard-hero-decoration" aria-hidden="true" />
-      </header>
-
-      <section
-        className="dashboard-section"
-        aria-labelledby="dashboard-highlights"
-      >
-        <div className="dashboard-section-heading">
-          <div>
-            <span>YOUR BUSINESS AT A GLANCE</span>
-            <h2 id="dashboard-highlights">Key metrics</h2>
-          </div>
-
-          <small>Tap a card to open its module</small>
         </div>
+      </div>
 
-        <div className="metric-grid metric-grid-six dashboard-metrics">
-          {stats.map(({ icon: Icon, label, value, path, tone }) => (
-            <button
-              type="button"
-              className={`metric-card metric-card-button dashboard-metric dashboard-metric--${tone}`}
-              key={label}
-              onClick={() => navigate(path)}
-            >
-              <span className="dashboard-metric-icon">
-                <Icon size={20} aria-hidden="true" />
-              </span>
+      {error && (
+        <div className="live-dashboard__alert" role="alert">
+          <CircleAlert size={19} />
 
-              <span className="dashboard-metric-label">{label}</span>
+          <span>
+            {error}
+            {data ? " Showing the last successfully loaded data." : ""}
+          </span>
 
-              <strong className="dashboard-metric-value">{value}</strong>
+          <button type="button" onClick={() => setReload((n) => n + 1)}>
+            Try again
+          </button>
+        </div>
+      )}
 
-              <ArrowUpRight
-                className="dashboard-metric-arrow"
-                size={16}
-                aria-hidden="true"
+      {!data && loading && (
+        <div className="live-dashboard__loading" role="status">
+          Loading real dashboard data…
+        </div>
+      )}
+
+      {!data && !loading && !error && (
+        <div className="live-dashboard__loading">
+          No dashboard data available yet.
+        </div>
+      )}
+
+      {data && (
+        <>
+          <section
+            aria-label="Business statistics"
+            className="live-dashboard__metrics"
+          >
+            {metrics.map((metric) => (
+              <Metric key={metric.label} {...metric} />
+            ))}
+          </section>
+
+          <div className="live-dashboard__columns">
+            {permissions.sales && (
+              <PaymentChart
+                trends={data.paymentTrends}
+                monthlyItems={data.monthlyPayments}
+                generatedAt={result?.generatedAt}
               />
-            </button>
-          ))}
-        </div>
-      </section>
+            )}
 
-      <section
-        className="dashboard-section"
-        aria-labelledby="dashboard-analytics"
-      >
-        <div className="dashboard-section-heading">
-          <div>
-            <span>INSIGHTS & TRENDS</span>
-            <h2 id="dashboard-analytics">Business analytics</h2>
-          </div>
-
-          <small>Updated from locally saved records</small>
-        </div>
-
-        <div className="dashboard-chart-grid">
-          <section className="mgmt-panel dashboard-chart-card dashboard-chart-card--wide">
-            <div className="mgmt-panel-header">
-              <div>
-                <span className="dashboard-chart-eyebrow">SALES ACTIVITY</span>
-                <h3>Order value trend</h3>
-              </div>
-
-              <span className="dashboard-chart-period">Last 6 months</span>
-            </div>
-
-            <OrderTrendChart months={monthlyValues} />
-          </section>
-
-          <section className="mgmt-panel dashboard-chart-card">
-            <div className="mgmt-panel-header">
-              <div>
-                <span className="dashboard-chart-eyebrow">FULFILLMENT</span>
-                <h3>Order status</h3>
-              </div>
-            </div>
-
-            <BreakdownDonut
-              data={statusData}
-              centerValue={allOrders.length}
-              centerLabel="orders"
-              ariaLabel={`Orders by status: ${statusData
-                .map((item) => `${item.label} ${item.value}`)
-                .join(", ")}`}
-            />
-          </section>
-
-          <section className="mgmt-panel dashboard-chart-card">
-            <div className="mgmt-panel-header">
-              <div>
-                <span className="dashboard-chart-eyebrow">
-                  INVENTORY HEALTH
-                </span>
-                <h3>Stock overview</h3>
-              </div>
-            </div>
-
-            <BreakdownDonut
-              data={stockHealth}
-              centerValue={quantities.length}
-              centerLabel="variants"
-              ariaLabel={`Inventory variants by stock level: ${stockHealth
-                .map((item) => `${item.label} ${item.value}`)
-                .join(", ")}`}
-              stock
-            />
-
-            <button
-              type="button"
-              className="dashboard-chart-action"
-              onClick={() => navigate("/management/inventory")}
+            <section
+              className="live-dashboard__panel"
+              aria-labelledby="attention-heading"
             >
-              Review inventory
-              <ArrowRight size={15} aria-hidden="true" />
-            </button>
-          </section>
-        </div>
-      </section>
+              <div className="live-dashboard__panel-heading">
+                <div>
+                  <h2 id="attention-heading">Needs attention</h2>
 
-      <section
-        className="dashboard-section"
-        aria-labelledby="dashboard-operations"
-      >
-        <div className="dashboard-section-heading">
-          <div>
-            <span>DAILY OPERATIONS</span>
-            <h2 id="dashboard-operations">Latest activity</h2>
-          </div>
-        </div>
+                  <p>Items currently waiting for action</p>
+                </div>
 
-        <div className="dashboard-panels">
-          <section className="mgmt-panel dashboard-orders-panel">
-            <div className="mgmt-panel-header">
-              <div>
-                <span className="dashboard-chart-eyebrow">TRANSACTIONS</span>
-                <h3>Recent orders</h3>
+                <CircleAlert size={20} aria-hidden="true" />
               </div>
 
-              <button
-                type="button"
-                className="dashboard-text-link"
-                onClick={() => navigate("/management/orders")}
-              >
-                View all
-                <ArrowRight size={15} aria-hidden="true" />
-              </button>
-            </div>
-
-            <div className="responsive-table">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Order</th>
-                    <th>Customer</th>
-                    <th>Source</th>
-                    <th>Status</th>
-                    <th>Total</th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {allOrders.slice(0, 6).map((order) => (
-                    <tr key={order.id}>
-                      <td data-label="Order">
-                        <span className="table-primary">{order.id}</span>
-                      </td>
-
-                      <td data-label="Customer">{order.customer}</td>
-
-                      <td data-label="Source">{order.source || "Online"}</td>
-
-                      <td data-label="Status">
-                        <span
-                          className={`status-pill ${statusClass(order.status)}`}
-                        >
-                          {order.status}
-                        </span>
-                      </td>
-
-                      <td data-label="Total">
-                        <strong>{money(order.total)}</strong>
-                      </td>
-                    </tr>
-                  ))}
-
-                  {!allOrders.length && (
-                    <tr>
-                      <td colSpan={5}>No orders yet.</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </section>
-
-          <section className="mgmt-panel dashboard-alert-panel">
-            <div className="mgmt-panel-header">
-              <div>
-                <span className="dashboard-chart-eyebrow">FOLLOW-UP</span>
-                <h3>Needs attention</h3>
-              </div>
-
-              <button
-                type="button"
-                className="dashboard-text-link"
-                onClick={() => navigate("/management/notifications")}
-              >
-                {unread} unread
-                <ArrowRight size={15} aria-hidden="true" />
-              </button>
-            </div>
-
-            <div className="dashboard-alert-list">
-              {notifications
-                .filter((item) => !item.read)
-                .slice(0, 5)
-                .map((item) => (
-                  <article key={item.id}>
+              {needsAttention.length ? (
+                <div className="live-dashboard__attention-list">
+                  {needsAttention.map((item) => (
                     <div
-                      className={`alert-dot ${
-                        item.priority === "High" ? "high" : ""
-                      }`}
-                    />
+                      key={item.label}
+                      className="live-dashboard__attention-item"
+                    >
+                      <span>{item.label}</span>
 
-                    <div>
-                      <strong>{item.title}</strong>
-                      <p>{item.message}</p>
-                      <small>{item.time}</small>
+                      <strong>{number(item.value)}</strong>
+
+                      {item.to && (
+                        <Link to={item.to} aria-label={`Open ${item.label}`}>
+                          <ArrowRight size={17} />
+                        </Link>
+                      )}
                     </div>
-                  </article>
-                ))}
+                  ))}
+                </div>
+              ) : (
+                <div className="live-dashboard__attention-empty">
+                  <CheckCircle2 size={26} />
 
-              {!unread && (
-                <div className="dashboard-chart-empty">
-                  <ClipboardList size={23} aria-hidden="true" />
-                  <strong>All caught up</strong>
-                  <span>No unread alerts.</span>
+                  <strong>No pending items in the connected records</strong>
+
+                  <span>Refresh the dashboard to check for updates.</span>
                 </div>
               )}
-            </div>
-          </section>
-        </div>
-      </section>
+
+              {permissions.sales && (
+                <p className="live-dashboard__footnote">
+                  Pending order value:{" "}
+                  {money(data.orders.awaitingPaymentAmount)}. This is not
+                  collected revenue.
+                </p>
+              )}
+            </section>
+          </div>
+
+          {(permissions.sales || permissions.services) && (
+            <section
+              className="live-dashboard__panel"
+              aria-labelledby="breakdown-heading"
+            >
+              <div className="live-dashboard__panel-heading">
+                <div>
+                  <h2 id="breakdown-heading">Status overview</h2>
+
+                  <p>Current status of every saved record</p>
+                </div>
+              </div>
+
+              <div className="live-dashboard__breakdowns">
+                {permissions.sales && (
+                  <StatusBreakdown title="Orders" summary={data.orders} />
+                )}
+
+                {permissions.services && (
+                  <StatusBreakdown
+                    title="Service requests"
+                    summary={data.services}
+                  />
+                )}
+              </div>
+            </section>
+          )}
+
+          <div className="live-dashboard__columns live-dashboard__columns-bottom">
+            <RecentRecords records={data.recentRecords} />
+
+            {permissions.services && (
+              <UpcomingServices items={data.upcomingServices} />
+            )}
+          </div>
+
+          <footer className="live-dashboard__footer">
+            <TrendingUp size={16} />
+            Data updates when you refresh and automatically while this tab is
+            open (every 60 seconds). Payment totals use only records marked
+            PAID.
+          </footer>
+        </>
+      )}
     </div>
   );
 }

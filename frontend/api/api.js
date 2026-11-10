@@ -22,9 +22,21 @@ api.interceptors.response.use(
     const originalRequest = error.config;
     const requestUrl = String(originalRequest?.url || "");
 
-    const shouldSkipRefresh = noRefreshEndpoints.some((endpoint) =>
-      requestUrl.includes(endpoint),
-    );
+    // A revoked or expired Management cookie must also close the Management UI.
+    // Incorrect passwords during login/reauthentication are not session-expiry events.
+    if (
+      error.response?.status === 401 &&
+      requestUrl.includes("/api/management/") &&
+      !requestUrl.includes("/auth/login") &&
+      !requestUrl.includes("/auth/reauthenticate") &&
+      !requestUrl.includes("/auth/logout")
+    ) {
+      window.dispatchEvent(new Event("av-management-session-ended"));
+    }
+
+    const shouldSkipRefresh =
+      requestUrl.includes("/api/management/") ||
+      noRefreshEndpoints.some((endpoint) => requestUrl.includes(endpoint));
 
     if (
       error.response?.status !== 401 ||

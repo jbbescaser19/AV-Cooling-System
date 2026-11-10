@@ -1,6 +1,47 @@
 import { z } from "zod";
+import { parseBookingStart } from "../scheduling/bookingScheduleValidator.js";
 
 const actionSchema = z.enum(["edit", "cancel", "delete"]);
+
+const purchasedAirconSchema = z.strictObject({
+  source: z.literal("PURCHASED"),
+  orderItemId: z.number().int().positive(),
+});
+
+const customerOwnedAirconSchema = z.strictObject({
+  source: z.literal("CUSTOMER_OWNED"),
+  brand: z.string().trim().min(2).max(100),
+  model: z.string().trim().min(2).max(150),
+  horsepower: z
+    .number()
+    .min(0.5)
+    .max(20)
+    .refine(
+      (value) => Math.abs(value * 10 - Math.round(value * 10)) < 1e-8,
+      "Enter horsepower using one decimal place at most.",
+    ),
+});
+
+const newServiceSchema = z.strictObject({
+  serviceType: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .regex(/^[a-z][a-z0-9-]{1,39}$/),
+  preferredDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  preferredTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+  serviceAddress: z.string().trim().min(5).max(2000),
+  destinationAddress: z.string().trim().max(2000).nullable().optional(),
+  concern: z.string().trim().max(3000).optional(),
+  notes: z.string().trim().max(3000).optional(),
+  aircon: z
+    .discriminatedUnion("source", [
+      purchasedAirconSchema,
+      customerOwnedAirconSchema,
+    ])
+    .nullable()
+    .optional(),
+});
 
 const revisionSchema = z.strictObject({
   revision: z.number().int().nonnegative(),
@@ -49,25 +90,25 @@ function parsePositiveId(value, message, status = 400) {
 }
 
 function parsePreferredStart(date, time) {
-  const [year, month, day] = date.split("-").map(Number);
-  const calendarDate = new Date(Date.UTC(year, month - 1, day));
+  return parseBookingStart(`${date}T${time}`).sql;
+}
 
-  if (
-    year < 1000 ||
-    year > 9999 ||
-    Number.isNaN(calendarDate.getTime()) ||
-    calendarDate.toISOString().slice(0, 10) !== date
-  ) {
-    throw validationError("Choose a valid preferred date.");
+export function validateNewServiceRequest(input) {
+  const parsed = newServiceSchema.safeParse(input);
+
+  if (!parsed.success) {
+    throw validationError(
+      parsed.error.issues[0]?.message || "Check the service request details.",
+    );
   }
 
-  const requestedAt = Date.parse(`${date}T${time}:00+08:00`);
+  const data = parsed.data;
 
-  if (!Number.isFinite(requestedAt) || requestedAt <= Date.now()) {
-    throw validationError("Choose a future date and time (Philippine time).");
+  if (!data.aircon) {
+    throw validationError("Select the air conditioner for this service.");
   }
 
-  return `${date} ${time}:00`;
+  return data;
 }
 
 export function validateCustomerUserId(userId) {

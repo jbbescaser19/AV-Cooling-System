@@ -1,21 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import ProductRail from "../ecommerce/ProductRail";
-import {
-  readCatalogBrands,
-  readCatalogProducts,
-} from "../../utils/catalogStore";
+import { readCatalogBrands } from "../../utils/catalogStore";
+import useStorefrontCatalog from "../../hooks/useStorefrontCatalog";
 import "../../styles/home/products.css";
 export default function ProductsSection() {
-  const [catalog, setCatalog] = useState(() => readCatalogProducts());
+  const { products: catalog, status } = useStorefrontCatalog();
 
   const brands = useMemo(() => readCatalogBrands(catalog), [catalog]);
 
   const [active, setActive] = useState(() => brands[0] || "");
-  useEffect(() => {
-    const refresh = () => setCatalog(readCatalogProducts());
-    window.addEventListener("av-management-updated", refresh);
-    return () => window.removeEventListener("av-management-updated", refresh);
-  }, []);
 
   const go = (brand) => {
     setActive(brand);
@@ -38,6 +31,11 @@ export default function ProductsSection() {
             cards on phones.
           </p>
         </div>
+        {status === "error" && (
+          <p role="alert">
+            Availability is temporarily unavailable. Please try again later.
+          </p>
+        )}
         <div className="brand-tabs">
           {brands.map((b) => (
             <button

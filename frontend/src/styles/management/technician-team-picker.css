@@ -1,0 +1,47 @@
+.av-team-picker {
+  min-width: 0;
+  margin: 12px 0;
+  padding: 14px;
+  border: 1px solid rgba(107, 132, 161, 0.35);
+  border-radius: 12px;
+}
+.av-team-picker legend {
+  padding: 0 6px;
+  font-weight: 700;
+}
+.av-team-picker__hint {
+  margin: 6px 0 10px;
+  font-size: 0.83rem;
+  line-height: 1.45;
+  opacity: 0.78;
+}
+.av-team-picker__choices {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+  gap: 8px;
+}
+.av-team-picker__choice {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  border: 1px solid rgba(107, 132, 161, 0.23);
+  border-radius: 8px;
+  padding: 9px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+.av-team-picker__choice input {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+.av-team-picker__choice:has(input:checked) {
+  background: rgba(66, 146, 210, 0.12);
+  border-color: rgba(66, 146, 210, 0.5);
+}
+@media (max-width: 420px) {
+  .av-team-picker__choices {
+    grid-template-columns: 1fr;
+  }
+}

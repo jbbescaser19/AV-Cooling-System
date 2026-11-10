@@ -1,218 +1,636 @@
-import { useEffect, useMemo, useState } from "react";
-import { Eye, Search, X, CheckCircle2 } from "lucide-react";
-import { orders as seedOrders } from "../../data/mockManagement";
-import { getPosOrders } from "../../utils/managementStore";
-import { loadMock, saveMock } from "../../utils/prototypeStore";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import {
+  ArrowRight,
+  CalendarDays,
+  MapPin,
+  Package,
+  Phone,
+  RefreshCw,
+  Search,
+  X,
+} from "lucide-react";
 
-const KEY = "av_managed_orders";
-const money = (v) => `₱${Number(v || 0).toLocaleString("en-PH")}`;
-const statusClass = (s) => {
-  const v = String(s || "").toLowerCase();
-  if (v.includes("complete") || v.includes("delivered") || v.includes("ready"))
-    return "success";
-  if (v.includes("pending") || v.includes("processing")) return "warning";
-  if (v.includes("cancel") || v.includes("failed")) return "danger";
-  return "info";
-};
-const nextStatus = (order) => {
-  const pickup = ["Processing", "Ready for Pickup", "Picked Up", "Completed"];
-  const delivery = [
-    "Pending Payment",
-    "Processing",
-    "Out for Delivery",
-    "Delivered",
-    "Completed",
-  ];
-  const flow = String(order.type).toLowerCase().includes("pickup")
-    ? pickup
-    : delivery;
-  const i = flow.indexOf(order.status);
-  return flow[Math.min(i < 0 ? 1 : i + 1, flow.length - 1)];
-};
+import api from "../../../api/api.js";
+import AvailabilityPicker from "../../components/scheduling/AvailabilityPicker";
+import TechnicianTeamPicker from "../../components/management/TechnicianTeamPicker";
+import SourceTeamPanel from "../../components/management/SourceTeamPanel";
+import { getStaff } from "../../utils/authMock";
+import "../../styles/management/sales-live.css";
+
+const money = (value) =>
+  new Intl.NumberFormat("en-PH", {
+    style: "currency",
+    currency: "PHP",
+  }).format(Number(value) || 0);
+
+function showDate(value) {
+  if (!value) return "—";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "—" : date.toLocaleString("en-PH");
+}
+
+function getPhoneHref(raw) {
+  const phone = String(raw || "").replace(/[^\d+]/g, "");
+  const digits = phone.replace(/\D/g, "");
+  return digits.length >= 7 && digits.length <= 15 ? `tel:${phone}` : null;
+}
+
+function nextOnlineEvent(order) {
+  if (order?.channel !== "ONLINE") return null;
+  if (order.status === "PENDING") return ["ORDER_ACCEPTED", "Accept order"];
+  if (order.status === "CONFIRMED")
+    return ["INSTALLATION_SCHEDULED", "Schedule installation"];
+  if (order.status === "SCHEDULED")
+    return ["ORDER_OUT_FOR_DELIVERY", "Out for delivery"];
+  if (order.status === "IN_PROGRESS") {
+    if (!order.delivered) return ["ORDER_DELIVERED", "Mark delivered"];
+    if (!order.installationStarted)
+      return ["INSTALLATION_STARTED", "Start installation"];
+    return ["INSTALLATION_COMPLETED", "Complete installation"];
+  }
+  return null;
+}
 
 export default function OrdersPage() {
-  const [posOrders, setPosOrders] = useState(() => getPosOrders());
-  const [seed, setSeed] = useState(() => loadMock(KEY, seedOrders));
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
   const [search, setSearch] = useState("");
-  const [selected, setSelected] = useState(null);
+  const [channel, setChannel] = useState("ALL");
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [refresh, setRefresh] = useState(0);
+  const [details, setDetails] = useState(null);
+  const [detailsLoading, setDetailsLoading] = useState(false);
+  const [detailsError, setDetailsError] = useState("");
+  const [schedule, setSchedule] = useState("");
+  const [note, setNote] = useState("");
+  const [technicianIds, setTechnicianIds] = useState([]);
+  const [sourceJobs, setSourceJobs] = useState([]);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const modalRef = useRef(null);
+
+  const rawOrderId = searchParams.get("orderId");
+  const orderId =
+    rawOrderId && /^[1-9]\d*$/.test(rawOrderId) ? Number(rawOrderId) : null;
+
+  function closeDetails() {
+    if (busy) return;
+    setSearchParams((previous) => {
+      const next = new URLSearchParams(previous);
+      next.delete("orderId");
+      return next;
+    });
+  }
+
   useEffect(() => {
-    const refresh = () => setPosOrders(getPosOrders());
-    window.addEventListener("av-management-updated", refresh);
-    window.addEventListener("storage", refresh);
+    const controller = new AbortController();
+    setLoading(true);
+    api
+      .get("/api/management/sales/orders", { signal: controller.signal })
+      .then(({ data }) => {
+        if (!controller.signal.aborted) {
+          setOrders(Array.isArray(data.orders) ? data.orders : []);
+          setError("");
+        }
+      })
+      .catch((requestError) => {
+        if (!controller.signal.aborted) {
+          setError(
+            requestError.response?.data?.message || "Unable to load orders.",
+          );
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
+  }, [refresh]);
+
+  useEffect(() => {
+    if (!orderId || !Number.isSafeInteger(orderId)) {
+      setDetails(null);
+      setDetailsError("");
+      return;
+    }
+    const controller = new AbortController();
+    setDetails(null);
+    setDetailsError("");
+    setDetailsLoading(true);
+    api
+      .get(`/api/management/sales/orders/${orderId}`, {
+        signal: controller.signal,
+      })
+      .then(({ data }) => {
+        if (!controller.signal.aborted) {
+          setDetails(data.order || null);
+          setSchedule(data.order?.schedule || "");
+          setNote("");
+          setTechnicianIds([]);
+          setSourceJobs([]);
+        }
+      })
+      .catch((requestError) => {
+        if (!controller.signal.aborted) {
+          setDetailsError(
+            requestError.response?.data?.message ||
+              "Cannot load this order's details.",
+          );
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setDetailsLoading(false);
+      });
+    return () => controller.abort();
+  }, [orderId, refresh]);
+
+  useEffect(() => {
+    if (!orderId) return undefined;
+    const oldOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    modalRef.current?.focus();
+    function onKeyDown(event) {
+      if (event.key === "Escape" && !busy) closeDetails();
+    }
+    document.addEventListener("keydown", onKeyDown);
     return () => {
-      window.removeEventListener("av-management-updated", refresh);
-      window.removeEventListener("storage", refresh);
+      document.body.style.overflow = oldOverflow;
+      document.removeEventListener("keydown", onKeyDown);
     };
-  }, []);
-  const all = useMemo(() => [...posOrders, ...seed], [posOrders, seed]);
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return !q
-      ? all
-      : all.filter((o) => Object.values(o).join(" ").toLowerCase().includes(q));
-  }, [all, search]);
-  const advance = (order) => {
-    if (order.source === "POS") return;
-    const next = seed.map((x) =>
-      x.id === order.id ? { ...x, status: nextStatus(x) } : x,
-    );
-    setSeed(next);
-    saveMock(KEY, next);
-  };
+    // closeDetails is intentionally derived from the current URL and busy state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderId, busy]);
+
+  const filtered = useMemo(
+    () =>
+      orders.filter(
+        (row) =>
+          (channel === "ALL" || row.channel === channel) &&
+          `${row.reference} ${row.customer} ${row.status} ${row.channel}`
+            .toLowerCase()
+            .includes(search.toLowerCase().trim()),
+      ),
+    [orders, channel, search],
+  );
+
+  const listRow = orders.find((item) => Number(item.id) === orderId);
+  const selected = details ? { ...listRow, ...details } : listRow;
+  const canApprove = ["OWNER", "MANAGER"].includes(getStaff()?.role);
+  const action = selected && canApprove ? nextOnlineEvent(selected) : null;
+  const cancelCode =
+    selected?.status === "PENDING"
+      ? "ORDER_DECLINED"
+      : "ORDER_CANCELLED_BY_STAFF";
+  const needsFieldWork =
+    details?.fulfillment === "DELIVERY" ||
+    details?.items?.some((item) => Boolean(Number(item.installationIncluded)));
+  const mayCancel =
+    canApprove &&
+    selected?.channel === "ONLINE" &&
+    selected.paymentStatus === "PENDING" &&
+    ["PENDING", "CONFIRMED", "SCHEDULED"].includes(selected.status);
+
+  async function apply(eventCode, label, reason = "") {
+    if (!details || !selected || busy) return;
+    if (
+      (eventCode === "INSTALLATION_SCHEDULED" ||
+        (eventCode === "ORDER_ACCEPTED" && needsFieldWork)) &&
+      !schedule
+    ) {
+      setError("Please choose an installation date and time.");
+      return;
+    }
+    if (
+      ["ORDER_CANCELLED_BY_STAFF", "ORDER_DECLINED"].includes(eventCode) &&
+      reason.trim().length < 5
+    ) {
+      setError("Please enter a reason with at least 5 characters.");
+      return;
+    }
+    const startingType =
+      eventCode === "ORDER_OUT_FOR_DELIVERY" &&
+      details.fulfillment === "DELIVERY"
+        ? "DELIVERY"
+        : eventCode === "INSTALLATION_STARTED" &&
+            needsFieldWork &&
+            details.items?.some((item) =>
+              Boolean(Number(item.installationIncluded)),
+            )
+          ? "INSTALLATION"
+          : null;
+    if (
+      startingType &&
+      !sourceJobs.some(
+        (job) =>
+          job.type === startingType &&
+          ["ASSIGNED", "IN_PROGRESS"].includes(job.status) &&
+          job.members?.length > 0,
+      )
+    ) {
+      setError(
+        `Assign a technician team to ${startingType.toLowerCase()} below before starting work.`,
+      );
+      return;
+    }
+    if (!window.confirm(`${label} for ${selected.reference}?`)) return;
+    setBusy(true);
+    setError("");
+    setSuccess("");
+    try {
+      const { data } = await api.post(
+        `/api/management/orders/${encodeURIComponent(selected.reference)}/events`,
+        {
+          requestKey: crypto.randomUUID(),
+          eventCode,
+          schedule: ["ORDER_ACCEPTED", "INSTALLATION_SCHEDULED"].includes(
+            eventCode,
+          )
+            ? schedule || null
+            : null,
+          technicianIds: eventCode === "ORDER_ACCEPTED" ? technicianIds : [],
+          note: reason.trim(),
+        },
+      );
+      if (!data.success) throw new Error("The order update was not confirmed.");
+      setSuccess(
+        eventCode === "ORDER_ACCEPTED"
+          ? `Order confirmed. ${data.workOrders?.length || 0} job(s) created.${technicianIds.length ? " Team assigned." : " You can assign the team from this order page before work starts."}`
+          : `${label} recorded for ${selected.reference}.`,
+      );
+      closeDetails();
+      setRefresh((count) => count + 1);
+      window.dispatchEvent(new Event("av-management-updated"));
+    } catch (requestError) {
+      setError(
+        requestError.response?.data?.message ||
+          requestError.message ||
+          "Could not update the order.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const phone = details?.phone?.trim() || "";
+  const phoneHref = getPhoneHref(phone);
+
   return (
-    <>
-      <div className="mgmt-page-head">
+    <div className="sales-ui">
+      <header className="sales-hero">
         <div>
-          <h1>Orders</h1>
+          <span className="sales-kicker">
+            <Package size={17} /> ORDERS
+          </span>
+          <h1>All orders</h1>
           <p>
-            Process online, pickup, delivery, service, and cashier-created
-            walk-in orders in one queue.
+            Online, Facebook Messenger and walk-in POS sales saved in MySQL.
           </p>
         </div>
-      </div>
-      <section className="mgmt-panel">
-        <div className="mgmt-panel-header orders-toolbar">
-          <div>
-            <h2>All Orders</h2>
-            <span className="badge badge-blue">{all.length} records</span>
-          </div>
-          <label className="mgmt-search-box">
-            <Search size={16} />
+        <button
+          className="sales-refresh"
+          type="button"
+          disabled={loading || busy}
+          onClick={() => setRefresh((count) => count + 1)}
+        >
+          <RefreshCw size={17} /> Refresh
+        </button>
+      </header>
+
+      {error && (
+        <p role="alert" className="sales-error">
+          {error}
+        </p>
+      )}
+      {success && (
+        <p role="status" className="sales-success">
+          {success}
+        </p>
+      )}
+
+      <section className="sales-panel" aria-label="Order records">
+        <div className="sales-section-head">
+          <h2>Order records</h2>
+          <span>{filtered.length} shown</span>
+        </div>
+        <div className="sales-filters">
+          <label className="sales-search">
+            <Search size={17} />
             <input
+              placeholder="Search orders and customers"
+              aria-label="Search orders"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search order, customer, source..."
+              onChange={(event) => setSearch(event.target.value)}
             />
           </label>
+          <select
+            aria-label="Filter by channel"
+            value={channel}
+            onChange={(event) => setChannel(event.target.value)}
+          >
+            <option value="ALL">All channels</option>
+            <option value="ONLINE">Online</option>
+            <option value="FACEBOOK">Facebook</option>
+            <option value="POS">Walk-in POS</option>
+          </select>
         </div>
-        <div className="responsive-table">
-          <table>
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Customer</th>
-                <th>Source</th>
-                <th>Type</th>
-                <th>Status</th>
-                <th>Payment</th>
-                <th>Total</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((o) => (
-                <tr key={o.id}>
-                  <td data-label="Order">
-                    <span className="table-primary">{o.id}</span>
-                    <span className="table-secondary">
-                      {o.createdAt || "Mock order"}
-                    </span>
-                  </td>
-                  <td data-label="Customer">{o.customer}</td>
-                  <td data-label="Source">
-                    <span className="status-pill info">
-                      {o.source || "Online"}
-                    </span>
-                  </td>
-                  <td data-label="Type">{o.type}</td>
-                  <td data-label="Status">
-                    <span className={`status-pill ${statusClass(o.status)}`}>
-                      {o.status}
-                    </span>
-                  </td>
-                  <td data-label="Payment">
-                    {o.paymentMethod
-                      ? `${o.payment} · ${o.paymentMethod}`
-                      : o.payment}
-                  </td>
-                  <td data-label="Total">
-                    <strong>{money(o.total)}</strong>
-                  </td>
-                  <td data-label="Actions">
-                    <div className="action-row">
-                      <button title="View" onClick={() => setSelected(o)}>
-                        <Eye />
-                      </button>
-                      {o.source !== "POS" && o.status !== "Completed" && (
-                        <button
-                          className="action-primary"
-                          title="Advance order status"
-                          onClick={() => advance(o)}
-                        >
-                          <CheckCircle2 />
-                        </button>
-                      )}
-                    </div>
-                  </td>
+        {loading ? (
+          <p className="sales-empty" role="status">
+            Loading orders…
+          </p>
+        ) : !filtered.length ? (
+          <p className="sales-empty">No matching orders found.</p>
+        ) : (
+          <div className="sales-table-scroll">
+            <table className="sales-table">
+              <thead>
+                <tr>
+                  <th>Order</th>
+                  <th>Customer</th>
+                  <th>Source</th>
+                  <th>Status</th>
+                  <th>Payment</th>
+                  <th>Total</th>
+                  <th>Date</th>
+                  <th>Action</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {filtered.map((row) => (
+                  <tr key={row.id}>
+                    <td>
+                      <strong>{row.reference}</strong>
+                    </td>
+                    <td>{row.customer}</td>
+                    <td>{row.channel}</td>
+                    <td>
+                      <span
+                        className={`sales-pill is-${String(row.status).toLowerCase()}`}
+                      >
+                        {row.status}
+                      </span>
+                    </td>
+                    <td>
+                      <span
+                        className={`sales-pill is-${String(row.paymentStatus).toLowerCase()}`}
+                      >
+                        {row.paymentStatus}
+                      </span>
+                    </td>
+                    <td>
+                      <strong>{money(row.total)}</strong>
+                    </td>
+                    <td>{showDate(row.createdAt)}</td>
+                    <td>
+                      <button
+                        type="button"
+                        className="sales-small-action"
+                        onClick={() =>
+                          setSearchParams((previous) => {
+                            const next = new URLSearchParams(previous);
+                            next.set("orderId", String(row.id));
+                            return next;
+                          })
+                        }
+                      >
+                        View / Manage <ArrowRight size={15} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
-      {selected && (
+
+      {orderId && (
         <div
-          className="mgmt-dialog-backdrop"
-          onMouseDown={(e) => e.target === e.currentTarget && setSelected(null)}
+          className="sales-overlay"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) closeDetails();
+          }}
         >
-          <section className="mgmt-dialog">
-            <div className="mgmt-dialog-head">
-              <div>
-                <span>Order Details</span>
-                <h2>{selected.id}</h2>
-              </div>
-              <button onClick={() => setSelected(null)}>
+          <section
+            className="sales-panel sales-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="order-detail-title"
+            tabIndex={-1}
+            ref={modalRef}
+          >
+            <div className="sales-section-head">
+              <h2 id="order-detail-title">
+                {selected?.reference || `Order #${orderId}`}
+              </h2>
+              <button
+                className="sales-small-action"
+                type="button"
+                onClick={closeDetails}
+                disabled={busy}
+                aria-label="Close order details"
+              >
                 <X size={18} />
               </button>
             </div>
-            <div className="order-detail-grid">
-              <div>
-                <span>Customer</span>
-                <strong>{selected.customer}</strong>
-              </div>
-              <div>
-                <span>Source</span>
-                <strong>{selected.source || "Online"}</strong>
-              </div>
-              <div>
-                <span>Type</span>
-                <strong>{selected.type}</strong>
-              </div>
-              <div>
-                <span>Status</span>
-                <strong>{selected.status}</strong>
-              </div>
-              <div>
-                <span>Payment</span>
-                <strong>{selected.paymentMethod || selected.payment}</strong>
-              </div>
-              <div>
-                <span>Total</span>
-                <strong>{money(selected.total)}</strong>
-              </div>
-            </div>
-            {selected.items?.length ? (
-              <div className="order-detail-items">
-                <h3>Items</h3>
-                {selected.items.map((item) => (
-                  <div key={item.key}>
-                    <span>
-                      {item.qty} × {item.name}{" "}
-                      {item.detail ? `· ${item.detail}` : ""}
-                    </span>
-                    <strong>{money(item.price * item.qty)}</strong>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="muted">
-                Example seeded order. Detailed line items can be added later
-                from the backend.
+            {detailsLoading && <p role="status">Loading order details…</p>}
+            {detailsError && (
+              <p role="alert" className="sales-error">
+                {detailsError}
               </p>
+            )}
+            {details && (
+              <>
+                <p>
+                  <strong>Customer:</strong> {details.customer}
+                </p>
+                <p>
+                  <strong>Source:</strong>{" "}
+                  {details.channel === "FACEBOOK"
+                    ? "Facebook Messenger"
+                    : details.channel}
+                </p>
+                <p>
+                  <strong>Contact number:</strong>{" "}
+                  {phoneHref ? (
+                    <a href={phoneHref}>{phone}</a>
+                  ) : (
+                    phone || "Not provided"
+                  )}
+                </p>
+                <p>
+                  <Phone size={15} aria-hidden="true" /> The contact number is
+                  saved from the original order or staff-entered Facebook
+                  agreement.
+                </p>
+                <p>
+                  <strong>Delivery / pickup:</strong>{" "}
+                  {details.fulfillment || "—"}
+                </p>
+                <p>
+                  <MapPin size={15} aria-hidden="true" />{" "}
+                  <strong>Address:</strong> {details.address || "Not provided"}
+                </p>
+                <p>
+                  <CalendarDays size={15} aria-hidden="true" />{" "}
+                  <strong>Ordered:</strong> {showDate(details.createdAt)}
+                </p>
+                <div className="sales-totals">
+                  <span>Order status</span>
+                  <strong>{details.status}</strong>
+                </div>
+                <div className="sales-totals">
+                  <span>Payment status</span>
+                  <strong>{details.paymentStatus}</strong>
+                </div>
+                <div className="sales-totals sales-total">
+                  <span>Total</span>
+                  <strong>{money(details.total)}</strong>
+                </div>
+                <h3>Order items</h3>
+                {!details.items?.length ? (
+                  <p>No order items recorded.</p>
+                ) : (
+                  details.items.map((item, index) => (
+                    <div
+                      className="sales-totals"
+                      key={`${item.name}-${item.model}-${index}`}
+                    >
+                      <span>
+                        {item.quantity} × {item.name} · {item.model}
+                      </span>
+                      <strong>{money(item.lineTotal)}</strong>
+                    </div>
+                  ))
+                )}
+                {needsFieldWork &&
+                  !["PENDING", "CANCELLED"].includes(details.status) && (
+                    <SourceTeamPanel
+                      key={`ORDER-${details.id}`}
+                      kind="ORDER"
+                      sourceId={details.id}
+                      onJobsChange={setSourceJobs}
+                    />
+                  )}
+                {details.channel === "FACEBOOK" && (
+                  <p className="sales-note">
+                    Facebook cash collection stays under{" "}
+                    <Link to="/management/payments">Payments</Link>. Technicians
+                    are assigned right here.
+                  </p>
+                )}
+                {details.channel === "POS" && needsFieldWork && (
+                  <p className="sales-note">
+                    POS installation workers can be changed directly above.
+                  </p>
+                )}
+                {action && (
+                  <div className="sales-step">
+                    <h3>Next step: {action[1]}</h3>
+                    {["ORDER_ACCEPTED", "INSTALLATION_SCHEDULED"].includes(
+                      action[0],
+                    ) &&
+                      needsFieldWork && (
+                        <AvailabilityPicker
+                          value={schedule}
+                          onChange={setSchedule}
+                          disabled={busy}
+                          allowExistingValue
+                          label="Select an available installation appointment"
+                        />
+                      )}
+                    {action[0] === "ORDER_ACCEPTED" && needsFieldWork && (
+                      <TechnicianTeamPicker
+                        value={technicianIds}
+                        onChange={setTechnicianIds}
+                        disabled={busy}
+                      />
+                    )}
+                    {action &&
+                      [
+                        "ORDER_OUT_FOR_DELIVERY",
+                        "INSTALLATION_STARTED",
+                      ].includes(action[0]) &&
+                      needsFieldWork &&
+                      !sourceJobs.length && (
+                        <p className="sales-note">
+                          Assign the technician team above before starting field
+                          work.
+                        </p>
+                      )}
+                    <button
+                      className="sales-primary"
+                      type="button"
+                      disabled={
+                        busy ||
+                        (action[0] === "ORDER_OUT_FOR_DELIVERY" &&
+                          details.fulfillment === "DELIVERY" &&
+                          !sourceJobs.some(
+                            (job) =>
+                              job.type === "DELIVERY" &&
+                              ["ASSIGNED", "IN_PROGRESS"].includes(
+                                job.status,
+                              ) &&
+                              job.members?.length,
+                          )) ||
+                        (action[0] === "INSTALLATION_STARTED" &&
+                          details.items?.some((item) =>
+                            Boolean(Number(item.installationIncluded)),
+                          ) &&
+                          !sourceJobs.some(
+                            (job) =>
+                              job.type === "INSTALLATION" &&
+                              ["ASSIGNED", "IN_PROGRESS"].includes(
+                                job.status,
+                              ) &&
+                              job.members?.length,
+                          ))
+                      }
+                      onClick={() => apply(action[0], action[1])}
+                    >
+                      {busy
+                        ? "Saving…"
+                        : action[0] === "ORDER_ACCEPTED"
+                          ? "Confirm & create work orders"
+                          : action[1]}
+                    </button>
+                  </div>
+                )}
+                {mayCancel && (
+                  <div className="sales-step sales-danger-zone">
+                    <h3>
+                      {selected.status === "PENDING"
+                        ? "Decline order"
+                        : "Cancel order"}
+                    </h3>
+                    <label>
+                      Reason (required)
+                      <textarea
+                        rows={2}
+                        maxLength={1000}
+                        value={note}
+                        onChange={(event) => setNote(event.target.value)}
+                      />
+                    </label>
+                    <button
+                      className="sales-danger"
+                      type="button"
+                      disabled={busy || note.trim().length < 5}
+                      onClick={() =>
+                        apply(cancelCode, "Cancel or decline order", note)
+                      }
+                    >
+                      {selected.status === "PENDING"
+                        ? "Decline order"
+                        : "Cancel order"}
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </section>
         </div>
       )}
-    </>
+    </div>
   );
 }

@@ -10,7 +10,7 @@ const links = [
   ["Our Products", "/#products"],
   ["Why Partner With Us", "/#why-us"],
   ["Our Foundation", "/#foundation"],
-  ["Client Feedback", "/#feedback"],
+  ["Client Feedback", "/reviews"],
   ["Contact", "/#contact"],
 ];
 

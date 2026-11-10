@@ -1,0 +1,175 @@
+.technician-jobs {
+  margin-bottom: 22px;
+  padding: 22px;
+}
+
+.technician-jobs__heading,
+.technician-jobs__title,
+.technician-jobs__actions,
+.technician-jobs__card,
+.technician-jobs__card-actions,
+.technician-jobs__complete-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.technician-jobs__heading {
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+.technician-jobs__heading h2 {
+  margin: 5px 0 4px;
+}
+.technician-jobs__heading p {
+  margin: 0;
+  color: var(--text-secondary, #64748b);
+}
+.technician-jobs__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+}
+.technician-jobs__count {
+  background: #e8f4ff;
+  color: #13588b;
+  padding: 6px 10px;
+  border-radius: 20px;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 700;
+}
+.technician-jobs__list {
+  display: grid;
+  gap: 12px;
+}
+.technician-jobs__card {
+  align-items: flex-start;
+  flex-wrap: wrap;
+  padding: 16px;
+  border: 1px solid #dbe5ef;
+  border-radius: 14px;
+  background: #fff;
+}
+.technician-jobs__card-main {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+.technician-jobs__title {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+.technician-jobs__card-main p {
+  margin: 8px 0 5px;
+}
+.technician-jobs__card-main small {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  color: #64748b;
+}
+.technician-jobs__status {
+  display: inline-flex;
+  border-radius: 18px;
+  padding: 4px 9px;
+  font-size: 11px;
+  font-weight: 700;
+  background: #f1f5f9;
+  color: #475569;
+}
+.technician-jobs__status--assigned {
+  background: #e0f2fe;
+  color: #075985;
+}
+.technician-jobs__status--in_progress {
+  background: #fff0cb;
+  color: #92400e;
+}
+.technician-jobs__status--completed {
+  background: #dcfce7;
+  color: #166534;
+}
+.technician-jobs__card-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.technician-jobs__card-actions button,
+.technician-jobs__complete-actions button,
+.technician-jobs__actions button {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+}
+.technician-jobs__complete {
+  display: grid;
+  gap: 10px;
+  flex-basis: 100%;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 12px;
+}
+.technician-jobs__complete label {
+  font-weight: 650;
+}
+.technician-jobs__complete textarea {
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  font: inherit;
+  resize: vertical;
+}
+.technician-jobs__complete-actions {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+.technician-jobs__empty {
+  padding: 20px;
+  margin: 0;
+  color: #64748b;
+}
+
+@media (max-width: 640px) {
+  .technician-jobs {
+    padding: 16px;
+  }
+  .technician-jobs__heading,
+  .technician-jobs__card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .technician-jobs__actions,
+  .technician-jobs__card-actions {
+    justify-content: flex-start;
+  }
+  .technician-jobs__card-main {
+    flex-basis: auto;
+  }
+}
+
+.technician-jobs__card-main small {
+  display: flex;
+  overflow-wrap: anywhere;
+  max-width: 100%;
+  margin-top: 5px;
+}
+.technician-jobs__more {
+  margin: 14px 0 0;
+  font-weight: 650;
+}
+
+.technician-jobs__summary-help {
+  margin: 0 0 7px;
+  font-size: 0.84rem;
+  color: #476476;
+  line-height: 1.5;
+}
+.technician-jobs__char-hint {
+  display: block;
+  margin: 7px 0;
+  color: #667b89;
+}

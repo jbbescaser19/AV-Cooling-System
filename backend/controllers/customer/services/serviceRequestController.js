@@ -1,6 +1,8 @@
 import {
   createServiceRequestService,
   getActiveServiceTypesService,
+  getInstallationProductsService,
+  getCustomerAirconPurchasesService,
   getCustomerServiceRequestsService,
 } from "../../../services/customer/services/serviceRequestService.js";
 
@@ -28,6 +30,24 @@ export async function getActiveServiceTypesController(req, res) {
     });
   } catch (error) {
     return sendError(res, error, "getActiveServices");
+  }
+}
+
+export async function getInstallationProductsController(req, res) {
+  try {
+    const products = await getInstallationProductsService(req.auth.userId);
+    return res.status(200).json({ success: true, products });
+  } catch (error) {
+    return sendError(res, error, "getInstallationProducts");
+  }
+}
+
+export async function getCustomerAirconPurchasesController(req, res) {
+  try {
+    const purchases = await getCustomerAirconPurchasesService(req.auth.userId);
+    return res.status(200).json({ success: true, purchases });
+  } catch (error) {
+    return sendError(res, error, "getCustomerAirconPurchases");
   }
 }
 

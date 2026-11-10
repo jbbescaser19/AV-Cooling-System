@@ -1,27 +1,11 @@
-import { z } from "zod";
-
 import connectDB from "../../../utils/dbConn.js";
+import { createCustomerNotification } from "../notification/notificationService.js";
+import { workspaceModel } from "../../../models/management/workspaceModel.js";
 import { serviceRequestModel } from "../../../models/customer/services/serviceRequestModel.js";
-
-const requestSchema = z.strictObject({
-  serviceType: z
-    .string()
-    .trim()
-    .toLowerCase()
-    .regex(/^[a-z][a-z0-9-]{1,39}$/),
-
-  preferredDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-
-  preferredTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
-
-  serviceAddress: z.string().trim().min(5).max(2000),
-
-  destinationAddress: z.string().trim().max(2000).nullable().optional(),
-
-  concern: z.string().trim().max(3000).optional(),
-
-  notes: z.string().trim().max(3000).optional(),
-});
+import { airconPurchaseModel } from "../../../models/customer/services/airconPurchaseModel.js";
+import { validateNewServiceRequest } from "../../../validators/customer/serviceValidator.js";
+import { reserveAppointment } from "../../scheduling/bookingScheduleService.js";
+import { parseBookingStart } from "../../../validators/scheduling/bookingScheduleValidator.js";
 
 function requestError(message, status = 400) {
   const error = new Error(message);
@@ -31,86 +15,91 @@ function requestError(message, status = 400) {
 
 function getUserId(userId) {
   const id = Number(userId);
-
   if (!Number.isSafeInteger(id) || id <= 0) {
     throw requestError("Invalid customer session.", 401);
   }
-
   return id;
 }
 
 function preferredStartForMySQL(date, time) {
-  const [year, month, day] = date.split("-").map(Number);
-
-  const validDate = new Date(Date.UTC(year, month - 1, day));
-
-  if (
-    Number.isNaN(validDate.getTime()) ||
-    validDate.toISOString().slice(0, 10) !== date
-  ) {
-    throw requestError("Select a valid preferred date.");
-  }
-
-  const requestedAt = Date.parse(`${date}T${time}:00+08:00`);
-
-  if (!Number.isFinite(requestedAt) || requestedAt <= Date.now()) {
-    throw requestError("Choose a future preferred date and time.");
-  }
-
-  return `${date} ${time}:00`;
+  return parseBookingStart(`${date}T${time}`).sql;
 }
 
-async function getActiveCustomer(model, userId) {
-  const [rows] = await model.findCustomerByUserId(userId);
-
+async function getActiveCustomer(model, userId, lock = false) {
+  const [rows] = await model.findCustomerByUserId(userId, lock);
   const customer = rows[0];
 
   if (!customer) {
     throw requestError("Customer account not found.", 404);
   }
-
   if (
     customer.userStatus !== "ACTIVE" ||
     customer.customerStatus !== "ACTIVE"
   ) {
     throw requestError("Your customer account is inactive.", 403);
   }
-
   return customer;
 }
 
 export async function getActiveServiceTypesService() {
-  const model = serviceRequestModel(connectDB);
-
-  const [services] = await model.findActiveServices();
-
+  const [services] = await serviceRequestModel(connectDB).findActiveServices();
   return services;
 }
 
+function mapAirconPurchase(item) {
+  const delivered =
+    (item.fulfillmentMethod === "PICKUP" && item.orderStatus === "COMPLETED") ||
+    (item.fulfillmentMethod === "DELIVERY" &&
+      Boolean(Number(item.deliveryConfirmed)));
+  const installationEligible =
+    delivered &&
+    !Boolean(Number(item.installationIncluded)) &&
+    Number(item.installationBookedCount) < Number(item.quantity);
+
+  return {
+    orderItemId: Number(item.orderItemId),
+    orderNumber: item.orderNumber,
+    label: `${item.orderNumber} · ${item.brand} ${item.model} · ${Number(item.horsepower)} HP`,
+    brand: item.brand,
+    model: item.model,
+    horsepower: Number(item.horsepower),
+    delivered,
+    installationIncluded: Boolean(Number(item.installationIncluded)),
+    installationEligible,
+  };
+}
+
+export async function getCustomerAirconPurchasesService(userId) {
+  const customer = await getActiveCustomer(
+    serviceRequestModel(connectDB),
+    getUserId(userId),
+  );
+  const [items] = await airconPurchaseModel(
+    connectDB,
+  ).findCustomerPurchasedUnits(customer.customerId);
+  return items.map(mapAirconPurchase);
+}
+
+// Existing endpoint is retained for older clients, but the new booking form uses /aircon-purchases.
+export async function getInstallationProductsService(userId) {
+  const products = await getCustomerAirconPurchasesService(userId);
+  return products.filter((item) => item.installationEligible);
+}
+
 export async function createServiceRequestService(userId, input) {
-  const parsed = requestSchema.safeParse(input);
-
-  if (!parsed.success) {
-    throw requestError("Invalid service request details.", 400);
-  }
-
-  const data = parsed.data;
-
+  const data = validateNewServiceRequest(input);
   const preferredStart = preferredStartForMySQL(
     data.preferredDate,
     data.preferredTime,
   );
-
   const connection = await connectDB.getConnection();
 
   try {
+    await connection.beginTransaction();
     const model = serviceRequestModel(connection);
-
-    const customer = await getActiveCustomer(model, getUserId(userId));
-
-    // MySQL determines which services exist and are active.
+    // Serializes this customer's concurrent installation submissions.
+    const customer = await getActiveCustomer(model, getUserId(userId), true);
     const [services] = await model.findActiveServiceByCode(data.serviceType);
-
     const selectedService = services[0];
 
     if (!selectedService) {
@@ -119,24 +108,59 @@ export async function createServiceRequestService(userId, input) {
         422,
       );
     }
-
     if (!String(customer.contactNumber ?? "").trim()) {
       throw requestError("Please add a contact number to your account.", 409);
     }
 
     const isRelocation = data.serviceType === "relocation";
-
     const destinationAddress = isRelocation
       ? (data.destinationAddress || "").trim()
       : null;
 
-    if (isRelocation && !destinationAddress) {
+    if (isRelocation && destinationAddress.length < 5) {
       throw requestError("Enter the relocation destination address.");
     }
 
-    // Use the actual service ID and price from the database.
-    const basePrice = String(selectedService.basePrice);
+    let aircon;
+    if (data.aircon.source === "PURCHASED") {
+      const [rows] = await airconPurchaseModel(
+        connection,
+      ).findCustomerPurchasedUnits(
+        customer.customerId,
+        data.aircon.orderItemId,
+      );
+      const item = rows[0] ? mapAirconPurchase(rows[0]) : null;
 
+      if (!item || !item.delivered) {
+        throw requestError(
+          "This aircon purchase is not delivered or is no longer available. Select a delivered purchase or enter a unit you own.",
+          409,
+        );
+      }
+      if (data.serviceType === "installation" && !item.installationEligible) {
+        throw requestError(
+          "Installation is already included or booked for this aircon. Use the installation in your order instead.",
+          409,
+        );
+      }
+      aircon = {
+        source: "PURCHASED",
+        orderItemId: item.orderItemId,
+        brand: item.brand,
+        model: item.model,
+        horsepower: item.horsepower,
+      };
+    } else {
+      aircon = {
+        source: "CUSTOMER_OWNED",
+        orderItemId: null,
+        brand: data.aircon.brand,
+        model: data.aircon.model,
+        horsepower: data.aircon.horsepower,
+      };
+    }
+
+    const basePrice = String(selectedService.basePrice);
     const [result] = await model.createRequest({
       customerId: customer.customerId,
       serviceTypeId: selectedService.serviceTypeId,
@@ -147,7 +171,30 @@ export async function createServiceRequestService(userId, input) {
       destinationAddress,
       concern: data.concern || null,
       notes: data.notes || null,
+      aircon,
     });
+
+    await reserveAppointment(
+      connection,
+      "SERVICE",
+      result.insertId,
+      preferredStart,
+    );
+
+    await createCustomerNotification(
+      connection,
+      userId,
+      "SERVICE_REQUESTED",
+      "Service request received",
+      `Your ${selectedService.serviceName} request #${result.insertId} was received. The preferred schedule is pending confirmation.`,
+      `/account/services/${result.insertId}`,
+    );
+    await workspaceModel(connection).notifyStaff(
+      "New service request",
+      `${selectedService.serviceName} request #${result.insertId} is waiting for review.`,
+      ["OWNER", "MANAGER"],
+    );
+    await connection.commit();
 
     return {
       requestId: result.insertId,
@@ -155,8 +202,12 @@ export async function createServiceRequestService(userId, input) {
       serviceName: selectedService.serviceName,
       estimatedBasePrice: basePrice,
       preferredStart,
+      aircon,
       status: "PENDING",
     };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
   } finally {
     connection.release();
   }
@@ -164,10 +215,7 @@ export async function createServiceRequestService(userId, input) {
 
 export async function getCustomerServiceRequestsService(userId) {
   const model = serviceRequestModel(connectDB);
-
   const customer = await getActiveCustomer(model, getUserId(userId));
-
   const [requests] = await model.findRequestsByCustomerId(customer.customerId);
-
   return requests;
 }

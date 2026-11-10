@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Wrench, X } from "lucide-react";
+import { useNavigate, useParams } from "react-router-dom";
 
 import api from "../../../api/api.js";
 import CustomerPageHeader from "../../components/customer/CustomerPageHeader";
@@ -49,6 +50,28 @@ function formatPrice(value) {
   }).format(Number(value));
 }
 
+function formatAircon(service) {
+  if (!service.airconSource && !service.airconBrand && !service.airconModel) {
+    return "";
+  }
+
+  const horsepower = Number(service.airconHorsepower);
+  const parts = [
+    service.airconBrand,
+    service.airconModel,
+    Number.isFinite(horsepower) && horsepower > 0 ? `${horsepower} HP` : null,
+  ].filter(Boolean);
+
+  const source =
+    service.airconSource === "PURCHASED"
+      ? "Purchased from AV Cooling"
+      : service.airconSource === "CUSTOMER_OWNED"
+        ? "Customer-owned aircon"
+        : null;
+
+  return [parts.join(" · "), source].filter(Boolean).join(" — ");
+}
+
 function getEditValues(service) {
   const preferredStart = String(service.preferredStart || "").replace("T", " ");
   const [preferredDate = "", preferredTime = ""] = preferredStart.split(" ");
@@ -65,13 +88,15 @@ function getEditValues(service) {
 }
 
 export default function ServicesPage() {
+  const navigate = useNavigate();
+  const { serviceId } = useParams();
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [retryCount, setRetryCount] = useState(0);
   const [notice, setNotice] = useState("");
 
-  const [selectedRequestId, setSelectedRequestId] = useState(null);
+  const [selectedRequestId, setSelectedRequestId] = useState(serviceId ?? null);
   const [dialogMode, setDialogMode] = useState("details");
   const [draft, setDraft] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -122,11 +147,19 @@ export default function ServicesPage() {
     return () => controller.abort();
   }, [retryCount]);
 
+  // Links from customer notifications open the matching service details.
   useEffect(() => {
-    if (selectedRequestId == null) return;
+    if (serviceId) {
+      setSelectedRequestId(serviceId);
+      setDialogMode("details");
+    }
+  }, [serviceId]);
+
+  useEffect(() => {
+    if (!selectedService) return;
     const dialog = dialogRef.current;
     if (dialog && !dialog.open) dialog.showModal();
-  }, [selectedRequestId]);
+  }, [selectedService]);
 
   function openDialog(service, mode = "details") {
     setSelectedRequestId(service.requestId);
@@ -140,6 +173,9 @@ export default function ServicesPage() {
   }
 
   function switchMode(mode) {
+    if (mode === "edit" && selectedService) {
+      setDraft(getEditValues(selectedService));
+    }
     setDialogMode(mode);
     setActionError("");
   }
@@ -210,7 +246,7 @@ export default function ServicesPage() {
       <CustomerPageHeader
         Icon={Wrench}
         title="Service Bookings"
-        copy="View service requests, preferred schedules, and job status."
+        copy="View booking details, update pending requests, or cancel before work begins."
       />
 
       {notice && (
@@ -261,6 +297,11 @@ export default function ServicesPage() {
                   {" · "}
                   {formatSchedule(service.preferredStart)}
                 </span>
+                {formatAircon(service) && (
+                  <small className="customer-service-aircon-summary">
+                    Aircon: {formatAircon(service)}
+                  </small>
+                )}
                 <small>{service.serviceAddress}</small>
                 {service.destinationAddress && (
                   <small>Destination: {service.destinationAddress}</small>
@@ -270,6 +311,13 @@ export default function ServicesPage() {
               <div className="customer-service-desktop-side">
                 <CustomerStatusBadge>{service.status}</CustomerStatusBadge>
                 <div className="customer-service-desktop-buttons">
+                  <button
+                    type="button"
+                    className="btn btn-soft"
+                    onClick={() => openDialog(service)}
+                  >
+                    View details
+                  </button>
                   {service.canEdit && (
                     <button
                       type="button"
@@ -319,6 +367,11 @@ export default function ServicesPage() {
                 </strong>
                 <span>Request #{service.requestId}</span>
                 <span>{formatMobileSchedule(service.preferredStart)}</span>
+                {formatAircon(service) && (
+                  <small className="customer-service-aircon-summary">
+                    {formatAircon(service)}
+                  </small>
+                )}
               </div>
               <div className="customer-service-mobile-actions">
                 <CustomerStatusBadge>{service.status}</CustomerStatusBadge>
@@ -347,6 +400,7 @@ export default function ServicesPage() {
           setSelectedRequestId(null);
           setDialogMode("details");
           setActionError("");
+          if (serviceId) navigate("/account/services", { replace: true });
         }}
       >
         {selectedService && (
@@ -390,6 +444,12 @@ export default function ServicesPage() {
                       </CustomerStatusBadge>
                     </dd>
                   </div>
+                  {formatAircon(selectedService) && (
+                    <div>
+                      <dt>Aircon unit</dt>
+                      <dd>{formatAircon(selectedService)}</dd>
+                    </div>
+                  )}
                   <div>
                     <dt>Preferred schedule</dt>
                     <dd>{formatSchedule(selectedService.preferredStart)}</dd>
@@ -426,7 +486,17 @@ export default function ServicesPage() {
                       <dd>{selectedService.notes}</dd>
                     </div>
                   )}
+                  <div>
+                    <dt>Created</dt>
+                    <dd>{formatSchedule(selectedService.createdAt)}</dd>
+                  </div>
                 </dl>
+                {!selectedService.canEdit && !selectedService.canCancel && (
+                  <p className="customer-service-locked-note">
+                    This request can no longer be edited or cancelled from your
+                    account. Contact AV Cooling if you need assistance.
+                  </p>
+                )}
                 <div className="customer-service-dialog-actions">
                   {selectedService.canEdit && (
                     <button
@@ -475,7 +545,11 @@ export default function ServicesPage() {
                 }}
               >
                 <p className="customer-service-edit-hint">
-                  Update the information for {selectedService.serviceName}.
+                  Update the schedule, contact number, address, concern, or
+                  notes for
+                  {` ${selectedService.serviceName}`} before staff begins work.
+                  For aircon brand, model, or HP corrections, contact AV
+                  Cooling.
                 </p>
                 <div className="customer-service-edit-dates">
                   <label>

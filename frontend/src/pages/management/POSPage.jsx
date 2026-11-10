@@ -1,701 +1,727 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
+
 import {
+  BadgeCheck,
   Minus,
   Plus,
+  Printer,
+  RefreshCw,
   Search,
   ShoppingCart,
   Trash2,
-  UserRound,
-  Wrench,
-  X,
-  CheckCircle2,
-  ReceiptText,
+  Wallet,
 } from "lucide-react";
-import { readCatalogProducts } from "../../utils/catalogStore";
-import {
-  notifications,
-  serviceTypes,
-  payments,
-  stockMovements,
-  serviceRequests,
-  auditLogs,
-} from "../../data/mockManagement";
-import { getStaff } from "../../utils/authMock";
-import {
-  addManagementNotification,
-  createPosOrderId,
-  savePosOrder,
-} from "../../utils/managementStore";
-import { loadMock, saveMock, uid } from "../../utils/prototypeStore";
 
-const money = (value) => `₱${Number(value || 0).toLocaleString("en-PH")}`;
+import api from "../../../api/api.js";
+import AvailabilityPicker from "../../components/scheduling/AvailabilityPicker";
+import TechnicianTeamPicker from "../../components/management/TechnicianTeamPicker";
+import POSWalkInService from "../../components/management/POSWalkInService.jsx";
+import { getStaff } from "../../utils/authMock";
+
+import "../../styles/management/sales-live.css";
+import "../../styles/management/pos-enhancements.css";
+
+const money = (value) =>
+  new Intl.NumberFormat("en-PH", {
+    style: "currency",
+    currency: "PHP",
+  }).format(Number(value) || 0);
 
 export default function POSPage() {
-  const staff = getStaff() || { name: "AV Staff", role: "SALES_CASHIER" };
-  const [tab, setTab] = useState("products");
-  const [search, setSearch] = useState("");
+  const [catalog, setCatalog] = useState([]);
+  const [cashAvailable, setCashAvailable] = useState(false);
   const [cart, setCart] = useState([]);
-  const [selectedVariants, setSelectedVariants] = useState({});
+  const [search, setSearch] = useState("");
+  const [posTab, setPosTab] = useState("products");
+  const [brand, setBrand] = useState("");
+  const [modelKey, setModelKey] = useState("");
+  const [variantId, setVariantId] = useState("");
+
   const [customerName, setCustomerName] = useState("Walk-in Customer");
   const [customerPhone, setCustomerPhone] = useState("");
-  const [fulfillment, setFulfillment] = useState("Walk-in / Take-home");
-  const [paymentMethod, setPaymentMethod] = useState("Cash");
+  const [discount, setDiscount] = useState("0");
   const [cashReceived, setCashReceived] = useState("");
-  const [reference, setReference] = useState("");
-  const [discount, setDiscount] = useState(0);
-  const [receipt, setReceipt] = useState(null);
-  const [message, setMessage] = useState("");
+  const [cashVerified, setCashVerified] = useState(false);
+  const [withInstallation, setWithInstallation] = useState(false);
+  const [scheduledStart, setScheduledStart] = useState("");
+  const [serviceAddress, setServiceAddress] = useState("");
+  const [technicianIds, setTechnicianIds] = useState([]);
 
-  const sellableProducts = useMemo(
-    () => readCatalogProducts().filter((product) => product.variants?.length),
-    [],
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+  const [receipt, setReceipt] = useState(null);
+  const [refresh, setRefresh] = useState(0);
+
+  const requestKey = useRef(crypto.randomUUID());
+
+  const staff = getStaff();
+
+  const mayDiscount = ["OWNER", "MANAGER"].includes(staff?.role);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    setLoading(true);
+
+    api
+      .get("/api/management/sales/catalog", {
+        signal: controller.signal,
+      })
+      .then(({ data }) => {
+        if (controller.signal.aborted) return;
+
+        setCatalog(data.items || []);
+        setCashAvailable(Boolean(data.cashAvailable));
+        setError("");
+      })
+      .catch((err) => {
+        if (!controller.signal.aborted) {
+          setError(
+            err.response?.data?.message || "Could not load MySQL products.",
+          );
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
+      });
+
+    return () => controller.abort();
+  }, [refresh]);
+
+  const filtered = useMemo(
+    () =>
+      catalog.filter((p) =>
+        `${p.brand} ${p.productName} ${p.model} ${p.horsepower}`
+          .toLowerCase()
+          .includes(search.trim().toLowerCase()),
+      ),
+    [catalog, search],
   );
 
-  const filteredProducts = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return sellableProducts;
-    return sellableProducts.filter((product) =>
-      `${product.brand} ${product.name} ${product.category}`
-        .toLowerCase()
-        .includes(q),
-    );
-  }, [search, sellableProducts]);
-
-  const filteredServices = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return serviceTypes;
-    return serviceTypes.filter((service) =>
-      `${service.name} ${service.category} ${service.description}`
-        .toLowerCase()
-        .includes(q),
-    );
-  }, [search]);
-
-  const subtotal = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
-  const safeDiscount = Math.max(0, Math.min(Number(discount) || 0, subtotal));
-  const total = subtotal - safeDiscount;
-  const received = Number(cashReceived) || 0;
-  const change = paymentMethod === "Cash" ? Math.max(0, received - total) : 0;
-
-  const canProcess =
-    cart.length > 0 &&
-    total >= 0 &&
-    (paymentMethod !== "Cash" || received >= total) &&
-    (paymentMethod === "Cash" || reference.trim().length > 0);
-
-  const addProduct = (product) => {
-    const selectedHp = selectedVariants[product.id] || product.variants[0].hp;
-    const variant =
-      product.variants.find((item) => item.hp === selectedHp) ||
-      product.variants[0];
-    const key = `product:${product.id}:${variant.hp}`;
-
-    setCart((items) => {
-      const existing = items.find((item) => item.key === key);
-      if (existing) {
-        return items.map((item) =>
-          item.key === key ? { ...item, qty: item.qty + 1 } : item,
-        );
-      }
-      return [
-        ...items,
-        {
-          key,
-          type: "Product",
-          id: product.id,
-          name: product.name,
-          detail: variant.hp,
-          price: variant.price,
-          qty: 1,
-        },
-      ];
-    });
-    setMessage(`${product.name} ${variant.hp} added to the current sale.`);
-  };
-
-  const addService = (service) => {
-    const key = `service:${service.id}`;
-    setCart((items) => {
-      const existing = items.find((item) => item.key === key);
-      if (existing) {
-        return items.map((item) =>
-          item.key === key ? { ...item, qty: item.qty + 1 } : item,
-        );
-      }
-      return [
-        ...items,
-        {
-          key,
-          type: "Service",
-          id: service.id,
-          name: service.name,
-          detail: service.duration,
-          price: service.basePrice,
-          qty: 1,
-        },
-      ];
-    });
-    setMessage(`${service.name} added to the current sale.`);
-  };
-
-  const changeQty = (key, amount) => {
-    setCart((items) =>
-      items
-        .map((item) =>
-          item.key === key
-            ? { ...item, qty: Math.max(0, item.qty + amount) }
-            : item,
+  const brands = useMemo(
+    () =>
+      [...new Set(filtered.map((p) => p.brand))].sort((a, b) =>
+        a.localeCompare(b),
+      ),
+    [filtered],
+  );
+  const models = useMemo(() => {
+    const grouped = new Map();
+    for (const item of filtered.filter((p) => p.brand === brand)) {
+      const key = `${item.model}::${item.productName}`;
+      if (!grouped.has(key))
+        grouped.set(key, { key, label: `${item.model} · ${item.productName}` });
+    }
+    return [...grouped.values()].sort((a, b) => a.label.localeCompare(b.label));
+  }, [filtered, brand]);
+  const variants = useMemo(
+    () =>
+      filtered
+        .filter(
+          (p) =>
+            p.brand === brand && `${p.model}::${p.productName}` === modelKey,
         )
-        .filter((item) => item.qty > 0),
+        .sort((a, b) => Number(a.horsepower) - Number(b.horsepower)),
+    [filtered, brand, modelKey],
+  );
+  const chosen = variants.find((p) => String(p.variantId) === variantId);
+
+  const rows = useMemo(
+    () =>
+      cart
+        .map((line) => ({
+          ...line,
+          product: catalog.find((p) => p.variantId === line.variantId),
+        }))
+        .filter((line) => line.product),
+    [cart, catalog],
+  );
+
+  const subtotal =
+    rows.reduce(
+      (sum, line) => sum + Math.round(line.product.price * 100) * line.quantity,
+      0,
+    ) / 100;
+
+  const reduction = Number(discount) || 0;
+
+  const total = Math.max(0, Math.round((subtotal - reduction) * 100) / 100);
+
+  const cash = Number(cashReceived) || 0;
+
+  const change = Math.max(0, Math.round((cash - total) * 100) / 100);
+
+  const canSave =
+    !loading &&
+    !submitting &&
+    cashAvailable &&
+    rows.length > 0 &&
+    customerName.trim().length >= 2 &&
+    reduction >= 0 &&
+    reduction < subtotal &&
+    (!reduction || mayDiscount) &&
+    cash >= total &&
+    cashVerified &&
+    (!withInstallation ||
+      (Boolean(scheduledStart) && serviceAddress.trim().length >= 5));
+
+  function add(variant) {
+    if (variant.available < 1 || submitting) return;
+
+    setCart((old) => {
+      const match = old.find((line) => line.variantId === variant.variantId);
+
+      if (!match) {
+        return [
+          ...old,
+          {
+            variantId: variant.variantId,
+            quantity: 1,
+          },
+        ];
+      }
+
+      return old.map((line) =>
+        line.variantId === variant.variantId
+          ? {
+              ...line,
+              quantity: Math.min(variant.available, 99, line.quantity + 1),
+            }
+          : line,
+      );
+    });
+
+    setCashVerified(false);
+  }
+
+  function quantity(variantId, amount) {
+    setCart((old) =>
+      old
+        .map((line) => {
+          if (line.variantId !== variantId) {
+            return line;
+          }
+
+          const stock =
+            catalog.find((p) => p.variantId === variantId)?.available || 0;
+
+          return {
+            ...line,
+            quantity: Math.max(0, Math.min(99, stock, line.quantity + amount)),
+          };
+        })
+        .filter((line) => line.quantity > 0),
     );
-  };
 
-  const removeItem = (key) => {
-    setCart((items) => items.filter((item) => item.key !== key));
-  };
+    setCashVerified(false);
+  }
 
-  const resetSale = () => {
-    setCart([]);
-    setCustomerName("Walk-in Customer");
-    setCustomerPhone("");
-    setFulfillment("Walk-in / Take-home");
-    setPaymentMethod("Cash");
-    setCashReceived("");
-    setReference("");
-    setDiscount(0);
-    setSearch("");
-    setMessage("");
-  };
+  async function checkout(event) {
+    event.preventDefault();
 
-  const processSale = () => {
-    if (!canProcess) return;
+    if (!canSave) return;
 
-    const hasService = cart.some((item) => item.type === "Service");
-    const order = {
-      id: createPosOrderId(),
-      customer: customerName.trim() || "Walk-in Customer",
-      phone: customerPhone.trim(),
-      type: hasService ? "Walk-in + Service" : "Walk-in POS",
-      source: "POS",
-      fulfillment,
-      total,
-      subtotal,
-      discount: safeDiscount,
-      status: hasService ? "Processing" : "Completed",
-      payment: "Paid",
-      paymentMethod,
-      paymentReference: paymentMethod === "Cash" ? "Cash" : reference.trim(),
-      amountReceived: paymentMethod === "Cash" ? received : total,
-      change,
-      cashier: `${staff.name} · ${staff.role}`,
-      createdAt: new Date().toLocaleString("en-PH", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-      }),
-      items: cart.map((item) => ({ ...item })),
-    };
-
-    savePosOrder(order);
-
-    // Keep the rest of the frontend prototype in sync with the POS transaction.
-    const paymentRecords = loadMock("av_module_payments", payments);
-    saveMock("av_module_payments", [
-      {
-        id: uid("PAY"),
-        order: order.id,
-        customer: order.customer,
-        method: order.paymentMethod,
-        amount: order.total,
-        status: "Paid",
-        date: order.createdAt,
-      },
-      ...paymentRecords,
-    ]);
-
-    const currentMovements = loadMock(
-      "av_module_stock-movements",
-      stockMovements,
-    );
-    const newMovements = order.items
-      .filter((item) => item.type === "Product")
-      .map((item) => ({
-        id: uid("STM"),
-        product: `${item.name} ${item.detail}`,
-        type: "Stock Out",
-        qty: item.qty,
-        reference: order.id,
-        user: staff.role,
-        date: order.createdAt,
-      }));
-    if (newMovements.length)
-      saveMock("av_module_stock-movements", [
-        ...newMovements,
-        ...currentMovements,
-      ]);
-
-    const stockMap = loadMock("av_inventory_stock", {});
-    order.items
-      .filter((item) => item.type === "Product")
-      .forEach((item) => {
-        const stockKey = `${item.id}:${item.detail}`;
-        stockMap[stockKey] = Math.max(
-          0,
-          Number(stockMap[stockKey] ?? 10) - item.qty,
-        );
-      });
-    saveMock("av_inventory_stock", stockMap);
-
-    const soldServices = order.items.filter((item) => item.type === "Service");
-    if (soldServices.length) {
-      const requests = loadMock("av_module_service-requests", serviceRequests);
-      const createdRequests = soldServices.map((item) => ({
-        id: uid("SR"),
-        customer: order.customer,
-        service: item.name,
-        preferred: "To schedule",
-        location: order.fulfillment,
-        technician: "Unassigned",
-        status: "Approved",
-        source: order.id,
-      }));
-      saveMock("av_module_service-requests", [...createdRequests, ...requests]);
+    if (
+      !window.confirm(
+        `Confirm that ${money(cash)} cash was received for this ${money(total)} sale?`,
+      )
+    ) {
+      return;
     }
 
-    const logs = loadMock("av_module_audit-logs", auditLogs);
-    saveMock("av_module_audit-logs", [
-      {
-        id: uid("LOG"),
-        user: staff.role,
-        action: "Completed walk-in sale",
-        module: "POS",
-        record: order.id,
-        time: order.createdAt,
-      },
-      ...logs,
-    ]);
+    setSubmitting(true);
+    setError("");
 
-    addManagementNotification(
-      {
-        id: `NTF-${Date.now()}`,
-        type: "POS",
-        title: `Walk-in sale ${order.id} completed`,
-        message: `${order.customer} paid ${money(order.total)} via ${order.paymentMethod}.`,
-        time: "Just now",
-        read: false,
-        priority: "Normal",
-      },
-      notifications,
-    );
+    try {
+      const { data } = await api.post("/api/management/sales/pos", {
+        requestKey: requestKey.current,
+        customerName: customerName.trim(),
+        customerPhone: customerPhone.trim(),
+        items: cart,
+        discount: Math.round(reduction * 100) / 100,
+        cashReceived: Math.round(cash * 100) / 100,
+        scheduledStart: withInstallation ? scheduledStart : null,
+        serviceAddress: withInstallation ? serviceAddress.trim() : "",
+        technicianIds: withInstallation && mayDiscount ? technicianIds : [],
+      });
 
-    setReceipt(order);
-    resetSale();
-  };
+      if (!data.success || !data.receipt) {
+        throw new Error("Sale was not confirmed.");
+      }
+
+      setReceipt(data.receipt);
+
+      requestKey.current = crypto.randomUUID();
+
+      setCart([]);
+      setDiscount("0");
+      setCashReceived("");
+      setCashVerified(false);
+      setCustomerName("Walk-in Customer");
+      setCustomerPhone("");
+      setWithInstallation(false);
+      setScheduledStart("");
+      setServiceAddress("");
+      setTechnicianIds([]);
+
+      setRefresh((n) => n + 1);
+
+      window.dispatchEvent(new Event("av-management-updated"));
+    } catch (err) {
+      setError(
+        err.response?.data?.message || err.message || "Cannot complete sale.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   return (
-    <>
-      <div className="mgmt-page-head pos-page-head">
-        <div>
-          <h1>POS / Walk-in Sales</h1>
-          <p>
-            This is where the cashier processes walk-in purchases. Add products
-            or services, collect payment, complete the sale, and generate a mock
-            receipt/order record.
-          </p>
-        </div>
-        <div className="pos-cashier-chip">
-          <UserRound size={16} />
-          {staff.role}
-        </div>
-      </div>
-
-      {message && (
-        <div className="pos-message">
-          <CheckCircle2 size={16} />
-          {message}
-        </div>
-      )}
-
-      <div className="pos-layout pos-layout-full">
-        <section className="mgmt-panel pos-catalog-panel">
-          <div className="pos-catalog-toolbar">
-            <div
-              className="pos-tabs"
-              role="tablist"
-              aria-label="POS catalog type"
-            >
-              <button
-                type="button"
-                className={tab === "products" ? "active" : ""}
-                onClick={() => setTab("products")}
-              >
-                <ShoppingCart size={16} /> Products
-              </button>
-              <button
-                type="button"
-                className={tab === "services" ? "active" : ""}
-                onClick={() => setTab("services")}
-              >
-                <Wrench size={16} /> Services
-              </button>
-            </div>
-
-            <label className="pos-search">
-              <Search size={16} />
-              <input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder={`Search ${tab}...`}
-              />
-            </label>
-          </div>
-
-          {tab === "products" ? (
-            <div className="pos-product-grid">
-              {filteredProducts.map((product) => {
-                const selectedHp =
-                  selectedVariants[product.id] || product.variants[0].hp;
-                const variant =
-                  product.variants.find((item) => item.hp === selectedHp) ||
-                  product.variants[0];
-                return (
-                  <article className="pos-product-card" key={product.id}>
-                    <div className="pos-product-brand">{product.brand}</div>
-                    <h3>{product.name}</h3>
-                    <p>{product.category}</p>
-                    <label>
-                      <span>Horsepower</span>
-                      <select
-                        value={selectedHp}
-                        onChange={(event) =>
-                          setSelectedVariants((current) => ({
-                            ...current,
-                            [product.id]: event.target.value,
-                          }))
-                        }
-                      >
-                        {product.variants.map((item) => (
-                          <option key={item.hp}>{item.hp}</option>
-                        ))}
-                      </select>
-                    </label>
-                    <div className="pos-product-price">
-                      <span>Promo price</span>
-                      <strong>{money(variant.price)}</strong>
-                    </div>
-                    <button
-                      type="button"
-                      className="btn btn-dark"
-                      onClick={() => addProduct(product)}
-                    >
-                      <Plus size={16} /> Add to Sale
-                    </button>
-                  </article>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="pos-service-grid">
-              {filteredServices.map((service) => (
-                <article className="pos-service-card" key={service.id}>
-                  <div className="pos-service-icon">
-                    <Wrench size={20} />
-                  </div>
-                  <div>
-                    <span>{service.category}</span>
-                    <h3>{service.name}</h3>
-                    <p>{service.description}</p>
-                    <small>{service.duration}</small>
-                  </div>
-                  <strong>{money(service.basePrice)}</strong>
-                  <button
-                    type="button"
-                    className="btn btn-soft"
-                    onClick={() => addService(service)}
-                  >
-                    <Plus size={16} /> Add
-                  </button>
-                </article>
-              ))}
-            </div>
-          )}
-        </section>
-
-        <aside className="mgmt-panel pos-summary pos-checkout-panel">
-          <div className="mgmt-panel-header">
-            <h2>Current Walk-in Order</h2>
-            <span className="badge badge-blue">
-              {cart.reduce((sum, item) => sum + item.qty, 0)} items
-            </span>
-          </div>
-
-          <div className="pos-customer-grid">
-            <label className="form-group">
-              <span>Customer name</span>
-              <input
-                className="form-control"
-                value={customerName}
-                onChange={(event) => setCustomerName(event.target.value)}
-              />
-            </label>
-            <label className="form-group">
-              <span>Phone (optional)</span>
-              <input
-                className="form-control"
-                value={customerPhone}
-                onChange={(event) => setCustomerPhone(event.target.value)}
-                placeholder="09xx xxx xxxx"
-              />
-            </label>
-          </div>
-
-          <label className="form-group">
-            <span>Fulfillment</span>
-            <select
-              className="form-control"
-              value={fulfillment}
-              onChange={(event) => setFulfillment(event.target.value)}
-            >
-              <option>Walk-in / Take-home</option>
-              <option>Pickup Later</option>
-              <option>Delivery Arrangement</option>
-              <option>With Installation / Service</option>
-            </select>
-          </label>
-
-          <div className="pos-cart-lines">
-            {cart.length === 0 ? (
-              <div className="pos-empty-cart">
-                <ShoppingCart size={27} />
-                <strong>No items yet</strong>
-                <span>Select a product or service from the catalog.</span>
-              </div>
-            ) : (
-              cart.map((item) => (
-                <div className="pos-cart-line" key={item.key}>
-                  <div className="pos-cart-line-main">
-                    <span
-                      className={`pos-line-type ${item.type.toLowerCase()}`}
-                    >
-                      {item.type}
-                    </span>
-                    <strong>{item.name}</strong>
-                    <small>
-                      {item.detail} · {money(item.price)} each
-                    </small>
-                  </div>
-                  <div className="pos-qty">
-                    <button
-                      type="button"
-                      aria-label="Decrease quantity"
-                      onClick={() => changeQty(item.key, -1)}
-                    >
-                      <Minus size={14} />
-                    </button>
-                    <b>{item.qty}</b>
-                    <button
-                      type="button"
-                      aria-label="Increase quantity"
-                      onClick={() => changeQty(item.key, 1)}
-                    >
-                      <Plus size={14} />
-                    </button>
-                  </div>
-                  <strong className="pos-line-total">
-                    {money(item.price * item.qty)}
-                  </strong>
-                  <button
-                    type="button"
-                    className="pos-remove"
-                    aria-label={`Remove ${item.name}`}
-                    onClick={() => removeItem(item.key)}
-                  >
-                    <Trash2 size={15} />
-                  </button>
-                </div>
-              ))
-            )}
-          </div>
-
-          <div className="pos-totals">
+    <div>
+      <nav className="pos-mode-switch" aria-label="POS sale type">
+        <button
+          type="button"
+          className={posTab === "products" ? "is-selected" : ""}
+          onClick={() => setPosTab("products")}
+        >
+          Product sale
+        </button>
+        <button
+          type="button"
+          className={posTab === "services" ? "is-selected" : ""}
+          onClick={() => setPosTab("services")}
+        >
+          Walk-in service booking
+        </button>
+      </nav>
+      {posTab === "services" ? (
+        <POSWalkInService />
+      ) : (
+        <div className="sales-ui">
+          <header className="sales-hero">
             <div>
-              <span>Subtotal</span>
-              <strong>{money(subtotal)}</strong>
-            </div>
-            <label>
-              <span>Discount</span>
-              <input
-                type="number"
-                min="0"
-                max={subtotal}
-                value={discount}
-                onChange={(event) => setDiscount(event.target.value)}
-              />
-            </label>
-            <div className="pos-grand-total">
-              <span>Total</span>
-              <strong>{money(total)}</strong>
-            </div>
-          </div>
+              <span className="sales-kicker">
+                <ShoppingCart size={16} />
+                LIVE MYSQL POS
+              </span>
 
-          <div className="pos-payment-box">
-            <h3>Payment</h3>
-            <div className="pos-payment-methods">
-              {["Cash", "GCash", "Bank Transfer"].map((method) => (
-                <button
-                  key={method}
-                  type="button"
-                  className={paymentMethod === method ? "active" : ""}
-                  onClick={() => setPaymentMethod(method)}
-                >
-                  {method}
-                </button>
-              ))}
+              <h1>Walk-in sales</h1>
+
+              <p>
+                Sell in-stock air conditioners and record cash payments at the
+                counter.
+              </p>
             </div>
 
-            {paymentMethod === "Cash" ? (
-              <>
-                <label className="form-group">
-                  <span>Cash received</span>
-                  <input
-                    className="form-control"
-                    type="number"
-                    min="0"
-                    value={cashReceived}
-                    onChange={(event) => setCashReceived(event.target.value)}
-                    placeholder="0.00"
-                  />
-                </label>
-                <div className="pos-change">
-                  <span>Change</span>
-                  <strong>{money(change)}</strong>
-                </div>
-              </>
-            ) : (
-              <label className="form-group">
-                <span>{paymentMethod} reference no.</span>
+            <button
+              type="button"
+              className="sales-refresh"
+              disabled={loading || submitting}
+              onClick={() => setRefresh((n) => n + 1)}
+            >
+              <RefreshCw size={17} />
+              Refresh stock
+            </button>
+          </header>
+
+          {error && (
+            <p className="sales-error" role="alert">
+              {error}
+            </p>
+          )}
+
+          {!cashAvailable && !loading && (
+            <p className="sales-error" role="status">
+              No enabled CASH payment method. Run the included MySQL setup
+              statement first.
+            </p>
+          )}
+
+          <div className="sales-columns">
+            <section className="sales-panel">
+              <div className="sales-section-head">
+                <h2>Products</h2>
+                <span>{catalog.length} variants</span>
+              </div>
+
+              <label className="sales-search">
+                <Search size={18} />
+
                 <input
-                  className="form-control"
-                  value={reference}
-                  onChange={(event) => setReference(event.target.value)}
-                  placeholder="Enter payment reference"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search brand, model, horsepower"
+                  aria-label="Search products"
                 />
               </label>
-            )}
-          </div>
 
-          <div className="pos-checkout-actions">
-            <button
-              type="button"
-              className="btn btn-soft"
-              onClick={resetSale}
-              disabled={!cart.length}
-            >
-              Clear Sale
-            </button>
-            <button
-              type="button"
-              className="btn btn-dark"
-              onClick={processSale}
-              disabled={!canProcess}
-            >
-              <ReceiptText size={17} /> Process Walk-in Order
-            </button>
-          </div>
-          {!canProcess && cart.length > 0 && (
-            <small className="pos-validation-note">
-              {paymentMethod === "Cash"
-                ? "Enter enough cash received to process the order."
-                : `Enter the ${paymentMethod} reference number to process the order.`}
-            </small>
-          )}
-        </aside>
-      </div>
-
-      {receipt && (
-        <div
-          className="receipt-overlay"
-          role="presentation"
-          onMouseDown={(event) =>
-            event.target === event.currentTarget && setReceipt(null)
-          }
-        >
-          <section
-            className="receipt-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-label="POS receipt"
-          >
-            <button
-              className="receipt-close"
-              type="button"
-              aria-label="Close receipt"
-              onClick={() => setReceipt(null)}
-            >
-              <X size={18} />
-            </button>
-            <div className="receipt-success">
-              <CheckCircle2 size={38} />
-            </div>
-            <div className="receipt-brand">AV COOLING SYSTEM</div>
-            <h2>Walk-in Sale Completed</h2>
-            <p className="receipt-id">{receipt.id}</p>
-            <div className="receipt-meta">
-              <div>
-                <span>Customer</span>
-                <strong>{receipt.customer}</strong>
-              </div>
-              <div>
-                <span>Cashier</span>
-                <strong>{receipt.cashier}</strong>
-              </div>
-              <div>
-                <span>Payment</span>
-                <strong>{receipt.paymentMethod}</strong>
-              </div>
-              <div>
-                <span>Date</span>
-                <strong>{receipt.createdAt}</strong>
-              </div>
-            </div>
-            <div className="receipt-lines">
-              {receipt.items.map((item) => (
-                <div key={item.key}>
-                  <span>
-                    {item.qty} × {item.name}{" "}
-                    {item.detail ? `(${item.detail})` : ""}
-                  </span>
-                  <strong>{money(item.price * item.qty)}</strong>
+              {loading ? (
+                <p className="sales-empty">Loading products from MySQL…</p>
+              ) : (
+                <div className="pos-product-picker">
+                  <label>
+                    1. Brand
+                    <select
+                      value={brand}
+                      onChange={(event) => {
+                        setBrand(event.target.value);
+                        setModelKey("");
+                        setVariantId("");
+                      }}
+                    >
+                      <option value="">Choose brand</option>
+                      {brands.map((b) => (
+                        <option key={b} value={b}>
+                          {b}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    2. Model
+                    <select
+                      value={modelKey}
+                      disabled={!brand}
+                      onChange={(event) => {
+                        setModelKey(event.target.value);
+                        setVariantId("");
+                      }}
+                    >
+                      <option value="">Choose model</option>
+                      {models.map((m) => (
+                        <option key={m.key} value={m.key}>
+                          {m.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    3. Horsepower (HP)
+                    <select
+                      value={variantId}
+                      disabled={!modelKey}
+                      onChange={(event) => setVariantId(event.target.value)}
+                    >
+                      <option value="">Choose HP</option>
+                      {variants.map((v) => (
+                        <option key={v.variantId} value={v.variantId}>
+                          {v.horsepower} HP · {money(v.price)} · {v.available}{" "}
+                          left
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  {chosen && (
+                    <div className="pos-chosen-product">
+                      <div>
+                        <small>
+                          {chosen.brand} · {chosen.model}
+                        </small>
+                        <strong>
+                          {chosen.productName} · {chosen.horsepower} HP
+                        </strong>
+                        <b>{money(chosen.price)}</b>
+                        <small>
+                          {chosen.available > 0
+                            ? `${chosen.available} in stock`
+                            : "Out of stock"}
+                        </small>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => add(chosen)}
+                        disabled={
+                          submitting ||
+                          chosen.available <=
+                            (cart.find(
+                              (line) => line.variantId === chosen.variantId,
+                            )?.quantity || 0)
+                        }
+                      >
+                        <Plus size={16} /> Add to sale
+                      </button>
+                    </div>
+                  )}
+                  {brands.length === 0 && (
+                    <p className="sales-empty">No matching products found.</p>
+                  )}
                 </div>
-              ))}
-            </div>
-            <div className="receipt-total">
-              <span>Total Paid</span>
-              <strong>{money(receipt.total)}</strong>
-            </div>
-            {receipt.paymentMethod === "Cash" && (
-              <div className="receipt-change">
-                <span>Change</span>
-                <strong>{money(receipt.change)}</strong>
+              )}
+
+              <p className="sales-note">
+                Choose Brand → Model → HP, then add the product. For cleaning,
+                repair, or other walk-in services, switch to Walk-in service
+                booking above.
+              </p>
+            </section>
+
+            <form className="sales-panel sales-checkout" onSubmit={checkout}>
+              <div className="sales-section-head">
+                <h2>Current sale</h2>
+
+                <span>{cart.reduce((n, i) => n + i.quantity, 0)} items</span>
               </div>
-            )}
-            <p className="receipt-note">
-              The order is now saved in <b>Management → Orders</b>. If the sale
-              includes a service, its order status starts as Processing for
-              scheduling.
-            </p>
-            <button
-              type="button"
-              className="btn btn-dark"
-              onClick={() => setReceipt(null)}
-            >
-              Done
-            </button>
-          </section>
+
+              <label>
+                Customer name
+                <input
+                  value={customerName}
+                  maxLength={150}
+                  required
+                  onChange={(e) => setCustomerName(e.target.value)}
+                />
+              </label>
+
+              <label>
+                Phone (optional)
+                <input
+                  value={customerPhone}
+                  maxLength={30}
+                  onChange={(e) => setCustomerPhone(e.target.value)}
+                />
+              </label>
+
+              {rows.length === 0 ? (
+                <p className="sales-empty">
+                  Add products from the left to begin.
+                </p>
+              ) : (
+                <div className="sales-cart">
+                  {rows.map(({ variantId, quantity: qty, product: p }) => (
+                    <div className="sales-cart-line" key={variantId}>
+                      <div>
+                        <strong>{p.productName}</strong>
+
+                        <small>
+                          {p.horsepower} HP · {money(p.price)} each
+                        </small>
+                      </div>
+
+                      <div className="sales-quantity">
+                        <button
+                          type="button"
+                          onClick={() => quantity(variantId, -1)}
+                          aria-label={`Remove one ${p.productName}`}
+                        >
+                          <Minus size={14} />
+                        </button>
+
+                        <b>{qty}</b>
+
+                        <button
+                          type="button"
+                          onClick={() => quantity(variantId, 1)}
+                          disabled={qty >= p.available}
+                          aria-label={`Add one ${p.productName}`}
+                        >
+                          <Plus size={14} />
+                        </button>
+                      </div>
+
+                      <button
+                        type="button"
+                        className="sales-plain"
+                        onClick={() => {
+                          setCart((old) =>
+                            old.filter((line) => line.variantId !== variantId),
+                          );
+
+                          setCashVerified(false);
+                        }}
+                        aria-label={`Remove ${p.productName} from cart`}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <label className="sales-checkline">
+                <input
+                  type="checkbox"
+                  checked={withInstallation}
+                  disabled={submitting}
+                  onChange={(e) => {
+                    setWithInstallation(e.target.checked);
+                    setCashVerified(false);
+                  }}
+                />
+                <span>
+                  Book an installation appointment for this walk-in purchase
+                </span>
+              </label>
+              {withInstallation && (
+                <div style={{ display: "grid", gap: 10 }}>
+                  <AvailabilityPicker
+                    value={scheduledStart}
+                    onChange={(value) => {
+                      setScheduledStart(value);
+                      setCashVerified(false);
+                    }}
+                    disabled={submitting}
+                    label="Choose available installation time"
+                  />
+                  <label>
+                    Installation address
+                    <textarea
+                      value={serviceAddress}
+                      minLength={5}
+                      maxLength={2000}
+                      required
+                      onChange={(event) =>
+                        setServiceAddress(event.target.value)
+                      }
+                      placeholder="Customer's complete installation address"
+                    />
+                  </label>
+                  {mayDiscount ? (
+                    <TechnicianTeamPicker
+                      value={technicianIds}
+                      onChange={setTechnicianIds}
+                      disabled={submitting}
+                    />
+                  ) : (
+                    <p className="sales-checkline" role="note">
+                      The appointment will be reserved now. An Owner or Manager
+                      will assign the installation team from the saved Order
+                      before work starts.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <div className="sales-totals">
+                <span>Subtotal</span>
+                <strong>{money(subtotal)}</strong>
+              </div>
+
+              {mayDiscount && (
+                <label>
+                  Discount (₱)
+                  <input
+                    type="number"
+                    min="0"
+                    max={subtotal}
+                    step="0.01"
+                    value={discount}
+                    onChange={(e) => {
+                      setDiscount(e.target.value);
+                      setCashVerified(false);
+                    }}
+                  />
+                </label>
+              )}
+
+              <div className="sales-totals sales-total">
+                <span>Total to collect</span>
+                <strong>{money(total)}</strong>
+              </div>
+
+              <label>
+                Cash received (₱)
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  required
+                  value={cashReceived}
+                  onChange={(e) => {
+                    setCashReceived(e.target.value);
+                    setCashVerified(false);
+                  }}
+                />
+              </label>
+
+              <div className="sales-totals">
+                <span>Change to return</span>
+                <strong>{money(change)}</strong>
+              </div>
+
+              <label className="sales-checkline">
+                <input
+                  type="checkbox"
+                  checked={cashVerified}
+                  onChange={(e) => setCashVerified(e.target.checked)}
+                />
+
+                <span>I have physically received and counted the cash.</span>
+              </label>
+
+              <button
+                type="submit"
+                className="sales-primary"
+                disabled={!canSave}
+              >
+                <Wallet size={18} />
+
+                {submitting ? "Saving sale…" : "Complete cash sale"}
+              </button>
+
+              <small className="sales-muted">
+                Stock is deducted and the payment is marked paid only after
+                MySQL commits the sale.
+              </small>
+            </form>
+          </div>
+
+          {receipt && (
+            <section className="sales-panel sales-receipt" role="status">
+              <div className="sales-section-head">
+                <h2>
+                  <BadgeCheck size={21} />
+                  Sale recorded
+                </h2>
+
+                <button
+                  className="sales-refresh"
+                  type="button"
+                  onClick={() => window.print()}
+                >
+                  <Printer size={17} />
+                  Print
+                </button>
+              </div>
+
+              <p>
+                <strong>Order:</strong> {receipt.orderNumber}
+              </p>
+
+              <p>
+                <strong>Customer:</strong> {receipt.customer}
+              </p>
+
+              <p>
+                <strong>Payment:</strong> PAID · CASH
+              </p>
+
+              {receipt.items?.map((item) => (
+                <p key={item.variantId}>
+                  {item.quantity} × {item.productName} · {money(item.lineTotal)}
+                </p>
+              ))}
+
+              <div className="sales-totals sales-total">
+                <span>Total paid</span>
+                <strong>{money(receipt.total)}</strong>
+              </div>
+
+              {receipt.cashReceived && (
+                <div className="sales-totals">
+                  <span>Change</span>
+                  <strong>{money(receipt.change)}</strong>
+                </div>
+              )}
+
+              <Link to="/management/orders">View in Orders →</Link>
+            </section>
+          )}
         </div>
       )}
-    </>
+    </div>
   );
 }

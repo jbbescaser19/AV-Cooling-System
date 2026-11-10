@@ -1,22 +1,16 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import ProductRail from "../../components/ecommerce/ProductRail";
-import {
-  readCatalogBrands,
-  readCatalogProducts,
-} from "../../utils/catalogStore";
+import { readCatalogBrands } from "../../utils/catalogStore";
+import useStorefrontCatalog from "../../hooks/useStorefrontCatalog";
 import "../../styles/ecommerce/pages.css";
 import "../../styles/ecommerce/shop.css";
 
 export default function ShopPage() {
-  const [catalog, setCatalog] = useState(() => readCatalogProducts());
+  const { products: catalog, status, refresh } = useStorefrontCatalog();
   const [query, setQuery] = useState("");
   const [brand, setBrand] = useState("All");
-  useEffect(() => {
-    const refresh = () => setCatalog(readCatalogProducts());
-    window.addEventListener("av-management-updated", refresh);
-    return () => window.removeEventListener("av-management-updated", refresh);
-  }, []);
+
   const brands = useMemo(() => readCatalogBrands(catalog), [catalog]);
   const filtered = useMemo(() => {
     const n = query.trim().toLowerCase();
@@ -36,12 +30,29 @@ export default function ShopPage() {
             <div className="eyebrow">Shop</div>
             <h1 className="page-title">Air-conditioning catalog</h1>
             <p className="section-copy">
-              Browse product series in layouts designed separately for desktop,
-              iPad/tablet, and phone. Catalog changes made by authorized
-              management staff appear here in this browser prototype.
+              Compare cooling options and choose from horsepower sizes that are
+              currently available. Stock updates come from our inventory system.
             </p>
           </div>
         </div>
+        {status === "error" && (
+          <div
+            className="surface"
+            role="alert"
+            style={{ padding: 14, marginBottom: 14 }}
+          >
+            Stock information is unavailable. Purchases are temporarily
+            disabled.
+            <button
+              type="button"
+              className="btn btn-soft"
+              onClick={refresh}
+              style={{ marginLeft: 10 }}
+            >
+              Retry
+            </button>
+          </div>
+        )}
         <div className="surface shop-toolbar">
           <div className="shop-search">
             <Search size={18} />

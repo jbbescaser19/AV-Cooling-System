@@ -1,6 +1,6 @@
 export function serviceRequestModel(db) {
   return {
-    findCustomerByUserId(userId) {
+    findCustomerByUserId(userId, lock = false) {
       return db.execute(
         `SELECT
            c.customer_id AS customerId,
@@ -12,7 +12,7 @@ export function serviceRequestModel(db) {
            ON u.user_id = c.user_id
          WHERE u.user_id = ?
            AND u.account_type = 'CUSTOMER'
-         LIMIT 1`,
+         LIMIT 1 ${lock ? "FOR UPDATE" : ""}`,
         [userId],
       );
     },
@@ -58,8 +58,13 @@ export function serviceRequestModel(db) {
            destination_address,
            customer_concern,
            customer_notes,
+           aircon_source,
+           aircon_order_item_id,
+           aircon_brand,
+           aircon_model,
+           aircon_horsepower,
            status
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING')`,
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING')`,
         [
           request.customerId,
           request.serviceTypeId,
@@ -70,6 +75,11 @@ export function serviceRequestModel(db) {
           request.destinationAddress,
           request.concern,
           request.notes,
+          request.aircon?.source ?? null,
+          request.aircon?.orderItemId ?? null,
+          request.aircon?.brand ?? null,
+          request.aircon?.model ?? null,
+          request.aircon?.horsepower ?? null,
         ],
       );
     },
@@ -89,6 +99,10 @@ export function serviceRequestModel(db) {
            sr.destination_address AS destinationAddress,
            sr.customer_concern AS concern,
            sr.customer_notes AS notes,
+           sr.aircon_source AS airconSource,
+           sr.aircon_brand AS airconBrand,
+           sr.aircon_model AS airconModel,
+           sr.aircon_horsepower AS airconHorsepower,
            sr.status
          FROM service_requests AS sr
          INNER JOIN service_types AS st

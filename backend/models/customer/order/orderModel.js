@@ -64,7 +64,8 @@ export function orderModel(db) {
                 pv.promo_price AS promoPrice,
                 CAST(pv.horsepower AS CHAR) AS horsepower
          FROM products p JOIN product_variants pv ON pv.product_id = p.product_id
-         WHERE p.catalog_key = ? AND pv.horsepower = ? LIMIT 1 FOR UPDATE`,
+         WHERE COALESCE(NULLIF(p.catalog_key, ''), p.model) = ?
+           AND pv.horsepower = ? LIMIT 1 FOR UPDATE`,
         [productId, horsepower],
       );
       return rows[0] || null;
@@ -100,7 +101,7 @@ export function orderModel(db) {
         `INSERT INTO order_items
          (order_id, variant_id, product_name_snapshot, model_snapshot,
           quantity, unit_price, discount_amount, line_total, installation_included)
-         VALUES (?, ?, ?, ?, ?, ?, 0, ?, 0)`,
+         VALUES (?, ?, ?, ?, ?, ?, 0, ?, 1)`,
         [
           orderId,
           item.variantId,
@@ -117,7 +118,7 @@ export function orderModel(db) {
       await db.execute(
         `INSERT INTO payments
          (order_id, payment_method_id, amount, payment_status, notes)
-         VALUES (?, ?, ?, 'PENDING', 'Cash payment due on delivery or pickup.')`,
+         VALUES (?, ?, ?, 'PENDING', 'Cash payment for delivery and installation; collection as arranged with store.')`,
         [orderId, paymentMethodId, total],
       );
     },
@@ -133,32 +134,27 @@ export function orderModel(db) {
 
     async removeCheckedLine(cartId, variantId, qty) {
       const [result] = await db.execute(
-        `DELETE FROM cart_items
-         WHERE cart_id = ? AND variant_id = ? AND quantity = ?`,
+        `DELETE FROM cart_items WHERE cart_id = ? AND variant_id = ? AND quantity = ?`,
         [cartId, variantId, qty],
       );
       return result.affectedRows;
     },
 
-    // Only the owner may modify a pending, unpaid ONLINE cash order.
+    // Customer self-service is limited to unpaid ONLINE cash orders that
+    // have not entered staff fulfillment. Lock the exact owner's order.
     async lockCustomerOrder(customerId, orderNumber) {
       const [rows] = await db.execute(
         `SELECT o.order_id AS orderId, o.order_status AS status,
-                o.payment_status AS paymentStatus,
-                o.order_channel AS channel,
-                pm.code AS paymentCode,
-                o.delivery_fee AS deliveryFee,
+                o.payment_status AS paymentStatus, o.order_channel AS channel,
+                pm.code AS paymentCode, o.delivery_fee AS deliveryFee,
                 o.recipient_name AS recipientName,
                 o.contact_number AS contactNumber,
                 o.fulfillment_method AS fulfillment,
                 o.delivery_address AS deliveryAddress,
                 o.customer_notes AS customerNotes,
-                DATE_FORMAT(
-                  o.preferred_schedule, '%Y-%m-%dT%H:%i'
-                ) AS preferredSchedule
+                DATE_FORMAT(o.preferred_schedule, '%Y-%m-%dT%H:%i') AS preferredSchedule
          FROM orders o
-         INNER JOIN payment_methods pm
-           ON pm.payment_method_id = o.payment_method_id
+         INNER JOIN payment_methods pm ON pm.payment_method_id = o.payment_method_id
          WHERE o.customer_id = ? AND o.order_number = ?
          LIMIT 1 FOR UPDATE`,
         [customerId, orderNumber],
@@ -208,8 +204,7 @@ export function orderModel(db) {
     async cancelPendingOrder(orderId) {
       const [result] = await db.execute(
         `UPDATE orders
-         SET order_status = 'CANCELLED',
-             payment_status = 'CANCELLED',
+         SET order_status = 'CANCELLED', payment_status = 'CANCELLED',
              cancelled_at = CURRENT_TIMESTAMP
          WHERE order_id = ? AND order_status = 'PENDING'
            AND payment_status = 'PENDING'`,
@@ -239,49 +234,33 @@ export function orderModel(db) {
 
     async orders(customerId, orderNumber = null) {
       const [rows] = await db.execute(
-        `SELECT o.order_id AS orderId,
-                o.order_number AS orderNumber,
-                o.order_status AS status,
-                o.payment_status AS paymentStatus,
+        `SELECT o.order_id AS orderId, o.order_number AS orderNumber,
+                o.order_status AS status, o.payment_status AS paymentStatus,
                 o.order_channel AS channel,
                 o.fulfillment_method AS fulfillment,
                 o.recipient_name AS recipientName,
                 o.contact_number AS contactNumber,
                 o.delivery_address AS deliveryAddress,
                 o.customer_notes AS customerNotes,
-                DATE_FORMAT(
-                  o.preferred_schedule, '%Y-%m-%dT%H:%i'
-                ) AS preferredSchedule,
+                DATE_FORMAT(o.preferred_schedule, '%Y-%m-%dT%H:%i') AS preferredSchedule,
                 o.ordered_at AS orderedAt,
                 CAST(o.subtotal AS DOUBLE) AS subtotal,
                 CAST(o.delivery_fee AS DOUBLE) AS deliveryFee,
                 CAST(o.total_amount AS DOUBLE) AS total,
-                pm.code AS paymentCode,
-                pm.name AS paymentMethod,
+                pm.code AS paymentCode, pm.name AS paymentMethod,
                 CAST(pay.amount AS DOUBLE) AS paymentAmount,
                 pay.payment_status AS recordedPaymentStatus,
-                EXISTS(
-                  SELECT 1 FROM work_orders wo
-                  WHERE wo.order_id = o.order_id
-                    AND wo.status <> 'CANCELLED'
-                ) AS hasWorkOrder,
-                EXISTS(
-                  SELECT 1 FROM payments pblock
-                  WHERE pblock.order_id = o.order_id
-                    AND pblock.payment_status <> 'PENDING'
-                ) AS hasBlockingPayment
-         FROM orders o
-         JOIN payment_methods pm
+                EXISTS(SELECT 1 FROM work_orders wo WHERE wo.order_id = o.order_id
+                  AND wo.status <> 'CANCELLED') AS hasWorkOrder,
+                EXISTS(SELECT 1 FROM payments pblock WHERE pblock.order_id = o.order_id
+                  AND pblock.payment_status <> 'PENDING') AS hasBlockingPayment
+         FROM orders o JOIN payment_methods pm
            ON pm.payment_method_id = o.payment_method_id
          LEFT JOIN payments pay ON pay.payment_id = (
-           SELECT MAX(pay2.payment_id)
-           FROM payments pay2
-           WHERE pay2.order_id = o.order_id
+           SELECT MAX(pay2.payment_id) FROM payments pay2 WHERE pay2.order_id = o.order_id
          )
-         WHERE o.customer_id = ?
-           ${orderNumber ? "AND o.order_number = ?" : ""}
-         ORDER BY o.order_id DESC
-         LIMIT ${orderNumber ? 1 : 100}`,
+         WHERE o.customer_id = ? ${orderNumber ? "AND o.order_number = ?" : ""}
+         ORDER BY o.order_id DESC LIMIT ${orderNumber ? 1 : 100}`,
         orderNumber ? [customerId, orderNumber] : [customerId],
       );
       return rows;
@@ -289,48 +268,31 @@ export function orderModel(db) {
 
     async historyForOrders(orderIds) {
       if (!orderIds.length) return [];
-
       const placeholders = orderIds.map(() => "?").join(",");
-
       const [rows] = await db.execute(
-        `SELECT order_id AS orderId,
-                old_status AS oldStatus,
-                new_status AS newStatus,
-                notes,
-                changed_at AS changedAt
-         FROM order_status_history
-         WHERE order_id IN (${placeholders})
+        `SELECT order_id AS orderId, old_status AS oldStatus,
+                new_status AS newStatus, notes, changed_at AS changedAt
+         FROM order_status_history WHERE order_id IN (${placeholders})
          ORDER BY history_id DESC`,
         orderIds,
       );
-
       return rows;
     },
 
     async itemsForOrders(orderIds) {
       if (!orderIds.length) return [];
-
       const placeholders = orderIds.map(() => "?").join(",");
-
       const [rows] = await db.execute(
-        `SELECT oi.order_id AS orderId,
-                oi.variant_id AS variantId,
-                oi.product_name_snapshot AS name,
-                oi.model_snapshot AS model,
+        `SELECT oi.order_id AS orderId, oi.variant_id AS variantId,
+                oi.product_name_snapshot AS name, oi.model_snapshot AS model,
                 oi.quantity AS qty,
-                CAST(oi.unit_price AS DOUBLE) AS price,
+                oi.installation_included AS installationIncluded, CAST(oi.unit_price AS DOUBLE) AS price,
                 CAST(oi.line_total AS DOUBLE) AS lineTotal,
-                CONCAT(
-                  CAST(pv.horsepower AS CHAR), 'HP'
-                ) AS hp
-         FROM order_items oi
-         JOIN product_variants pv
-           ON pv.variant_id = oi.variant_id
-         WHERE oi.order_id IN (${placeholders})
-         ORDER BY oi.order_item_id`,
+                CONCAT(CAST(pv.horsepower AS CHAR), 'HP') AS hp
+         FROM order_items oi JOIN product_variants pv ON pv.variant_id = oi.variant_id
+         WHERE oi.order_id IN (${placeholders}) ORDER BY oi.order_item_id`,
         orderIds,
       );
-
       return rows;
     },
   };

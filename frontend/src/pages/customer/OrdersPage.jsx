@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-
 import {
   ChevronRight,
   Clock3,
@@ -9,16 +8,13 @@ import {
   ShoppingBag,
   XCircle,
 } from "lucide-react";
-
 import api from "../../../api/api.js";
-
 import CustomerDialog from "../../components/customer/CustomerDialog";
 import CustomerPageHeader from "../../components/customer/CustomerPageHeader";
 import CustomerStatusBadge from "../../components/customer/CustomerStatusBadge";
 import SavedAddressSelector from "../../components/common/SavedAddressSelector";
-
+import AvailabilityPicker from "../../components/scheduling/AvailabilityPicker";
 import { formatCustomerMoney } from "../../utils/customerAccountUtils";
-
 import "../../styles/customer/order-management.css";
 
 const FILTERS = [
@@ -37,9 +33,7 @@ const CANCEL_REASONS = [
 
 const formatDate = (date) => {
   if (!date) return "Not available";
-
   const parsed = new Date(date);
-
   return Number.isNaN(parsed.getTime())
     ? String(date)
     : parsed.toLocaleDateString("en-PH", {
@@ -70,31 +64,22 @@ export default function OrdersPage() {
   const [message, setMessage] = useState("");
   const [retry, setRetry] = useState(0);
   const [filter, setFilter] = useState("all");
-
   const [selectedNumber, setSelectedNumber] = useState(null);
   const [mode, setMode] = useState("details");
   const [draft, setDraft] = useState(null);
-
   const [reason, setReason] = useState("CHANGED_MIND");
   const [reasonDetails, setReasonDetails] = useState("");
-
   const [actionError, setActionError] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
-
     setLoading(true);
     setError("");
-
     api
-      .get("/api/customer/orders", {
-        signal: controller.signal,
-      })
+      .get("/api/customer/orders", { signal: controller.signal })
       .then((response) => {
-        if (!controller.signal.aborted) {
-          setOrders(response.data.orders || []);
-        }
+        if (!controller.signal.aborted) setOrders(response.data.orders || []);
       })
       .catch((requestError) => {
         if (!controller.signal.aborted) {
@@ -104,33 +89,23 @@ export default function OrdersPage() {
         }
       })
       .finally(() => {
-        if (!controller.signal.aborted) {
-          setLoading(false);
-        }
+        if (!controller.signal.aborted) setLoading(false);
       });
-
     return () => controller.abort();
   }, [retry]);
 
   const selected = orders.find((order) => order.orderNumber === selectedNumber);
-
-  const filtered = useMemo(() => {
-    return orders.filter((order) => {
-      if (filter === "completed") {
-        return order.status === "COMPLETED";
-      }
-
-      if (filter === "cancelled") {
-        return order.status === "CANCELLED";
-      }
-
-      if (filter === "active") {
-        return !["COMPLETED", "CANCELLED"].includes(order.status);
-      }
-
-      return true;
-    });
-  }, [filter, orders]);
+  const filtered = useMemo(
+    () =>
+      orders.filter((order) => {
+        if (filter === "completed") return order.status === "COMPLETED";
+        if (filter === "cancelled") return order.status === "CANCELLED";
+        if (filter === "active")
+          return !["COMPLETED", "CANCELLED"].includes(order.status);
+        return true;
+      }),
+    [filter, orders],
+  );
 
   function openOrder(order) {
     setSelectedNumber(order.orderNumber);
@@ -142,7 +117,6 @@ export default function OrdersPage() {
 
   function openEdit() {
     if (!selected?.canManage) return;
-
     setDraft(draftFromOrder(selected));
     setActionError("");
     setMode("edit");
@@ -150,7 +124,6 @@ export default function OrdersPage() {
 
   function openCancel() {
     if (!selected?.canManage) return;
-
     setReason("CHANGED_MIND");
     setReasonDetails("");
     setActionError("");
@@ -163,19 +136,15 @@ export default function OrdersPage() {
         order.orderNumber === nextOrder.orderNumber ? nextOrder : order,
       ),
     );
-
     setMode("details");
     setActionError("");
   }
 
   async function saveChanges(event) {
     event.preventDefault();
-
     if (!selected?.canManage || saving || !draft) return;
-
     setSaving(true);
     setActionError("");
-
     try {
       const response = await api.patch(
         `/api/customer/orders/${encodeURIComponent(selected.orderNumber)}`,
@@ -183,17 +152,14 @@ export default function OrdersPage() {
           ...draft,
           recipientName: draft.recipientName.trim(),
           contactNumber: draft.contactNumber.trim(),
-
           deliveryAddress:
             draft.fulfillment === "DELIVERY"
               ? draft.deliveryAddress.trim()
               : null,
-
           customerNotes: draft.customerNotes.trim(),
           preferredSchedule: draft.preferredSchedule || null,
         },
       );
-
       onUpdatedOrder(response.data.order);
       setMessage("Order details updated successfully.");
     } catch (requestError) {
@@ -207,25 +173,15 @@ export default function OrdersPage() {
 
   async function confirmCancellation(event) {
     event.preventDefault();
-
     if (!selected?.canManage || saving) return;
-
     setSaving(true);
     setActionError("");
-
     try {
       const response = await api.post(
-        `/api/customer/orders/${encodeURIComponent(
-          selected.orderNumber,
-        )}/cancel`,
-        {
-          reason,
-          details: reasonDetails.trim(),
-        },
+        `/api/customer/orders/${encodeURIComponent(selected.orderNumber)}/cancel`,
+        { reason, details: reasonDetails.trim() },
       );
-
       onUpdatedOrder(response.data.order);
-
       setMessage("Order cancelled. Your order history has been preserved.");
     } catch (requestError) {
       setActionError(
@@ -237,10 +193,7 @@ export default function OrdersPage() {
   }
 
   function setField(field, value) {
-    setDraft((previous) => ({
-      ...previous,
-      [field]: value,
-    }));
+    setDraft((previous) => ({ ...previous, [field]: value }));
   }
 
   return (
@@ -256,17 +209,14 @@ export default function OrdersPage() {
           {message}
         </p>
       )}
-
       {loading && (
         <p className="order-loading" role="status">
           Loading your orders…
         </p>
       )}
-
       {!loading && error && (
         <div className="surface order-empty" role="alert">
           <p>{error}</p>
-
           <button
             className="order-button order-button--secondary"
             type="button"
@@ -288,9 +238,7 @@ export default function OrdersPage() {
               <button
                 key={option.id}
                 type="button"
-                className={`order-filter${
-                  filter === option.id ? " order-filter--active" : ""
-                }`}
+                className={`order-filter${filter === option.id ? " order-filter--active" : ""}`}
                 aria-pressed={filter === option.id}
                 onClick={() => setFilter(option.id)}
               >
@@ -302,11 +250,9 @@ export default function OrdersPage() {
           {filtered.length === 0 ? (
             <div className="surface order-empty">
               <ShoppingBag size={25} aria-hidden="true" />
-
               <strong>
                 {orders.length ? "No orders in this category" : "No orders yet"}
               </strong>
-
               <p>
                 {orders.length
                   ? "Choose another filter to see your orders."
@@ -322,44 +268,35 @@ export default function OrdersPage() {
                       <span className="order-muted">
                         Order placed {formatDate(order.orderedAt)}
                       </span>
-
                       <strong>{order.orderNumber}</strong>
                     </div>
-
                     <CustomerStatusBadge>{order.status}</CustomerStatusBadge>
                   </div>
-
                   <div className="order-card-meta">
                     <span>
                       {order.items?.length || 0} product
                       {order.items?.length === 1 ? "" : "s"}
                     </span>
-
                     <span aria-hidden="true">·</span>
-
                     <span>
                       {order.fulfillment === "PICKUP"
                         ? "Store pickup"
-                        : "Delivery"}
+                        : "Delivery + installation"}
                     </span>
                   </div>
-
                   <div className="order-card-bottom">
                     <div className="order-card-price">
                       <span className="order-muted">Total</span>
-
                       <strong>
                         {formatCustomerMoney(Number(order.total))}
                       </strong>
                     </div>
-
                     <button
                       className="order-button order-button--secondary"
                       type="button"
                       onClick={() => openOrder(order)}
                     >
-                      Details
-                      <ChevronRight size={15} aria-hidden="true" />
+                      Details <ChevronRight size={15} aria-hidden="true" />
                     </button>
                   </div>
                 </article>
@@ -379,15 +316,12 @@ export default function OrdersPage() {
                 : "Order details"
           }
           onClose={() => {
-            if (!saving) {
-              setSelectedNumber(null);
-            }
+            if (!saving) setSelectedNumber(null);
           }}
         >
           <div className="order-modal-content">
             <div className="order-modal-intro">
               <span className="order-muted">{selected.orderNumber}</span>
-
               <CustomerStatusBadge>{selected.status}</CustomerStatusBadge>
             </div>
 
@@ -404,55 +338,45 @@ export default function OrdersPage() {
                     {message}
                   </p>
                 )}
-
                 <div className="order-detail-list">
                   <div>
                     <span>Placed</span>
                     <strong>{formatDate(selected.orderedAt)}</strong>
                   </div>
-
                   <div>
                     <span>Payment</span>
                     <strong>
-                      {selected.paymentMethod}
-                      {" · "}
-                      {selected.paymentStatus}
+                      {selected.paymentMethod} · {selected.paymentStatus}
                     </strong>
                   </div>
-
                   <div>
                     <span>Method</span>
                     <strong>
                       {selected.fulfillment === "PICKUP"
                         ? "Store pickup"
-                        : "Delivery"}
+                        : "Delivery + installation"}
                     </strong>
                   </div>
-
                   <div>
                     <span>Recipient</span>
                     <strong>{selected.recipientName}</strong>
                   </div>
-
                   <div>
                     <span>Phone</span>
                     <strong>{selected.contactNumber}</strong>
                   </div>
-
                   {selected.deliveryAddress && (
                     <div>
                       <span>Address</span>
                       <strong>{selected.deliveryAddress}</strong>
                     </div>
                   )}
-
                   <div>
                     <span>Preferred schedule</span>
                     <strong>
                       {formatSchedule(selected.preferredSchedule)}
                     </strong>
                   </div>
-
                   {selected.customerNotes && (
                     <div>
                       <span>Notes</span>
@@ -460,10 +384,8 @@ export default function OrdersPage() {
                     </div>
                   )}
                 </div>
-
                 <div className="order-modal-section">
                   <h3>Products</h3>
-
                   {(selected.items || []).map((item) => (
                     <div
                       className="order-product"
@@ -473,65 +395,58 @@ export default function OrdersPage() {
                         <strong>{item.name}</strong>
                         <span>
                           {item.hp} · Qty {item.qty}
+                          {Boolean(item.installationIncluded) &&
+                            " · Installation up to 10ft included"}
                         </span>
                       </div>
-
                       <strong>
                         {formatCustomerMoney(Number(item.lineTotal))}
                       </strong>
                     </div>
                   ))}
-
                   <div className="order-product order-product--total">
                     <strong>Order total</strong>
-
                     <strong>
                       {formatCustomerMoney(Number(selected.total))}
                     </strong>
                   </div>
                 </div>
-
                 {!!selected.history?.length && (
                   <div className="order-modal-section">
                     <h3>Order activity</h3>
-
                     <ol className="order-timeline">
                       {selected.history.map((entry, index) => (
                         <li key={`${entry.changedAt}-${index}`}>
                           <span>{entry.notes || entry.newStatus}</span>
-
                           <small>{formatDate(entry.changedAt)}</small>
                         </li>
                       ))}
                     </ol>
                   </div>
                 )}
-
                 {selected.canManage ? (
                   <div className="order-dialog-actions">
-                    <button
-                      className="order-button order-button--primary"
-                      type="button"
-                      onClick={openEdit}
-                    >
-                      <Pencil size={15} />
-                      Edit details
-                    </button>
-
+                    {selected.fulfillment === "DELIVERY" && (
+                      <button
+                        className="order-button order-button--primary"
+                        type="button"
+                        onClick={openEdit}
+                      >
+                        <Pencil size={15} /> Edit details
+                      </button>
+                    )}
                     <button
                       className="order-button order-button--danger"
                       type="button"
                       onClick={openCancel}
                     >
-                      <XCircle size={15} />
-                      Cancel order
+                      <XCircle size={15} /> Cancel order
                     </button>
                   </div>
                 ) : (
                   <p className="order-helper">
-                    <Clock3 size={15} />
-                    Online changes are unavailable for this order. Contact the
-                    store for assistance.
+                    <Clock3 size={15} /> Online changes are unavailable for this
+                    order. Contact the store for assistance.
                   </p>
                 )}
               </>
@@ -543,7 +458,6 @@ export default function OrdersPage() {
                   Changes are allowed before staff begin processing your unpaid
                   order. Products and prices cannot be changed here.
                 </p>
-
                 <div className="order-form-grid">
                   <label className="order-field">
                     Recipient name
@@ -552,13 +466,12 @@ export default function OrdersPage() {
                       value={draft.recipientName}
                       required
                       maxLength={150}
-                      onChange={(event) =>
-                        setField("recipientName", event.target.value)
+                      onChange={(e) =>
+                        setField("recipientName", e.target.value)
                       }
                       disabled={saving}
                     />
                   </label>
-
                   <label className="order-field">
                     Contact number
                     <input
@@ -570,50 +483,33 @@ export default function OrdersPage() {
                       maxLength={30}
                       pattern="[+0-9 ()-]{7,30}"
                       value={draft.contactNumber}
-                      onChange={(event) =>
-                        setField("contactNumber", event.target.value)
+                      onChange={(e) =>
+                        setField("contactNumber", e.target.value)
                       }
                       disabled={saving}
                     />
                   </label>
-
-                  <label className="order-field">
-                    Fulfillment method
-                    <select
-                      className="form-control"
-                      value={draft.fulfillment}
-                      disabled={saving}
-                      onChange={(event) =>
-                        setField("fulfillment", event.target.value)
-                      }
-                    >
-                      <option value="DELIVERY">Delivery</option>
-
-                      <option value="PICKUP">Store pickup</option>
-                    </select>
-                  </label>
-
-                  <label className="order-field">
-                    Preferred schedule (optional)
-                    <input
-                      className="form-control"
-                      type="datetime-local"
+                  <div className="order-field">
+                    <span>Fulfillment</span>
+                    <strong>
+                      Delivery + free standard installation (up to 10ft)
+                    </strong>
+                  </div>
+                  <div className="order-field">
+                    <AvailabilityPicker
                       value={draft.preferredSchedule}
-                      onChange={(event) =>
-                        setField("preferredSchedule", event.target.value)
-                      }
+                      onChange={(v) => setField("preferredSchedule", v)}
                       disabled={saving}
+                      allowExistingValue
+                      label="Change installation appointment"
                     />
-                  </label>
+                  </div>
                 </div>
-
                 {draft.fulfillment === "DELIVERY" && (
                   <div className="order-edit-address">
                     <div className="order-field-heading">
-                      <MapPin size={15} />
-                      Delivery address
+                      <MapPin size={15} /> Delivery address
                     </div>
-
                     <SavedAddressSelector
                       title="Choose a saved or new address"
                       value={draft.deliveryAddress}
@@ -622,7 +518,6 @@ export default function OrdersPage() {
                     />
                   </div>
                 )}
-
                 <label className="order-field">
                   Additional notes (optional)
                   <textarea
@@ -631,12 +526,9 @@ export default function OrdersPage() {
                     maxLength={1000}
                     value={draft.customerNotes}
                     disabled={saving}
-                    onChange={(event) =>
-                      setField("customerNotes", event.target.value)
-                    }
+                    onChange={(e) => setField("customerNotes", e.target.value)}
                   />
                 </label>
-
                 <div className="order-dialog-actions">
                   <button
                     className="order-button order-button--secondary"
@@ -649,7 +541,6 @@ export default function OrdersPage() {
                   >
                     Back
                   </button>
-
                   <button
                     className="order-button order-button--primary"
                     type="submit"
@@ -667,14 +558,13 @@ export default function OrdersPage() {
                   Cancel this order? This cannot be undone. No cash payment has
                   been collected.
                 </p>
-
                 <label className="order-field">
                   Reason for cancellation
                   <select
                     className="form-control"
                     value={reason}
                     disabled={saving}
-                    onChange={(event) => setReason(event.target.value)}
+                    onChange={(e) => setReason(e.target.value)}
                   >
                     {CANCEL_REASONS.map((option) => (
                       <option key={option.value} value={option.value}>
@@ -683,7 +573,6 @@ export default function OrdersPage() {
                     ))}
                   </select>
                 </label>
-
                 <label className="order-field">
                   Additional details{" "}
                   {reason === "OTHER" ? "(required)" : "(optional)"}
@@ -695,11 +584,10 @@ export default function OrdersPage() {
                     minLength={reason === "OTHER" ? 5 : undefined}
                     value={reasonDetails}
                     disabled={saving}
-                    onChange={(event) => setReasonDetails(event.target.value)}
+                    onChange={(e) => setReasonDetails(e.target.value)}
                     placeholder="Briefly describe your reason"
                   />
                 </label>
-
                 <div className="order-dialog-actions">
                   <button
                     className="order-button order-button--secondary"
@@ -712,7 +600,6 @@ export default function OrdersPage() {
                   >
                     Keep order
                   </button>
-
                   <button
                     className="order-button order-button--danger-solid"
                     type="submit"

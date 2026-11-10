@@ -1,0 +1,542 @@
+/* Scoped, mobile-first AV Cooling management workspace. */
+.wsm-page {
+  --ink: #173b52;
+  --muted: #607e91;
+  --line: #d7e5ec;
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+  padding-bottom: 36px;
+  color: var(--ink);
+}
+.wsm-page * {
+  box-sizing: border-box;
+}
+.wsm-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 18px;
+  padding: clamp(20px, 3vw, 33px);
+  color: #fff;
+  border-radius: 18px;
+  background:
+    radial-gradient(
+      circle at 85% 5%,
+      rgba(111, 218, 247, 0.26),
+      transparent 38%
+    ),
+    linear-gradient(115deg, #0b263e, #135d78);
+}
+.wsm-kicker {
+  display: block;
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  color: #9fe7f1;
+  font-weight: 850;
+}
+.wsm-head h1 {
+  margin: 8px 0;
+  font-size: clamp(1.7rem, 3.3vw, 2.6rem);
+  letter-spacing: -0.035em;
+  color: white;
+}
+.wsm-head p {
+  margin: 0;
+  max-width: 650px;
+  color: #d0e5ed;
+  line-height: 1.65;
+  font-size: 0.86rem;
+}
+.wsm-top-actions,
+.wsm-table-tools,
+.wsm-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.wsm-secondary,
+.wsm-primary {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #bcd5e2;
+  border-radius: 10px;
+  min-height: 44px;
+  padding: 10px 15px;
+  cursor: pointer;
+  font-size: 0.84rem;
+  font-weight: 800;
+  background: white;
+  color: #125f81;
+}
+.wsm-primary {
+  background: #07678b;
+  border-color: #07678b;
+  color: white;
+}
+.wsm-head .wsm-primary {
+  background: #56d5ee;
+  border-color: #56d5ee;
+  color: #083851;
+}
+.wsm-secondary:hover {
+  background: #eaf5fa;
+}
+.wsm-primary:hover {
+  background: #095373;
+  color: #fff;
+}
+.wsm-info,
+.wsm-error,
+.wsm-success {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+  margin: 0;
+  border-radius: 11px;
+  padding: 12px 14px;
+  line-height: 1.6;
+  font-size: 0.81rem;
+}
+.wsm-info {
+  border: 1px solid #c5dfe9;
+  background: #edf8fc;
+  color: #325c70;
+}
+.wsm-info svg,
+.wsm-error svg,
+.wsm-success svg {
+  flex: 0 0 17px;
+  margin-top: 2px;
+}
+.wsm-info a {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  text-decoration: underline;
+  color: #095f82;
+  font-weight: 800;
+}
+.wsm-error {
+  border: 1px solid #eac6c2;
+  background: #fff3f2;
+  color: #963c35;
+}
+.wsm-success {
+  border: 1px solid #bbdec7;
+  background: #edf8f2;
+  color: #1a7955;
+}
+.wsm-panel {
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  min-width: 0;
+  padding: clamp(14px, 2vw, 23px);
+}
+.wsm-table-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 13px;
+  margin-bottom: 15px;
+}
+.wsm-table-head h2 {
+  font-size: 1.02rem;
+  letter-spacing: -0.02em;
+  margin: 0 0 3px;
+}
+.wsm-table-head small {
+  color: var(--muted);
+}
+.wsm-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  border: 1px solid #c9dce6;
+  border-radius: 9px;
+  padding: 0 10px;
+  background: white;
+}
+.wsm-search input {
+  border: 0;
+  outline: none;
+  min-width: 0;
+  width: 190px;
+  height: 41px;
+  font: inherit;
+  font-size: 0.82rem;
+  color: #214f68;
+}
+.wsm-overflow {
+  max-width: 100%;
+  overflow-x: auto;
+}
+.wsm-table {
+  width: 100%;
+  min-width: 690px;
+  border-collapse: collapse;
+}
+.wsm-table th {
+  text-align: left;
+  background: #f2f8fa;
+  color: #436b83;
+  font-size: 0.75rem;
+  font-weight: 850;
+  padding: 12px 11px;
+  white-space: nowrap;
+}
+.wsm-table td {
+  padding: 13px 11px;
+  border-bottom: 1px solid #e9f0f3;
+  vertical-align: top;
+  color: #37566a;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  max-width: 350px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.wsm-table tr:last-child td {
+  border: 0;
+}
+.wsm-status {
+  font-weight: 800;
+  color: #126b88;
+}
+.wsm-row-action {
+  min-height: 37px;
+  padding: 6px 10px;
+  white-space: nowrap;
+}
+.wsm-empty {
+  min-height: 170px;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 9px;
+  text-align: center;
+  color: #6b8799;
+  font-size: 0.85rem;
+}
+.wsm-empty strong {
+  color: #2e576d;
+}
+.wsm-empty p {
+  margin: 0;
+  font-size: 0.8rem;
+}
+.wsm-footnote {
+  margin: 0;
+  color: #728999;
+  font-size: 0.79rem;
+  line-height: 1.6;
+}
+.wsm-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  padding: 14px;
+  background: rgba(5, 21, 37, 0.72);
+  display: grid;
+  place-items: center;
+}
+.wsm-dialog {
+  background: #fff;
+  border: 1px solid #ddeaf0;
+  border-radius: 18px;
+  width: min(100%, 520px);
+  max-height: 92dvh;
+  overflow: auto;
+  box-shadow: 0 24px 90px rgba(0, 0, 0, 0.18);
+}
+.wsm-dialog:focus {
+  outline: 0;
+}
+.wsm-dialog-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px;
+  border-bottom: 1px solid #e7eff4;
+}
+.wsm-dialog-head small {
+  font-size: 0.72rem;
+  color: #7390a0;
+}
+.wsm-dialog-head h2 {
+  font-size: 1.24rem;
+  margin: 5px 0 0;
+  letter-spacing: -0.025em;
+}
+.wsm-close {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 9px;
+  border: 1px solid #d2e3ea;
+  background: #fff;
+  cursor: pointer;
+  color: #325e75;
+}
+.wsm-form {
+  display: grid;
+  gap: 14px;
+  padding: 20px;
+}
+.wsm-field {
+  display: grid;
+  gap: 6px;
+  font-size: 0.8rem;
+  font-weight: 780;
+  color: #32576d;
+  min-width: 0;
+}
+.wsm-field i {
+  font-style: normal;
+  color: #ae413e;
+}
+.wsm-field input,
+.wsm-field select,
+.wsm-field textarea {
+  border: 1px solid #c6dbe5;
+  background: white;
+  border-radius: 9px;
+  padding: 11px 12px;
+  min-height: 45px;
+  color: #23475e;
+  font: inherit;
+  font-weight: 500;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+.wsm-field textarea {
+  resize: vertical;
+}
+.wsm-form-actions {
+  justify-content: flex-end;
+  margin-top: 6px;
+}
+.wsm-page :is(button, input, select, textarea, a):focus-visible,
+.wsm-backdrop :is(button, input, select, textarea):focus-visible {
+  outline: 3px solid #48b9df;
+  outline-offset: 2px;
+}
+.wsm-page button:disabled,
+.wsm-backdrop button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+@media (max-width: 720px) {
+  .wsm-head {
+    border-radius: 13px;
+  }
+  .wsm-top-actions {
+    width: 100%;
+  }
+  .wsm-top-actions > button {
+    flex: 1 1 auto;
+  }
+  .wsm-table-tools {
+    width: 100%;
+  }
+  .wsm-search {
+    flex: 1 1 180px;
+  }
+  .wsm-search input {
+    width: 100%;
+  }
+  .wsm-dialog-head,
+  .wsm-form {
+    padding: 16px;
+  }
+}
+@media (max-width: 480px) {
+  .wsm-table-tools > .wsm-secondary {
+    width: 100%;
+  }
+  .wsm-backdrop {
+    padding: 6px;
+  }
+  .wsm-dialog {
+    max-height: 98dvh;
+    border-radius: 12px;
+  }
+  .wsm-form-actions > button {
+    flex: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wsm-page * {
+    scroll-behavior: auto;
+  }
+}
+
+.wsm-external {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #126b90;
+  font-weight: 750;
+  white-space: nowrap;
+  text-decoration: underline;
+}
+
+/* Clear stock actions and visible customer feedback sentiment summary. */
+.wsm-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 180px;
+}
+.wsm-stock-preview {
+  display: grid;
+  gap: 5px;
+  padding: 13px 15px;
+  border: 1px solid #c6e4d4;
+  border-radius: 10px;
+  background: #effbf5;
+  color: #326852;
+  font-size: 0.82rem;
+}
+.wsm-stock-preview strong {
+  font-size: 1rem;
+  color: #135c40;
+}
+.wsm-sentiment-panel {
+  display: grid;
+  gap: 16px;
+  padding: clamp(16px, 2.6vw, 24px);
+  border: 1px solid #d5e5ed;
+  border-radius: 16px;
+  background: #fff;
+}
+.wsm-sentiment-heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.wsm-sentiment-eyebrow {
+  color: #147597;
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 850;
+}
+.wsm-sentiment-heading h2 {
+  margin: 5px 0 6px;
+  font-size: clamp(1.13rem, 2.5vw, 1.5rem);
+  letter-spacing: -0.025em;
+  color: #123c52;
+}
+.wsm-sentiment-heading p {
+  margin: 0;
+  max-width: 640px;
+  color: #5a798a;
+  font-size: 0.82rem;
+  line-height: 1.65;
+}
+.wsm-sentiment-total {
+  padding: 7px 10px;
+  border-radius: 100px;
+  background: #ecf5f9;
+  color: #356d82;
+  font-size: 0.73rem;
+  font-weight: 750;
+}
+.wsm-sentiment-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 11px;
+}
+.wsm-sentiment-card {
+  display: grid;
+  gap: 7px;
+  padding: clamp(14px, 2vw, 20px);
+  border: 1px solid #e4ecf1;
+  border-radius: 12px;
+  background: #fafcfd;
+}
+.wsm-sentiment-card-name {
+  font-size: 0.81rem;
+  font-weight: 750;
+  color: #3e5b6e;
+}
+.wsm-sentiment-card strong {
+  font-size: clamp(1.45rem, 3vw, 2rem);
+  color: #223e52;
+  line-height: 1;
+}
+.wsm-sentiment-card small {
+  font-size: 0.73rem;
+  color: #6e8694;
+  line-height: 1.45;
+}
+.wsm-sentiment-card--positive {
+  background: #f0faf5;
+  border-color: #cae9d8;
+}
+.wsm-sentiment-card--negative {
+  background: #fff7f5;
+  border-color: #f0d3cb;
+}
+.wsm-sentiment-card--neutral {
+  background: #f5f9fc;
+  border-color: #d7e6ee;
+}
+.wsm-sentiment-note {
+  margin: 0;
+  color: #617d8c;
+  font-size: 0.76rem;
+  line-height: 1.55;
+}
+.wsm-sentiment-label {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  padding: 5px 9px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: capitalize;
+}
+.wsm-sentiment-label--positive {
+  background: #e1f5e9;
+  color: #1a7752;
+}
+.wsm-sentiment-label--neutral {
+  background: #edf2f6;
+  color: #516d81;
+}
+.wsm-sentiment-label--negative {
+  background: #fdebe7;
+  color: #ac4c37;
+}
+.wsm-sentiment-label--not_analyzed {
+  background: #f5f0e7;
+  color: #807057;
+}
+@media (max-width: 580px) {
+  .wsm-sentiment-grid {
+    grid-template-columns: 1fr;
+  }
+  .wsm-row-actions {
+    min-width: 160px;
+  }
+  .wsm-sentiment-card {
+    gap: 4px;
+  }
+}

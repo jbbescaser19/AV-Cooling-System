@@ -1,0 +1,261 @@
+/* Mobile-first, scoped real MySQL staff order and service actions. */
+.management-operations {
+  display: grid;
+  gap: 13px;
+  min-width: 0;
+}
+.management-operations .mgmt-page-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.management-operations .mgmt-page-head p {
+  max-width: 650px;
+}
+.management-operations .ops-button {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 7px 12px;
+  border-radius: 9px;
+  font-size: 0.78rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+.management-operations .ops-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+.management-operations .ops-primary {
+  background: #124867;
+  border: 1px solid #124867;
+  color: #fff;
+}
+.management-operations .ops-secondary {
+  background: #fff;
+  border: 1px solid #c7dce6;
+  color: #285870;
+}
+.management-operations .ops-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: space-between;
+  color: #607e8d;
+  font-size: 0.8rem;
+}
+.management-operations .ops-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+  max-width: 460px;
+  padding: 0 11px;
+  border: 1px solid #cbdfe8;
+  border-radius: 10px;
+  background: #fff;
+}
+.management-operations .ops-search input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  min-height: 40px;
+  background: transparent;
+  font-size: 0.85rem;
+}
+.management-operations .ops-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 11px;
+}
+.management-operations .ops-card {
+  min-width: 0;
+  background: #fff;
+  padding: 15px;
+  border: 1px solid #d7e5ed;
+  border-radius: 13px;
+  display: grid;
+  gap: 8px;
+  box-shadow: 0 3px 12px rgba(21, 57, 72, 0.035);
+}
+.management-operations .ops-card-top,
+.management-operations .ops-card-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+.management-operations .ops-card-top strong {
+  color: #1d485e;
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}
+.management-operations .ops-card b {
+  font-size: 0.87rem;
+}
+.management-operations .ops-card p {
+  margin: 0;
+  color: #4b6d7f;
+  font-size: 0.8rem;
+}
+.management-operations .ops-card small {
+  color: #748c9a;
+  font-size: 0.76rem;
+  overflow-wrap: anywhere;
+}
+.management-operations .ops-card-bottom {
+  padding-top: 9px;
+  margin-top: 4px;
+  border-top: 1px solid #e6eff2;
+}
+.management-operations .ops-status {
+  font-size: 0.67rem;
+  letter-spacing: 0.015em;
+  padding: 5px 8px;
+  background: #edf5f9;
+  color: #246080;
+  border-radius: 999px;
+  font-weight: 800;
+}
+.management-operations .ops-error,
+.management-operations .ops-success {
+  font-size: 0.8rem;
+  padding: 10px 12px;
+  border-radius: 9px;
+  margin: 0;
+}
+.management-operations .ops-error {
+  background: #fff4f4;
+  color: #963840;
+}
+.management-operations .ops-success {
+  background: #eef9f2;
+  color: #286247;
+}
+.management-operations .ops-empty {
+  padding: 23px;
+  border-radius: 12px;
+  background: #fff;
+  color: #64818e;
+}
+.management-operations .ops-backdrop {
+  position: fixed;
+  z-index: 250;
+  inset: 0;
+  padding: 12px;
+  display: grid;
+  place-items: center;
+  background: rgba(9, 30, 44, 0.62);
+}
+.management-operations .ops-modal {
+  display: grid;
+  gap: 14px;
+  width: min(100%, 560px);
+  max-height: min(90vh, 850px);
+  overflow-y: auto;
+  background: #fff;
+  padding: 18px;
+  border-radius: 16px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.18);
+}
+.management-operations .ops-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 12px;
+}
+.management-operations .ops-modal-header h2 {
+  margin: 3px 0 0;
+  font-size: 1.04rem;
+  color: #1a4258;
+  overflow-wrap: anywhere;
+}
+.management-operations .ops-modal-header small {
+  color: #678495;
+}
+.management-operations .ops-modal-header button {
+  display: grid;
+  place-items: center;
+  border: 1px solid #d8e6ec;
+  border-radius: 9px;
+  width: 35px;
+  height: 35px;
+  background: #fff;
+  cursor: pointer;
+}
+.management-operations .ops-meta {
+  display: grid;
+  gap: 7px;
+  font-size: 0.78rem;
+  color: #506e7e;
+  border-block: 1px solid #e6eef2;
+  padding: 11px 0;
+  overflow-wrap: anywhere;
+}
+.management-operations .ops-form {
+  display: grid;
+  gap: 12px;
+}
+.management-operations .ops-form label:not(.ops-verify) {
+  display: grid;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: #315a70;
+  font-weight: 750;
+}
+.management-operations
+  .ops-form
+  :is(select, textarea, input[type="datetime-local"]) {
+  width: 100%;
+  padding: 10px 11px;
+  min-height: 41px;
+  border: 1px solid #ccdfe7;
+  border-radius: 9px;
+  color: #1f4255;
+  background: white;
+  font-size: 0.85rem;
+}
+.management-operations .ops-verify {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  font-size: 0.79rem;
+  color: #2e5a70;
+}
+.management-operations .ops-verify input {
+  flex: 0 0 16px;
+  margin-top: 3px;
+}
+.management-operations .ops-tip {
+  font-size: 0.78rem;
+  color: #587688;
+  line-height: 1.5;
+  padding: 9px;
+  margin: 0;
+  border-radius: 8px;
+  background: #f2f7fa;
+}
+.management-operations .ops-form-actions {
+  border-top: 1px solid #e5eff3;
+  padding-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: end;
+  gap: 8px;
+}
+@media (min-width: 800px) {
+  .management-operations .ops-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (min-width: 1440px) {
+  .management-operations .ops-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}

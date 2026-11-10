@@ -12,6 +12,10 @@ const fields = `
   sr.destination_address AS destinationAddress,
   sr.customer_concern AS concern,
   sr.customer_notes AS notes,
+  sr.aircon_source AS airconSource,
+  sr.aircon_brand AS airconBrand,
+  sr.aircon_model AS airconModel,
+  CAST(sr.aircon_horsepower AS DOUBLE) AS airconHorsepower,
   sr.status,
   sr.customer_revision AS revision,
   DATE_FORMAT(

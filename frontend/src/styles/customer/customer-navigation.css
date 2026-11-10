@@ -1,199 +1,407 @@
-/* The existing desktop and tablet sidebar styles remain untouched. */
+/* ==========================================
+   AV COOLING CUSTOMER NAVIGATION
+   Clear labels, mobile-first usability
+========================================== */
 
-.customer-mobile-header,
-.customer-side-close,
-.customer-menu-scrim {
+.customer-nav-shell .customer-mobile-topbar,
+.customer-nav-shell .customer-drawer-heading,
+.customer-nav-shell .customer-nav-backdrop {
   display: none;
 }
 
-@media (max-width: 760px) {
-  .customer-shell {
-    padding-top: 64px;
+/* ==========================================
+   DESKTOP NAVIGATION
+========================================== */
+
+.customer-nav-shell .customer-nav-panel nav a {
+  min-height: 46px;
+  text-decoration: none;
+}
+
+.customer-nav-shell .customer-nav-panel nav a:focus-visible,
+.customer-nav-shell .customer-nav-panel button:focus-visible,
+.customer-nav-shell .customer-mobile-topbar a:focus-visible,
+.customer-nav-shell .customer-mobile-topbar button:focus-visible {
+  outline: 3px solid #6bdaf4;
+  outline-offset: 2px;
+}
+
+.customer-nav-shell .customer-logout-error {
+  margin: 14px 8px 0;
+  color: #fecaca;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+/* ==========================================
+   TABLET AND MOBILE
+
+   Replace the icon-only sidebar with
+   a labeled Menu button and drawer.
+========================================== */
+
+@media (max-width: 1024px) {
+  .customer-shell.customer-nav-shell {
+    display: block;
+    padding-top: 72px;
   }
 
-  .customer-mobile-header {
+  /* FIXED MOBILE TOP BAR */
+
+  .customer-nav-shell .customer-mobile-topbar {
     position: fixed;
-    inset: 0 0 auto 0;
-    z-index: 100;
+    inset: 0 0 auto;
+    z-index: 195;
+
+    height: 72px;
+
     display: flex;
     align-items: center;
     justify-content: space-between;
+
     gap: 12px;
-    height: 64px;
-    padding: 8px 14px;
+
+    padding: 9px clamp(14px, 3vw, 25px);
+
     background: #071426;
-    box-shadow: 0 4px 14px rgba(4, 20, 36, 0.15);
+
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+
+    color: #fff;
   }
 
-  .customer-mobile-brand {
+  .customer-nav-shell .customer-mobile-identity {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .customer-nav-shell .customer-mobile-brand {
     color: #67e8f9;
-    font-size: 1rem;
+
+    font-size: 1.04rem;
     font-weight: 850;
+
     text-decoration: none;
   }
 
-  .customer-menu-toggle,
-  .customer-side-close {
+  .customer-nav-shell .customer-mobile-current {
+    color: #c2dae6;
+
+    font-size: 0.76rem;
+    line-height: 1.3;
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* CLEARLY LABELED MENU BUTTON */
+
+  .customer-nav-shell .customer-nav-menu-button {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    min-height: 44px;
-    padding: 8px 12px;
-    border: 1px solid rgba(255, 255, 255, 0.25);
-    border-radius: 10px;
-    background: rgba(255, 255, 255, 0.08);
-    color: #ffffff;
-    font-size: 0.88rem;
-    font-weight: 750;
+
+    gap: 9px;
+
+    flex: 0 0 auto;
+
+    min-height: 48px;
+    min-width: 108px;
+
+    padding: 9px 14px;
+
+    border: 1px solid rgba(191, 230, 243, 0.36);
+
+    border-radius: 12px;
+
+    background: #10364d;
+    color: #fff;
+
+    font-size: 0.95rem;
+    font-weight: 800;
+
+    cursor: pointer;
   }
 
-  .customer-menu-scrim {
+  .customer-nav-shell .customer-nav-menu-button:hover {
+    background: #185172;
+  }
+
+  /* NOTIFICATION COUNT ON MENU BUTTON */
+
+  .customer-nav-shell .customer-menu-unread {
+    display: grid;
+    place-items: center;
+
+    min-width: 21px;
+    height: 21px;
+
+    padding: 0 5px;
+
+    border-radius: 999px;
+
+    background: #c14655;
+    color: #fff;
+
+    font-size: 0.7rem;
+    font-weight: 850;
+    line-height: 1;
+  }
+
+  /* BACKDROP */
+
+  .customer-nav-shell .customer-nav-backdrop {
     position: fixed;
     inset: 0;
-    z-index: 110;
+
+    z-index: 198;
+
     display: block;
+
     width: 100%;
     height: 100%;
+
+    padding: 0;
     border: 0;
-    border-radius: 0;
-    background: rgba(2, 18, 31, 0.55);
+
+    background: rgba(4, 17, 28, 0.65);
+
+    cursor: pointer;
   }
 
-  .customer-side {
+  /* SLIDE-OUT DRAWER */
+
+  .customer-nav-shell .customer-nav-panel {
     position: fixed;
     inset: 0 auto 0 0;
-    z-index: 120;
+
+    z-index: 200;
+
     display: flex;
     flex-direction: column;
-    align-items: stretch;
-    gap: 0;
-    width: min(310px, 88vw);
+    gap: 12px;
+
+    width: min(360px, calc(100vw - 40px));
+
+    height: 100vh;
     height: 100dvh;
-    padding: 18px 14px 24px;
+
+    padding: 20px 16px 24px;
+
     overflow-x: hidden;
     overflow-y: auto;
+
+    overscroll-behavior: contain;
+
+    background: #071426;
+
     transform: translateX(-105%);
     visibility: hidden;
     pointer-events: none;
+
     transition:
-      transform 0.2s ease,
-      visibility 0.2s;
-    box-shadow: 12px 0 30px rgba(0, 0, 0, 0.18);
+      transform 200ms ease,
+      visibility 200ms ease;
+
+    box-shadow: 12px 0 40px rgba(0, 0, 0, 0.23);
   }
 
-  .customer-side.is-open {
+  .customer-nav-shell .customer-nav-panel.is-open {
     transform: translateX(0);
     visibility: visible;
     pointer-events: auto;
   }
 
-  .customer-side-header {
+  /* HIDE DESKTOP-ONLY ELEMENTS */
+
+  .customer-nav-shell .customer-nav-panel .customer-home,
+  .customer-nav-shell .customer-nav-panel > h2 {
+    display: none;
+  }
+
+  /* DRAWER HEADER */
+
+  .customer-nav-shell .customer-drawer-heading {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
-    width: 100%;
+
+    gap: 10px;
+
+    padding: 0 3px 14px;
+
+    border-bottom: 1px solid rgba(213, 237, 246, 0.16);
   }
 
-  .customer-side .customer-home {
-    position: static;
-    z-index: auto;
-    display: flex;
-    flex: 1 1 auto;
-    align-items: center;
-    justify-content: flex-start;
-    gap: 9px;
-    width: auto !important;
-    min-width: 0;
-    min-height: 44px;
-    margin: 0;
-    padding: 9px 8px !important;
-    background: transparent;
-  }
-
-  .customer-side .customer-home span,
-  .customer-side .customer-side-close span {
-    display: inline !important;
-  }
-
-  .customer-side h2 {
-    display: block;
-    margin-top: 24px;
-    margin-bottom: 12px;
-  }
-
-  .customer-side nav {
+  .customer-nav-shell .customer-drawer-heading > div {
     display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 5px;
-    width: 100%;
+    gap: 4px;
   }
 
-  .customer-side nav a {
+  .customer-nav-shell .customer-drawer-heading strong {
+    color: #fff;
+    font-size: 1.16rem;
+  }
+
+  .customer-nav-shell .customer-drawer-heading > div span {
+    color: #a9c6d4;
+    font-size: 0.82rem;
+  }
+
+  /* CLOSE BUTTON */
+
+  .customer-nav-shell .customer-drawer-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    gap: 6px;
+
+    min-height: 44px;
+
+    padding: 8px 10px;
+
+    border: 1px solid rgba(211, 232, 243, 0.22);
+
+    border-radius: 9px;
+
+    background: rgba(255, 255, 255, 0.07);
+
+    color: #fff;
+
+    font-size: 0.85rem;
+    font-weight: 750;
+
+    cursor: pointer;
+  }
+
+  /* NAVIGATION ITEMS */
+
+  .customer-nav-shell .customer-nav-panel nav {
+    display: grid;
+    gap: 5px;
+    min-width: 0;
+  }
+
+  .customer-nav-shell .customer-nav-panel nav a {
     display: flex;
     align-items: center;
     justify-content: flex-start;
-    flex: auto;
-    gap: 12px;
+
+    gap: 13px;
+
     width: 100%;
-    min-height: 46px;
-    padding: 10px 12px;
+    min-height: 51px;
+
+    padding: 12px 14px;
+
+    border-radius: 11px;
+
+    color: #d4e4ee;
+
+    font-size: 0.95rem;
+    font-weight: 720;
+
     white-space: normal;
-    font-size: 0.9rem;
   }
 
-  .customer-side nav a span {
+  /* ALWAYS SHOW TEXT LABELS */
+
+  .customer-nav-shell .customer-nav-panel nav a span {
     display: inline;
     font-size: inherit;
   }
 
-  .customer-side .customer-logout {
+  .customer-nav-shell .customer-nav-panel nav a svg {
+    flex: 0 0 20px;
+  }
+
+  /* CURRENT PAGE */
+
+  .customer-nav-shell .customer-nav-panel nav a.active {
+    background: #0b638f;
+    color: #fff;
+  }
+
+  /* NOTIFICATION BADGE */
+
+  .customer-nav-shell
+    .customer-nav-panel
+    nav
+    a
+    .customer-notification-navbadge {
+    position: static;
+
+    min-width: 22px;
+    height: 22px;
+
+    margin-left: auto;
+    padding: 0 6px;
+
+    font-size: 0.7rem;
+  }
+
+  /* LOGOUT */
+
+  .customer-nav-shell .customer-nav-panel .customer-logout {
     display: flex;
     align-items: center;
     justify-content: flex-start;
-    gap: 12px;
+
+    gap: 13px;
+
     width: 100%;
-    min-height: 46px;
-    height: auto;
-    margin-top: 18px;
-    padding: 10px 12px;
-    white-space: normal;
+    min-height: 51px;
+
+    margin: auto 0 0;
+    padding: 12px 14px;
+
+    font-size: 0.95rem;
   }
 
-  .customer-side .customer-logout span {
+  .customer-nav-shell .customer-nav-panel .customer-logout span {
     display: inline;
-    font-size: 0.9rem;
+    font-size: inherit;
   }
 
-  .customer-main {
-    padding: 20px 14px 36px;
+  /* ACCOUNT CONTENT */
+
+  .customer-nav-shell .customer-main {
+    min-width: 0;
+
+    padding: clamp(18px, 3vw, 30px) clamp(14px, 3vw, 26px) 38px;
   }
 }
 
-@media (max-width: 520px) {
-  .customer-side nav a {
-    width: 100%;
-    justify-content: flex-start;
-    padding: 10px 12px;
+/* ==========================================
+   SMALL MOBILE SCREENS
+========================================== */
+
+@media (max-width: 370px) {
+  .customer-nav-shell .customer-mobile-brand {
+    font-size: 0.96rem;
   }
 
-  .customer-side nav a span {
-    display: inline;
-    font-size: 0.9rem;
+  .customer-nav-shell .customer-mobile-current {
+    font-size: 0.7rem;
   }
 
-  .customer-side .customer-home {
-    width: auto !important;
-  }
-
-  .customer-main {
-    padding-inline: 12px;
+  .customer-nav-shell .customer-nav-menu-button {
+    min-width: 92px;
+    gap: 6px;
+    padding-inline: 10px;
   }
 }
+
+/* ==========================================
+   ACCESSIBILITY
+========================================== */
 
 @media (prefers-reduced-motion: reduce) {
-  .customer-side {
+  .customer-nav-shell .customer-nav-panel {
     transition: none;
   }
 }

@@ -1,9 +1,12 @@
 import express from "express";
 
 import { requireCustomerAuth } from "../../middleware/requireCustomerAuth.js";
+
 import { requireServiceWriteOrigin } from "../../middleware/requireServiceWriteOrigin.js";
 
 import { getCustomerProfileController } from "../../controllers/customer/account/profileController.js";
+
+import { changeCustomerPasswordController } from "../../controllers/customer/account/passwordController.js";
 
 import {
   getMyServicesController,
@@ -25,6 +28,13 @@ router.use(requireCustomerAuth);
 
 // Customer profile
 router.get("/profile", getCustomerProfileController);
+
+// Change customer password
+router.patch(
+  "/password",
+  requireServiceWriteOrigin,
+  changeCustomerPasswordController,
+);
 
 // Customer service requests
 router.get("/my-services", getMyServicesController);

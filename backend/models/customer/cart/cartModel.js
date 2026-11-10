@@ -43,11 +43,13 @@ export function cartModel(db) {
 
     async findVariant(catalogKey, horsepower) {
       const [rows] = await db.execute(
-        `SELECT pv.variant_id AS variantId
+        `SELECT pv.variant_id AS variantId,
+                GREATEST(COALESCE(i.on_hand_quantity, 0) - COALESCE(i.reserved_quantity, 0), 0) AS available
          FROM products AS p
          INNER JOIN product_variants AS pv
            ON pv.product_id = p.product_id
-         WHERE p.catalog_key = ?
+         LEFT JOIN inventory AS i ON i.variant_id = pv.variant_id
+         WHERE COALESCE(NULLIF(p.catalog_key, ''), p.model) = ?
            AND pv.horsepower = ?
            AND p.status = 'ACTIVE'
            AND pv.status = 'ACTIVE'
@@ -62,7 +64,7 @@ export function cartModel(db) {
       const [rows] = await db.execute(
         `SELECT
            ci.quantity AS qty,
-           p.catalog_key AS productId
+           COALESCE(NULLIF(p.catalog_key, ''), p.model) AS productId
          FROM cart_items AS ci
          INNER JOIN product_variants AS pv
            ON pv.variant_id = ci.variant_id
@@ -85,7 +87,7 @@ export function cartModel(db) {
       const [rows] = await db.execute(
         `SELECT
            ci.variant_id AS variantId,
-           p.catalog_key AS productId,
+           COALESCE(NULLIF(p.catalog_key, ''), p.model) AS productId,
            p.product_name AS name,
            p.brand,
            CONCAT(
@@ -93,8 +95,10 @@ export function cartModel(db) {
              'HP'
            ) AS hp,
            ci.quantity AS qty,
+           GREATEST(COALESCE(i.on_hand_quantity, 0) - COALESCE(i.reserved_quantity, 0), 0) AS available,
            CAST(
-             COALESCE(pv.promo_price, pv.srp)
+             CASE WHEN pv.promo_price > 0 AND pv.promo_price < pv.srp
+                  THEN pv.promo_price ELSE pv.srp END
              AS DOUBLE
            ) AS price,
            CAST(pv.srp AS DOUBLE) AS srp
@@ -103,6 +107,7 @@ export function cartModel(db) {
            ON pv.variant_id = ci.variant_id
          INNER JOIN products AS p
            ON p.product_id = pv.product_id
+         LEFT JOIN inventory AS i ON i.variant_id = pv.variant_id
          WHERE ci.cart_id = ?
          ORDER BY ci.cart_item_id`,
         [cartId],
@@ -118,13 +123,14 @@ export function cartModel(db) {
 
       const [rows] = await db.execute(
         `SELECT
-           p.catalog_key AS productId,
+           COALESCE(NULLIF(p.catalog_key, ''), p.model) AS productId,
            CONCAT(
              CAST(pv.horsepower AS CHAR),
              'HP'
            ) AS hp,
            CAST(
-             COALESCE(pv.promo_price, pv.srp)
+             CASE WHEN pv.promo_price > 0 AND pv.promo_price < pv.srp
+                  THEN pv.promo_price ELSE pv.srp END
              AS DOUBLE
            ) AS price,
            CAST(pv.srp AS DOUBLE) AS srp

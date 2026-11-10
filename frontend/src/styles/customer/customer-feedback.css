@@ -1,0 +1,206 @@
+.customer-feedback-page {
+  max-width: 900px;
+}
+.customer-feedback-form {
+  display: grid;
+  gap: 16px;
+  padding: clamp(16px, 3vw, 25px);
+  border: 1px solid #d4e6ef;
+  border-radius: 17px;
+}
+.customer-feedback-heading {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #175b79;
+}
+.customer-feedback-heading strong {
+  font-size: 1rem;
+}
+.customer-feedback-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 13px;
+}
+.customer-feedback-fields label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  color: #34566a;
+  font-size: 0.84rem;
+  font-weight: 750;
+}
+.customer-feedback-fields .form-control {
+  width: 100%;
+  min-width: 0;
+  min-height: 45px;
+  border-radius: 9px;
+  font-size: 0.88rem;
+  font-weight: 500;
+}
+.customer-feedback-comment {
+  grid-column: 1/-1;
+}
+.customer-feedback-comment textarea {
+  resize: vertical;
+  min-height: 110px;
+}
+.customer-feedback-comment small {
+  text-align: right;
+  color: #708797;
+  font-weight: 500;
+}
+.customer-feedback-permission {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  border: 1px solid #c6e1ea;
+  background: #eff9fb;
+  border-radius: 10px;
+  padding: 13px;
+  color: #25556c;
+  cursor: pointer;
+}
+.customer-feedback-permission input {
+  margin-top: 3px;
+  width: 19px;
+  height: 19px;
+  flex: 0 0 19px;
+  accent-color: #0a759b;
+}
+.customer-feedback-permission span {
+  display: grid;
+  gap: 4px;
+}
+.customer-feedback-permission strong {
+  font-size: 0.85rem;
+}
+.customer-feedback-permission small,
+.customer-feedback-hint {
+  color: #5c7786;
+  line-height: 1.5;
+  font-size: 0.75rem;
+}
+.customer-feedback-hint {
+  margin: 0;
+}
+.customer-feedback-submit {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  min-height: 45px;
+  padding: 9px 18px;
+  border-radius: 10px;
+}
+.customer-feedback-error,
+.customer-feedback-success {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 9px;
+  font-size: 0.82rem;
+}
+.customer-feedback-error {
+  background: #fff2f1;
+  color: #98403b;
+}
+.customer-feedback-success {
+  background: #edf8f0;
+  color: #206b4d;
+}
+.customer-feedback-history {
+  display: grid;
+  gap: 13px;
+  margin-top: 22px;
+}
+.customer-feedback-history-title,
+.customer-feedback-card-top,
+.customer-feedback-card-bottom,
+.customer-feedback-privacy {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.customer-feedback-history-title h2 {
+  font-size: 1rem;
+  margin: 0;
+}
+.customer-feedback-refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  border: 1px solid #cbdfe7;
+  border-radius: 9px;
+  background: #fff;
+  color: #246783;
+  padding: 8px 11px;
+  cursor: pointer;
+}
+.customer-feedback-list {
+  display: grid;
+  gap: 11px;
+}
+.customer-feedback-card {
+  padding: 16px;
+  border: 1px solid #d9e8ef;
+  border-radius: 13px;
+}
+.customer-feedback-card-top strong {
+  color: #24556d;
+}
+.customer-feedback-stars {
+  color: #b77b07;
+  letter-spacing: 2px;
+}
+.customer-feedback-card p {
+  margin: 9px 0 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: #3a5a6f;
+  font-size: 0.87rem;
+}
+.customer-feedback-card-bottom,
+.customer-feedback-privacy {
+  padding-top: 10px;
+  border-top: 1px solid #e9f0f3;
+  font-size: 0.76rem;
+  color: #698190;
+}
+.customer-feedback-privacy {
+  margin-top: 10px;
+}
+.customer-feedback-privacy button {
+  min-height: 38px;
+  padding: 7px 12px;
+  border: 1px solid #c9dce6;
+  border-radius: 8px;
+  background: #fff;
+  color: #136485;
+  cursor: pointer;
+  font-weight: 750;
+}
+.customer-feedback-empty {
+  padding: 26px;
+  color: #6c8493;
+  border-radius: 12px;
+}
+.customer-feedback-page :is(input, select, textarea, button):focus-visible {
+  outline: 3px solid #63b9dd;
+  outline-offset: 2px;
+}
+@media (max-width: 620px) {
+  .customer-feedback-fields {
+    grid-template-columns: 1fr;
+  }
+  .customer-feedback-submit {
+    width: 100%;
+  }
+}

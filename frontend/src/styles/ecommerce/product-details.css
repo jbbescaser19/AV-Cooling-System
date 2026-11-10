@@ -1,16 +1,118 @@
+/* Real product photos on the Shop > View Details page. */
+.product-detail-hero .product-detail-photo {
+  display: block;
+  width: 100%;
+  height: clamp(280px, 31vw, 390px);
+  max-width: 100%;
+  min-width: 0;
+  object-fit: contain;
+  object-position: center;
+  padding: 36px 24px 48px;
+  filter: drop-shadow(0 13px 17px rgba(26, 67, 87, 0.16));
+}
+
+/* Floor-mounted air conditioners are tall, not wall-mounted. */
+.product-detail-hero .product-detail-photo--tower {
+  padding: 20px 58px 42px;
+}
+
 /* Product details: proportioned hero and actions on phones. */
 @media (max-width: 760px) {
-  .product-detail-shell { gap: 14px; }
-  .product-detail-visual { border-radius: 16px; }
-  .product-detail-hero { min-height: 210px; }
-  .product-detail-info { gap: 12px; }
-  .detail-card { padding: 16px; }
-  .detail-summary { padding: 14px; }
-  .detail-list { gap: 7px; }
-  .detail-actions { gap: 8px; }
-  .detail-actions .btn { min-height: 46px; }
+  .product-detail-shell {
+    gap: 14px;
+  }
+  .product-detail-visual {
+    border-radius: 16px;
+  }
+  .product-detail-hero {
+    min-height: 210px;
+  }
+  .product-detail-hero .product-detail-photo {
+    height: 260px;
+    padding: 20px 18px 40px;
+  }
+  .product-detail-hero .product-detail-photo--tower {
+    padding: 10px 54px 35px;
+  }
+  .product-detail-info {
+    gap: 12px;
+  }
+  .detail-card {
+    padding: 16px;
+  }
+  .detail-summary {
+    padding: 14px;
+  }
+  .detail-list {
+    gap: 7px;
+  }
+  .detail-actions {
+    gap: 8px;
+  }
+  .detail-actions .btn {
+    min-height: 46px;
+  }
 }
 @media (max-width: 380px) {
-  .detail-actions { flex-wrap: wrap; }
-  .detail-actions .btn { flex: 1 1 100%; }
+  .product-detail-hero .product-detail-photo {
+    height: 230px;
+    padding: 16px 10px 35px;
+  }
+  .product-detail-hero .product-detail-photo--tower {
+    padding: 8px 42px 31px;
+  }
+  .detail-actions {
+    flex-wrap: wrap;
+  }
+  .detail-actions .btn {
+    flex: 1 1 100%;
+  }
+}
+
+/* Live MySQL stock information: product details. */
+.product-detail-hero {
+  position: relative;
+}
+.detail-out-stock-badge {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  z-index: 2;
+  border-radius: 999px;
+  background: #9e303b;
+  color: #fff;
+  padding: 7px 12px;
+  font-size: 0.76rem;
+  font-weight: 850;
+}
+.detail-hp-grid button.is-out-of-stock {
+  border-color: #e2c5c8;
+  background: #faeff0;
+  color: #94414d;
+}
+.detail-hp-grid button.is-out-of-stock.active {
+  background: #8c3741;
+  color: white;
+}
+.detail-hp-grid button small {
+  display: block;
+  margin-top: 3px;
+  font-size: 0.67rem;
+}
+.detail-stock-status {
+  margin: 7px 0 15px;
+  color: #176f56;
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+.detail-stock-status.is-unavailable {
+  color: #ad3444;
+}
+.product-detail-info .detail-actions button:disabled {
+  opacity: 0.52;
+  cursor: not-allowed;
+}
+.product-detail-info :is(button, a):focus-visible {
+  outline: 3px solid #1b8eac;
+  outline-offset: 2px;
 }

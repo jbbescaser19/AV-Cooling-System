@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { Outlet, NavLink, Link, useNavigate } from "react-router-dom";
-
+import {
+  Outlet,
+  NavLink,
+  Link,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 import {
   User,
   Package,
@@ -21,7 +26,7 @@ import { logoutCustomer } from "../utils/authMock";
 import { clearPendingAction, clearDirectCheckout } from "../utils/purchaseFlow";
 
 import "../styles/customer/customer.css";
-import "../styles/customer/customer-snowflakes.css";
+import "../styles/customer/customer-notifications.css";
 import "../styles/customer/customer-navigation.css";
 
 const items = [
@@ -32,62 +37,60 @@ const items = [
   ["notifications", Bell, "Notifications"],
   ["feedback", MessageSquare, "Feedback"],
   ["addresses", MapPin, "Addresses"],
-  ["change-password", Lock, "Password"],
+  ["change-password", Lock, "Change Password"],
 ];
 
 export default function CustomerLayout() {
   const navigate = useNavigate();
-  const menuButtonRef = useRef(null);
-  const sidebarRef = useRef(null);
-  const closeButtonRef = useRef(null);
+  const location = useLocation();
 
-  const [isMobile, setIsMobile] = useState(() =>
-    typeof window !== "undefined"
-      ? window.matchMedia("(max-width: 760px)").matches
-      : false,
-  );
   const [menuOpen, setMenuOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState("");
+  const [unreadCount, setUnreadCount] = useState(0);
 
+  const menuButtonRef = useRef(null);
+  const closeButtonRef = useRef(null);
+  const panelRef = useRef(null);
+
+  const currentPage =
+    items.find(
+      ([path]) =>
+        location.pathname === `/account/${path}` ||
+        location.pathname.startsWith(`/account/${path}/`),
+    )?.[2] || "My Account";
+
+  // Close the menu whenever the customer changes pages.
   useEffect(() => {
-    const media = window.matchMedia("(max-width: 760px)");
-    const handleChange = () => {
-      setIsMobile(media.matches);
-      if (!media.matches) setMenuOpen(false);
-    };
+    setMenuOpen(false);
+  }, [location.pathname]);
 
-    handleChange();
-    media.addEventListener("change", handleChange);
-    return () => media.removeEventListener("change", handleChange);
-  }, []);
-
+  // Keyboard accessibility and background scroll locking.
   useEffect(() => {
-    if (!isMobile || !menuOpen) return undefined;
+    if (!menuOpen) return undefined;
 
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+
     closeButtonRef.current?.focus();
 
-    const handleKeyDown = (event) => {
+    function onKeyDown(event) {
       if (event.key === "Escape") {
         event.preventDefault();
         setMenuOpen(false);
         menuButtonRef.current?.focus();
-        return;
       }
 
-      if (event.key !== "Tab") return;
+      if (event.key !== "Tab" || !panelRef.current) return;
 
-      const focusable = Array.from(
-        sidebarRef.current?.querySelectorAll(
-          "a[href], button:not([disabled])",
-        ) || [],
-      );
-      if (!focusable.length) return;
+      const controls = Array.from(
+        panelRef.current.querySelectorAll("a[href], button:not([disabled])"),
+      ).filter((element) => element.getClientRects().length > 0);
 
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
+      if (controls.length === 0) return;
+
+      const first = controls[0];
+      const last = controls[controls.length - 1];
 
       if (event.shiftKey && document.activeElement === first) {
         event.preventDefault();
@@ -96,21 +99,61 @@ export default function CustomerLayout() {
         event.preventDefault();
         first.focus();
       }
-    };
+    }
 
-    document.addEventListener("keydown", handleKeyDown);
+    function onResize() {
+      if (window.innerWidth > 1024) {
+        setMenuOpen(false);
+      }
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("resize", onResize);
+
     return () => {
-      document.removeEventListener("keydown", handleKeyDown);
       document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("resize", onResize);
     };
-  }, [isMobile, menuOpen]);
+  }, [menuOpen]);
 
-  const closeMenu = () => {
+  // Keep existing unread notification behavior.
+  useEffect(() => {
+    let active = true;
+
+    async function refreshUnread() {
+      try {
+        const response = await api.get(
+          "/api/customer/notifications/unread-count",
+        );
+
+        if (active) {
+          setUnreadCount(Number(response.data.unreadCount || 0));
+        }
+      } catch {
+        // Notification failures must not prevent navigation.
+      }
+    }
+
+    refreshUnread();
+
+    const interval = window.setInterval(refreshUnread, 45000);
+
+    window.addEventListener("av-notifications-changed", refreshUnread);
+
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+      window.removeEventListener("av-notifications-changed", refreshUnread);
+    };
+  }, []);
+
+  function closeMenu() {
     setMenuOpen(false);
-    if (isMobile) menuButtonRef.current?.focus();
-  };
+    menuButtonRef.current?.focus();
+  }
 
-  const handleLogout = async () => {
+  async function handleLogout() {
     if (loggingOut) return;
 
     setLoggingOut(true);
@@ -127,6 +170,9 @@ export default function CustomerLayout() {
       clearPendingAction();
       clearDirectCheckout();
 
+      setUnreadCount(0);
+      setMenuOpen(false);
+
       navigate("/", { replace: true });
     } catch (error) {
       setLogoutError(
@@ -136,55 +182,95 @@ export default function CustomerLayout() {
     } finally {
       setLoggingOut(false);
     }
-  };
+  }
 
   return (
-    <div className="customer-shell">
-      <header className="customer-mobile-header">
-        <Link to="/" className="customer-mobile-brand">
-          AV Cooling
-        </Link>
+    <div className="customer-shell customer-nav-shell">
+      {/* MOBILE AND TABLET HEADER */}
+
+      <header className="customer-mobile-topbar">
+        <div className="customer-mobile-identity">
+          <Link
+            to="/"
+            className="customer-mobile-brand"
+            aria-label="AV Cooling homepage"
+          >
+            AV Cooling
+          </Link>
+
+          <span className="customer-mobile-current">
+            My Account · {currentPage}
+          </span>
+        </div>
+
         <button
           ref={menuButtonRef}
           type="button"
-          className="customer-menu-toggle"
-          aria-controls="customer-account-sidebar"
+          className="customer-nav-menu-button"
+          aria-label={menuOpen ? "Account menu open" : "Open account menu"}
           aria-expanded={menuOpen}
+          aria-controls="customer-account-menu"
           onClick={() => setMenuOpen(true)}
         >
-          <Menu size={20} aria-hidden="true" />
+          <Menu size={21} aria-hidden="true" />
           <span>Menu</span>
+
+          {unreadCount > 0 && (
+            <span
+              className="customer-menu-unread"
+              aria-label={`${unreadCount} unread notifications`}
+            >
+              {unreadCount > 99 ? "99+" : unreadCount}
+            </span>
+          )}
         </button>
       </header>
 
-      {isMobile && menuOpen && (
+      {/* DARK OVERLAY BEHIND THE OPEN MENU */}
+
+      {menuOpen && (
         <button
           type="button"
-          className="customer-menu-scrim"
+          className="customer-nav-backdrop"
           aria-label="Close account menu"
           onClick={closeMenu}
         />
       )}
 
+      {/* ACCOUNT NAVIGATION
+          Desktop: visible sidebar.
+          Mobile/tablet: slide-out menu.
+      */}
+
       <aside
-        id="customer-account-sidebar"
-        ref={sidebarRef}
-        className={`customer-side${menuOpen ? " is-open" : ""}`}
-        role={isMobile && menuOpen ? "dialog" : undefined}
-        aria-label="Customer account navigation"
-        aria-modal={isMobile && menuOpen ? "true" : undefined}
-        inert={isMobile && !menuOpen}
+        id="customer-account-menu"
+        ref={panelRef}
+        className={`customer-side customer-nav-panel${
+          menuOpen ? " is-open" : ""
+        }`}
+        aria-label="My Account menu"
+        role={menuOpen ? "dialog" : undefined}
+        aria-modal={menuOpen ? true : undefined}
       >
-        <div className="customer-side-header">
-          <Link to="/" className="customer-home" onClick={closeMenu}>
-            <Home size={18} aria-hidden="true" />
-            <span>AV Cooling</span>
-          </Link>
+        {/* DESKTOP BRAND */}
+
+        <Link to="/" className="customer-home">
+          <Home size={18} aria-hidden="true" />
+          <span>AV Cooling</span>
+        </Link>
+
+        {/* MOBILE MENU HEADER */}
+
+        <div className="customer-drawer-heading">
+          <div>
+            <strong>My Account</strong>
+            <span>Choose a page below</span>
+          </div>
 
           <button
             ref={closeButtonRef}
             type="button"
-            className="customer-side-close"
+            className="customer-drawer-close"
             onClick={closeMenu}
           >
             <X size={19} aria-hidden="true" />
@@ -194,14 +280,33 @@ export default function CustomerLayout() {
 
         <h2>My Account</h2>
 
-        <nav aria-label="Customer account pages">
+        {/* NAVIGATION LINKS */}
+
+        <nav aria-label="Customer account navigation">
           {items.map(([path, Icon, label]) => (
-            <NavLink key={path} to={path} onClick={closeMenu}>
-              <Icon size={18} aria-hidden="true" />
+            <NavLink
+              key={path}
+              to={path}
+              onClick={() => setMenuOpen(false)}
+              end={path === "profile"}
+            >
+              <Icon size={19} aria-hidden="true" />
+
               <span>{label}</span>
+
+              {path === "notifications" && unreadCount > 0 && (
+                <strong
+                  className="customer-notification-navbadge"
+                  aria-label={`${unreadCount} unread notifications`}
+                >
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </strong>
+              )}
             </NavLink>
           ))}
         </nav>
+
+        {/* LOGOUT ERROR */}
 
         {logoutError && (
           <p role="alert" className="customer-logout-error">
@@ -209,20 +314,23 @@ export default function CustomerLayout() {
           </p>
         )}
 
+        {/* LOG OUT */}
+
         <button
           type="button"
           className="customer-logout"
           onClick={handleLogout}
           disabled={loggingOut}
-          aria-label="Log out"
-          title="Log out"
         >
-          <LogOut size={18} aria-hidden="true" />
+          <LogOut size={19} aria-hidden="true" />
+
           <span>{loggingOut ? "Logging out..." : "Log Out"}</span>
         </button>
       </aside>
 
-      <main className="customer-main">
+      {/* EXISTING ACCOUNT PAGE CONTENT */}
+
+      <main className="customer-main" id="customer-account-content">
         <Outlet />
       </main>
     </div>

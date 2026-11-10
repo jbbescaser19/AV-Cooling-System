@@ -1,3 +1,4 @@
+import AvailabilityPicker from "../scheduling/AvailabilityPicker";
 import { useEffect, useId, useRef, useState } from "react";
 
 import { X, AlertTriangle } from "lucide-react";
@@ -188,28 +189,25 @@ export default function ServiceManageDialog({
                 time and remain subject to approval.
               </p>
 
-              <label>
-                Preferred date
-                <input
-                  ref={initialFocus}
-                  type="date"
-                  name="preferredDate"
-                  required
-                  value={form.preferredDate}
-                  onChange={update}
+              <div className="service-form__wide">
+                <AvailabilityPicker
+                  value={
+                    form.preferredDate && form.preferredTime
+                      ? `${form.preferredDate}T${form.preferredTime}`
+                      : ""
+                  }
+                  onChange={(selected) =>
+                    setForm((current) => ({
+                      ...current,
+                      preferredDate: selected.slice(0, 10),
+                      preferredTime: selected.slice(11, 16),
+                    }))
+                  }
+                  disabled={busy}
+                  allowExistingValue
+                  label="Choose an available service appointment"
                 />
-              </label>
-
-              <label>
-                Preferred time
-                <input
-                  type="time"
-                  name="preferredTime"
-                  required
-                  value={form.preferredTime}
-                  onChange={update}
-                />
-              </label>
+              </div>
 
               <label className="service-form__wide">
                 Contact number

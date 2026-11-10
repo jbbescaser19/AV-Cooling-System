@@ -96,6 +96,13 @@ export async function addCustomerCartItem(userId, body) {
     }
     const variant = await model.findVariant(input.productId, input.horsepower);
     if (!variant) fail("This product option is not available.", 404);
+    const existing = await model.findCartLine(cartId, variant.variantId);
+    if (Number(variant.available) < Number(existing?.qty || 0) + input.qty) {
+      fail(
+        "This horsepower is out of stock or has insufficient available units.",
+        409,
+      );
+    }
     await model.upsert(cartId, variant.variantId, input.qty);
     return snapshot(model, customerId);
   });
@@ -119,6 +126,15 @@ export async function updateCustomerCartItem(userId, rawVariantId, body) {
     // product ID supplied by a browser for changing an existing cart line.
     const target = await model.findVariant(current.productId, horsepower);
     if (!target) fail("That horsepower is unavailable for this product.", 409);
+    const otherQty =
+      target.variantId === variantId
+        ? 0
+        : Number(
+            (await model.findCartLine(cartId, target.variantId))?.qty || 0,
+          );
+    if (Number(target.available) < qty + otherQty) {
+      fail("Not enough available stock for the selected horsepower.", 409);
+    }
 
     const projectedTotal =
       (await model.quantity(cartId)) - Number(current.qty) + qty;
@@ -171,10 +187,36 @@ export async function mergeGuestCart(userId, body) {
       const variant = await model.findVariant(item.productId, item.horsepower);
       if (!variant)
         fail(`Product ${item.productId} (${item.hp}) is unavailable.`, 409);
-      resolved.push({ variantId: variant.variantId, qty: item.qty });
+      resolved.push({
+        variantId: variant.variantId,
+        qty: item.qty,
+        productId: item.productId,
+        horsepower: item.horsepower,
+      });
     }
-    for (const item of resolved)
-      await model.upsert(cartId, item.variantId, item.qty);
+    const incomingByVariant = new Map();
+    for (const item of resolved) {
+      incomingByVariant.set(
+        item.variantId,
+        (incomingByVariant.get(item.variantId) || 0) + item.qty,
+      );
+    }
+    for (const [variantId, qty] of incomingByVariant) {
+      const item = resolved.find((row) => row.variantId === variantId);
+      const variant = await model.findVariant(item.productId, item.horsepower);
+      const existing = await model.findCartLine(cartId, variantId);
+      if (
+        !variant ||
+        Number(variant.available) < qty + Number(existing?.qty || 0)
+      ) {
+        fail(
+          "One of your cart items is out of stock. Review the cart and retry.",
+          409,
+        );
+      }
+    }
+    for (const [variantId, qty] of incomingByVariant)
+      await model.upsert(cartId, variantId, qty);
     await model.markMerge(customerId, body.mergeId);
     return snapshot(model, customerId);
   });

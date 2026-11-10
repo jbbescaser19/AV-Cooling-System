@@ -1,115 +1,84 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Eye, FileText, ShoppingCart, Wind, Zap } from "lucide-react";
-
 import ProductPurchaseDialog from "./ProductPurchaseDialog";
 import api from "../../../api/api.js";
 import { addCartItem } from "../../utils/cartStore";
 import { getProductImage } from "../../utils/productImages";
-
 import {
   PENDING_ACTIONS,
   saveDirectCheckout,
   savePendingAction,
 } from "../../utils/purchaseFlow";
-
 import "../../styles/ecommerce/product-card.css";
 
 const peso = (value) => `₱${Number(value || 0).toLocaleString("en-PH")}`;
 
 export default function ProductCard({ product }) {
   const navigate = useNavigate();
-
   const [purchaseMode, setPurchaseMode] = useState(null);
-  const [added, setAdded] = useState(false);
-  const [cartError, setCartError] = useState("");
-  const [adding, setAdding] = useState(false);
+  const [notice, setNotice] = useState("");
   const [failedImageSrc, setFailedImageSrc] = useState("");
 
-  const productImage = getProductImage(product);
-  const showPhoto = Boolean(productImage) && failedImageSrc !== productImage;
-
+  const image = getProductImage(product);
+  const showPhoto = Boolean(image) && failedImageSrc !== image;
   const quotationOnly = Boolean(
     product.quotationOnly || !product.variants?.length,
   );
+  const inStock = quotationOnly
+    ? []
+    : product.variants.filter((v) => v.stock > 0);
+  const checking = !quotationOnly && product.stockStatus !== "ready";
+  const outOfStock = !quotationOnly && !checking && inStock.length === 0;
+  const canBuy = !quotationOnly && !checking && inStock.length > 0;
+  const preview = canBuy
+    ? inStock.reduce((a, b) => (b.price < a.price ? b : a))
+    : product.variants?.[0];
+  const savings = preview ? Math.max(0, preview.srp - preview.price) : 0;
+  const discount = preview?.srp ? Math.round((savings / preview.srp) * 100) : 0;
 
-  const previewVariant = quotationOnly
-    ? null
-    : product.variants.reduce(
-        (lowest, item) => (item.price < lowest.price ? item : lowest),
-        product.variants[0],
-      );
-
-  const savings = previewVariant
-    ? previewVariant.srp - previewVariant.price
-    : 0;
-
-  const discount = previewVariant?.srp
-    ? Math.round((savings / previewVariant.srp) * 100)
-    : 0;
-
-  const handleAddToCart = async ({ variant, quantity }) => {
-    if (adding) return;
-    setAdding(true);
-    setCartError("");
+  function handleAddToCart({ variant, quantity }) {
     try {
-      await addCartItem(product, variant, quantity);
+      addCartItem(product, variant, quantity);
       setPurchaseMode(null);
-      setAdded(true);
+      setNotice("Added to cart.");
     } catch (error) {
-      setCartError(
-        error.response?.data?.message || error.message || "Unable to add item.",
-      );
-      setPurchaseMode(null);
-      setAdded(false);
-    } finally {
-      setAdding(false);
+      setNotice(error.message || "This product is no longer available.");
     }
-  };
+  }
 
-  const handleOrderNow = async ({ variant, quantity }) => {
-    const intent = {
-      productId: product.id,
-      variant: variant.hp,
-      quantity,
-    };
-
+  async function handleOrderNow({ variant, quantity }) {
+    if (!variant?.stock || variant.stock < quantity) return;
+    const intent = { productId: product.id, variant: variant.hp, quantity };
     try {
-      // Check the customer's actual backend login session.
       await api.get("/api/auth/customer/session");
-
       saveDirectCheckout(intent);
       setPurchaseMode(null);
       navigate("/checkout");
     } catch (error) {
       if (error.response?.status === 401) {
-        savePendingAction({
-          type: PENDING_ACTIONS.ORDER_NOW,
-          ...intent,
-        });
-
+        savePendingAction({ type: PENDING_ACTIONS.ORDER_NOW, ...intent });
         setPurchaseMode(null);
         navigate("/login");
         return;
       }
-
-      console.error("Unable to verify customer session:", error);
-      alert("Unable to verify your login. Please try again.");
+      setNotice("Unable to verify your account. Please try again.");
     }
-  };
+  }
 
   return (
     <>
       <article className="product-card">
         <div className="product-visual">
-          {product.badge && (
+          {outOfStock && (
+            <span className="product-out-stock-badge">Out of Stock</span>
+          )}
+          {!outOfStock && product.badge && (
             <span className="product-card-badge">{product.badge}</span>
           )}
-
-          {!quotationOnly && discount > 0 && (
+          {!quotationOnly && !outOfStock && discount > 0 && (
             <span className="discount-badge">-{discount}%</span>
           )}
-
           {showPhoto ? (
             <img
               className={
@@ -117,28 +86,23 @@ export default function ProductCard({ product }) {
                   ? "product-aircon-photo product-aircon-photo--tower"
                   : "product-aircon-photo"
               }
-              src={productImage}
+              src={image}
               alt={`${product.name} air conditioner`}
               loading="lazy"
               decoding="async"
-              onError={() => setFailedImageSrc(productImage)}
+              onError={() => setFailedImageSrc(image)}
             />
           ) : (
             <Wind size={68} aria-hidden="true" />
           )}
-
           <small>{product.category}</small>
         </div>
-
         <div className="product-body">
           <div className="product-brand">{product.brand}</div>
-
           <h3>{product.name}</h3>
-
           {quotationOnly ? (
             <>
               <div className="quotation-card-price">Subject for Quotation</div>
-
               <p className="product-note">
                 Commercial pricing depends on capacity and installation
                 requirements.
@@ -147,36 +111,34 @@ export default function ProductCard({ product }) {
           ) : (
             <>
               <div className="product-model">
-                Choose HP and quantity before adding or ordering.
+                Choose horsepower and quantity before purchasing.
               </div>
-
               <div className="price-block">
                 <span className="price-from">Starting from</span>
-
-                <strong>{peso(previewVariant.price)}</strong>
-
-                <span className="srp">SRP {peso(previewVariant.srp)}</span>
+                <strong>{peso(preview.price)}</strong>
+                <span className="srp">SRP {peso(preview.srp)}</span>
               </div>
-
-              <div className="stock">Availability confirmed before order</div>
-
-              {added && (
-                <div className="product-added-note" role="status">
-                  Added to cart.
-                </div>
-              )}
-              {cartError && (
-                <p role="alert" style={{ color: "#a52a2a" }}>
-                  {cartError}
+              <p
+                className={`stock ${outOfStock ? "product-stock-unavailable" : ""}`}
+                role="status"
+              >
+                {checking
+                  ? product.stockStatus === "error"
+                    ? "Availability unavailable"
+                    : "Checking stock…"
+                  : outOfStock
+                    ? "Out of Stock — all horsepower options"
+                    : `${inStock.length} HP option${inStock.length === 1 ? "" : "s"} in stock`}
+              </p>
+              {notice && (
+                <p className="product-added-note" role="status">
+                  {notice}
                 </p>
               )}
             </>
           )}
-
           <div
-            className={`product-actions ${
-              quotationOnly ? "" : "product-actions-purchase"
-            }`}
+            className={`product-actions ${quotationOnly ? "" : "product-actions-purchase"}`}
           >
             <Link
               className="btn btn-soft product-view-action"
@@ -185,7 +147,6 @@ export default function ProductCard({ product }) {
               <Eye size={17} />
               <span>View Details</span>
             </Link>
-
             {quotationOnly ? (
               <Link className="btn btn-dark" to={`/shop/${product.id}`}>
                 <FileText size={17} />
@@ -196,31 +157,30 @@ export default function ProductCard({ product }) {
                 <button
                   className="btn btn-soft"
                   type="button"
+                  disabled={!canBuy}
                   onClick={() => {
-                    setAdded(false);
-                    setCartError("");
+                    setNotice("");
                     setPurchaseMode("cart");
                   }}
                 >
                   <ShoppingCart size={17} />
-                  <span>Add to Cart</span>
+                  <span>{outOfStock ? "Out of Stock" : "Add to Cart"}</span>
                 </button>
-
                 <button
                   className="btn btn-dark"
                   type="button"
+                  disabled={!canBuy}
                   onClick={() => setPurchaseMode("order")}
                 >
                   <Zap size={17} />
-                  <span>Order Now</span>
+                  <span>{outOfStock ? "Unavailable" : "Order Now"}</span>
                 </button>
               </>
             )}
           </div>
         </div>
       </article>
-
-      {purchaseMode && !quotationOnly && (
+      {purchaseMode && canBuy && (
         <ProductPurchaseDialog
           product={product}
           mode={purchaseMode}

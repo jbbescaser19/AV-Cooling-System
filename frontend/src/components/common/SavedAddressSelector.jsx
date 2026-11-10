@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-
 import api from "../../../api/api.js";
 
 export default function SavedAddressSelector({
@@ -12,12 +11,10 @@ export default function SavedAddressSelector({
   onLoadingChange,
 }) {
   const navigate = useNavigate();
-
   const [addresses, setAddresses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [retry, setRetry] = useState(0);
-
   const currentValue = useRef(value);
   const changeHandler = useRef(onChange);
   const loadingHandler = useRef(onLoadingChange);
@@ -41,9 +38,7 @@ export default function SavedAddressSelector({
         const response = await api.get("/api/customer/account/addresses", {
           signal: controller.signal,
         });
-
         if (controller.signal.aborted) return;
-
         if (
           !response.data?.success ||
           !Array.isArray(response.data.addresses)
@@ -51,39 +46,32 @@ export default function SavedAddressSelector({
           throw new Error("Unable to load saved addresses.");
         }
 
-        const savedAddresses = response.data.addresses.filter(
+        const saved = response.data.addresses.filter(
           (item) => typeof item.address === "string" && item.address.trim(),
         );
-
-        setAddresses(savedAddresses);
-
+        setAddresses(saved);
         const defaultAddress =
-          savedAddresses.find(
-            (item) => item.default === true || item.isDefault === true,
-          ) || savedAddresses[0];
+          saved.find((item) => Boolean(item.isDefault ?? item.default)) ||
+          saved[0];
 
+        // Only auto-select when nothing was entered or chosen manually.
         if (
           defaultAddress &&
           !userEdited.current &&
           !currentValue.current?.trim()
         ) {
           currentValue.current = defaultAddress.address;
-
           changeHandler.current(defaultAddress.address);
         }
       } catch (requestError) {
         if (controller.signal.aborted) return;
-
         if (requestError.response?.status === 401) {
           navigate("/login", {
             replace: true,
-            state: {
-              message: "Please log in to access your saved addresses.",
-            },
+            state: { message: "Please log in to access your saved addresses." },
           });
           return;
         }
-
         setError(
           requestError.response?.data?.message ||
             requestError.message ||
@@ -98,7 +86,6 @@ export default function SavedAddressSelector({
     }
 
     fetchAddresses();
-
     return () => controller.abort();
   }, [navigate, retry]);
 
@@ -116,7 +103,6 @@ export default function SavedAddressSelector({
     <div className={className}>
       <label>
         {title}
-
         <select
           className="form-control"
           value={selectedAddress}
@@ -128,11 +114,10 @@ export default function SavedAddressSelector({
               ? "Loading saved addresses..."
               : "Enter a different address"}
           </option>
-
           {addresses.map((item) => (
             <option key={item.id} value={item.address}>
               {item.label || "Saved address"}
-              {item.default || item.isDefault ? " (Default)" : ""}
+              {Boolean(item.isDefault ?? item.default) ? " (Default)" : ""}
               {" - "}
               {item.address}
             </option>
@@ -143,14 +128,13 @@ export default function SavedAddressSelector({
       {error && (
         <div role="alert">
           <p className="form-error">{error}</p>
-
           <button
             type="button"
             className="btn btn-soft"
-            onClick={() => setRetry((current) => current + 1)}
             disabled={disabled}
+            onClick={() => setRetry((current) => current + 1)}
           >
-            Try Again
+            Try again
           </button>
         </div>
       )}

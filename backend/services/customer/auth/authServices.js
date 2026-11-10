@@ -1,7 +1,10 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+
 import connectDB from "../../../utils/dbConn.js";
+
 import { customerModel } from "../../../models/customer/auth/authModel.js";
+
 import {
   validateRegister,
   validateLogin,
@@ -54,6 +57,7 @@ export async function registerCustomerService(input) {
     await connection.beginTransaction();
 
     const customer = customerModel(connection);
+
     const [existingUsers] = await customer.findUserByEmail(email);
 
     if (existingUsers.length > 0) {
@@ -91,9 +95,11 @@ export async function registerCustomerService(input) {
       sub: String(userId),
       accountType: "CUSTOMER",
       role: null,
+      sessionVersion: 0,
     };
 
     const accessToken = createAccessToken(payload);
+
     const refreshToken = createRefreshToken(payload);
 
     await connection.commit();
@@ -143,15 +149,24 @@ export async function loginCustomerService(input) {
 
   try {
     const customer = customerModel(connection);
+
     const [existingUsers] = await customer.findUserByEmail(email);
+
     const existingUser = existingUsers[0];
 
     if (!existingUser) {
       throw createAuthError("Invalid email or password.");
     }
 
-    const { user_id, name, password_hash, role, status, account_type } =
-      existingUser;
+    const {
+      user_id,
+      name,
+      password_hash,
+      role,
+      status,
+      account_type,
+      session_version,
+    } = existingUser;
 
     const isPasswordValid = await verifyPassword(password, password_hash);
 
@@ -171,9 +186,11 @@ export async function loginCustomerService(input) {
       sub: String(user_id),
       role,
       accountType: account_type,
+      sessionVersion: Number(session_version),
     };
 
     const accessToken = createAccessToken(payload);
+
     const refreshToken = createRefreshToken(payload);
 
     return {
@@ -206,7 +223,9 @@ export async function refreshCustomerSessionService(refreshToken) {
   let payload;
 
   try {
-    payload = jwt.verify(refreshToken, process.env.REFRESH_SECRET);
+    payload = jwt.verify(refreshToken, process.env.REFRESH_SECRET, {
+      algorithms: ["HS256"],
+    });
   } catch {
     throw createAuthError("Your session has expired. Please log in again.");
   }
@@ -233,6 +252,7 @@ export async function refreshCustomerSessionService(refreshToken) {
     const customer = customerModel(connection);
 
     const [users] = await customer.findUserById(numericUserId);
+
     const user = users[0];
 
     if (!user) {
@@ -243,13 +263,29 @@ export async function refreshCustomerSessionService(refreshToken) {
       throw createAuthError("Your customer account is inactive.", 403);
     }
 
+    // Changing the password increments the version.
+    // All older refresh tokens become invalid.
+    // Tokens from before this feature default to version 0.
+
+    const tokenVersion = payload.sessionVersion ?? 0;
+
+    if (
+      !Number.isSafeInteger(tokenVersion) ||
+      tokenVersion !== Number(user.session_version)
+    ) {
+      throw createAuthError("Your session has ended. Sign in again.", 401);
+    }
+
     const accessToken = createAccessToken({
       sub: String(user.user_id),
       role: user.role,
       accountType: user.account_type,
+      sessionVersion: Number(user.session_version),
     });
 
-    return { accessToken };
+    return {
+      accessToken,
+    };
   } finally {
     connection.release();
   }

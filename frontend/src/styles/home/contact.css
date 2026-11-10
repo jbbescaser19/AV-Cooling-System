@@ -1,3 +1,551 @@
-.contact-section{background:linear-gradient(135deg,#082036,#0b4f6c);color:#fff}.contact-grid{display:grid;grid-template-columns:minmax(0,.82fr) minmax(0,1.18fr);gap:40px;align-items:start}.contact-section h2{font-size:clamp(2rem,4vw,3.7rem);line-height:1.05;letter-spacing:-.035em;margin:8px 0}.contact-section p{color:#b9cfda;line-height:1.65}.contact-list{display:grid;gap:12px;margin-top:26px}.contact-list div{display:flex;align-items:center;gap:10px;color:#d7edf5;font-size:.86rem}.contact-form{background:#f7fbfd;color:#163248;border-radius:20px;padding:24px;display:grid;gap:14px;box-shadow:0 24px 60px rgba(0,0,0,.12)}
-@media(max-width:860px){.contact-grid{grid-template-columns:1fr}.contact-list{grid-template-columns:1fr 1fr}.contact-form{max-width:none}}
-@media(max-width:560px){.contact-list{grid-template-columns:1fr}.contact-form{padding:18px;border-radius:16px}.contact-form .grid-2{grid-template-columns:1fr}.contact-form .btn{width:100%}}
+/* ==========================================
+   AV COOLING — CONTACT SECTION
+   Mobile-first, responsive contact design
+========================================== */
+
+.contact-section {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  color: #f7fcff;
+
+  background:
+    radial-gradient(
+      circle at 85% 10%,
+      rgba(37, 176, 214, 0.18),
+      transparent 37%
+    ),
+    linear-gradient(125deg, #071d32 0%, #0a304a 58%, #0a4b61 100%);
+}
+
+.contact-section::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+
+  width: min(55vw, 580px);
+  aspect-ratio: 1;
+
+  top: -33%;
+  right: -13%;
+
+  border: 1px solid rgba(146, 222, 242, 0.11);
+  border-radius: 50%;
+
+  box-shadow:
+    0 0 0 70px rgba(146, 222, 242, 0.025),
+    0 0 0 145px rgba(146, 222, 242, 0.018);
+
+  pointer-events: none;
+}
+
+/* ==========================================
+   MAIN LAYOUT
+========================================== */
+
+.contact-container {
+  display: grid;
+  gap: clamp(25px, 4vw, 36px);
+  min-width: 0;
+}
+
+.contact-top {
+  display: grid;
+
+  grid-template-columns:
+    minmax(0, 1.12fr)
+    minmax(320px, 0.88fr);
+
+  align-items: center;
+
+  gap: clamp(26px, 6vw, 72px);
+}
+
+.contact-intro {
+  min-width: 0;
+}
+
+/* ==========================================
+   INTRODUCTION
+========================================== */
+
+.contact-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+
+  color: #92e9f5;
+
+  text-transform: uppercase;
+  letter-spacing: 0.11em;
+
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
+.contact-intro h2 {
+  max-width: 720px;
+  margin: 15px 0 16px;
+
+  font-size: clamp(2.15rem, 4.25vw, 4.05rem);
+
+  line-height: 1.065;
+  letter-spacing: -0.047em;
+  text-wrap: balance;
+}
+
+.contact-intro h2 span {
+  color: #78e4f2;
+}
+
+.contact-description {
+  max-width: 520px;
+  margin: 0;
+
+  color: #c3dce6;
+
+  line-height: 1.73;
+  font-size: 0.95rem;
+}
+
+.contact-topics {
+  display: flex;
+  flex-wrap: wrap;
+
+  gap: 9px 14px;
+  margin-top: 25px;
+}
+
+.contact-topics span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+
+  color: #d7ecf4;
+
+  font-weight: 650;
+  font-size: 0.78rem;
+}
+
+.contact-topics svg {
+  color: #73e3d9;
+}
+
+/* ==========================================
+   MESSENGER CARD
+========================================== */
+
+.contact-chat-card {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+
+  padding: clamp(21px, 3vw, 32px);
+
+  border-radius: 23px;
+
+  background: #f8fcfe;
+
+  border: 1px solid rgba(255, 255, 255, 0.7);
+
+  color: #153c52;
+
+  box-shadow: 0 22px 60px rgba(0, 15, 34, 0.24);
+}
+
+.contact-chat-card::after {
+  content: "";
+
+  position: absolute;
+  top: -78px;
+  right: -80px;
+
+  width: 200px;
+  height: 200px;
+
+  background: radial-gradient(
+    circle,
+    rgba(44, 181, 222, 0.13),
+    transparent 68%
+  );
+
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.contact-chat-icon {
+  width: 51px;
+  height: 51px;
+
+  display: grid;
+  place-items: center;
+
+  border-radius: 16px;
+  background: #e1f3fd;
+
+  color: #1169a7;
+
+  margin-bottom: 18px;
+}
+
+.contact-chat-label {
+  display: block;
+
+  font-size: 0.7rem;
+  font-weight: 850;
+
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+
+  color: #367b96;
+}
+
+.contact-chat-card h3 {
+  margin: 6px 0 9px;
+
+  font-size: clamp(1.38rem, 2.4vw, 1.75rem);
+
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+}
+
+.contact-chat-card > p:not(.contact-chat-unavailable) {
+  margin: 0 0 21px;
+
+  color: #58788a;
+
+  font-size: 0.87rem;
+  line-height: 1.65;
+}
+
+/* ==========================================
+   PRIMARY MESSENGER BUTTON
+========================================== */
+
+.contact-messenger-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 10px;
+
+  width: 100%;
+  min-height: 51px;
+
+  padding: 12px 16px;
+
+  border: none;
+  border-radius: 12px;
+
+  background: #0866e6;
+  color: #fff;
+
+  text-align: center;
+
+  font-weight: 800;
+  font-size: 0.88rem;
+  line-height: 1.35;
+
+  box-shadow: 0 9px 20px rgba(8, 102, 230, 0.2);
+
+  transition:
+    background-color 0.18s ease,
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.contact-messenger-button span {
+  min-width: 0;
+}
+
+.contact-messenger-button[href]:hover {
+  background: #0754c1;
+
+  transform: translateY(-2px);
+
+  box-shadow: 0 13px 26px rgba(8, 102, 230, 0.25);
+}
+
+/* ==========================================
+   MESSENGER NOT CONFIGURED
+========================================== */
+
+.contact-messenger-fallback {
+  background: #145273;
+
+  box-shadow: 0 9px 20px rgba(20, 82, 115, 0.18);
+}
+
+.contact-messenger-fallback[href]:hover {
+  background: #0d3b58;
+}
+
+.contact-chat-card .contact-chat-unavailable {
+  margin: 9px 0 0;
+
+  color: #6b5362;
+
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
+.contact-chat-footnote {
+  display: block;
+
+  margin-top: 12px;
+
+  color: #668192;
+
+  text-align: center;
+
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
+
+/* ==========================================
+   CONTACT DETAIL CARDS
+========================================== */
+
+.contact-details {
+  display: grid;
+
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+
+  border: 1px solid rgba(183, 222, 234, 0.19);
+
+  border-radius: 16px;
+
+  background: rgba(255, 255, 255, 0.065);
+
+  overflow: hidden;
+}
+
+.contact-detail-item {
+  display: flex;
+  gap: 12px;
+
+  align-items: flex-start;
+
+  min-width: 0;
+
+  padding: clamp(17px, 2vw, 24px);
+}
+
+.contact-detail-item + .contact-detail-item {
+  border-left: 1px solid rgba(183, 222, 234, 0.16);
+}
+
+.contact-detail-icon {
+  display: grid;
+  place-items: center;
+
+  width: 39px;
+  height: 39px;
+
+  flex: 0 0 39px;
+
+  border-radius: 11px;
+
+  background: rgba(127, 218, 241, 0.13);
+
+  color: #89e7f5;
+}
+
+.contact-detail-body {
+  min-width: 0;
+}
+
+.contact-detail-body h3 {
+  margin: 0 0 5px;
+
+  font-size: 0.86rem;
+  color: #f5fcff;
+}
+
+.contact-detail-body p {
+  margin: 0 0 8px;
+
+  color: #bad3df;
+
+  font-size: 0.78rem;
+  line-height: 1.55;
+
+  overflow-wrap: anywhere;
+}
+
+/* ==========================================
+   PHONE AND MAP LINKS
+========================================== */
+
+.contact-phone-links {
+  display: flex;
+  flex-wrap: wrap;
+
+  gap: 6px 14px;
+}
+
+.contact-phone-links a,
+.contact-detail-action {
+  display: inline-flex;
+  align-items: center;
+
+  gap: 5px;
+
+  font-size: 0.8rem;
+
+  color: #9ae9f5;
+  font-weight: 750;
+
+  text-underline-offset: 3px;
+}
+
+.contact-phone-links a:hover,
+.contact-detail-action:hover {
+  text-decoration: underline;
+}
+
+.contact-detail-body .contact-hours-note {
+  color: #9bbbc9;
+
+  line-height: 1.5;
+  font-size: 0.73rem;
+}
+
+/* ==========================================
+   WEBSITE LINKS
+========================================== */
+
+.contact-bottom-note {
+  display: flex;
+  flex-wrap: wrap;
+
+  align-items: center;
+
+  gap: 7px;
+
+  color: #b7d4df;
+
+  font-size: 0.77rem;
+  line-height: 1.5;
+}
+
+.contact-bottom-note a {
+  color: #9ce9f5;
+
+  font-weight: 800;
+}
+
+.contact-bottom-note a:hover {
+  text-decoration: underline;
+}
+
+/* ==========================================
+   ACCESSIBILITY
+========================================== */
+
+.contact-section a:focus-visible,
+.contact-section button:focus-visible {
+  outline: 3px solid #7ee5f1;
+  outline-offset: 3px;
+}
+
+/* ==========================================
+   TABLET / SMALL LAPTOP
+========================================== */
+
+@media (max-width: 980px) {
+  .contact-top {
+    grid-template-columns:
+      minmax(0, 1fr)
+      minmax(280px, 0.92fr);
+
+    gap: 25px;
+  }
+
+  .contact-intro h2 {
+    font-size: clamp(2.15rem, 4.3vw, 3.1rem);
+  }
+
+  .contact-detail-item {
+    flex-direction: column;
+    gap: 11px;
+  }
+}
+
+/* ==========================================
+   MOBILE
+========================================== */
+
+@media (max-width: 740px) {
+  .contact-top {
+    grid-template-columns: minmax(0, 1fr);
+
+    gap: 27px;
+  }
+
+  .contact-intro h2 {
+    max-width: 590px;
+
+    font-size: clamp(2.15rem, 7.5vw, 3.3rem);
+  }
+
+  .contact-description {
+    font-size: 0.9rem;
+  }
+
+  .contact-topics {
+    margin-top: 17px;
+  }
+
+  .contact-chat-card {
+    max-width: 600px;
+  }
+
+  .contact-details {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .contact-detail-item {
+    flex-direction: row;
+    padding: 17px;
+  }
+
+  .contact-detail-item + .contact-detail-item {
+    border-left: none;
+
+    border-top: 1px solid rgba(183, 222, 234, 0.16);
+  }
+}
+
+/* ==========================================
+   SMALL PHONES
+========================================== */
+
+@media (max-width: 400px) {
+  .contact-intro h2 {
+    font-size: clamp(2rem, 9vw, 2.35rem);
+  }
+
+  .contact-chat-card {
+    padding: 19px;
+    border-radius: 16px;
+  }
+
+  .contact-topics span {
+    font-size: 0.72rem;
+  }
+
+  .contact-bottom-note {
+    gap: 6px;
+  }
+}
+
+/* ==========================================
+   REDUCED MOTION
+========================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .contact-section .contact-messenger-button {
+    transition: none;
+  }
+}

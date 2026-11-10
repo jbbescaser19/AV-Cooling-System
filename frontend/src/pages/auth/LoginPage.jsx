@@ -1,4 +1,4 @@
-import { syncGuestCart } from "../../utils/cartStore";
+import { syncGuestCart } from "../../utils/cartStore.js";
 import { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Mail, LockKeyhole, Eye, EyeOff, Snowflake } from "lucide-react";

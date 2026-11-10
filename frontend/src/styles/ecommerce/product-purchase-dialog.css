@@ -266,3 +266,36 @@
     width: 100%;
   }
 }
+
+/* Stock labels on every horsepower option. */
+.purchase-hp-grid button.is-out-of-stock {
+  border-color: #e0c4c8;
+  background: #f7eeee;
+  color: #91414a;
+}
+.purchase-hp-grid button.is-out-of-stock.active {
+  border-color: #a9444f;
+  background: #8c3741;
+  color: #fff;
+}
+.purchase-hp-grid button.is-out-of-stock small {
+  color: inherit;
+}
+.purchase-stock-note {
+  margin: 10px 0 0;
+  color: #176750;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.purchase-stock-note.is-unavailable,
+.purchase-stock-error {
+  color: #a33440;
+}
+.purchase-dialog :is(button, input):disabled {
+  opacity: 0.56;
+  cursor: not-allowed;
+}
+.purchase-dialog :is(button, input):focus-visible {
+  outline: 3px solid #188fc0;
+  outline-offset: 2px;
+}

@@ -13,7 +13,6 @@ import {
   LayoutDashboard,
   MessageCircle,
   MessageSquareText,
-  MonitorCog,
   Package,
   ReceiptText,
   ShieldCheck,
@@ -78,6 +77,18 @@ const nav = [
         ["OWNER", "MANAGER", "SALES_CASHIER"],
       ],
 
+      [
+        "Product Categories",
+        "/management/categories",
+        Package,
+        ["OWNER", "MANAGER"],
+      ],
+      [
+        "Product Variants",
+        "/management/variants",
+        Package,
+        ["OWNER", "MANAGER", "SALES_CASHIER"],
+      ],
       ["Inventory", "/management/inventory", Boxes, ["OWNER", "MANAGER"]],
 
       [
@@ -103,23 +114,23 @@ const nav = [
         "Service Requests",
         "/management/service-requests",
         ReceiptText,
-        ["OWNER", "MANAGER", "TECHNICIAN"],
-      ],
-
-      [
-        "Work Orders",
-        "/management/work-orders",
-        ClipboardList,
-        ["OWNER", "MANAGER", "TECHNICIAN"],
+        ["OWNER", "MANAGER"],
       ],
 
       ["Technicians", "/management/technicians", Users, ["OWNER", "MANAGER"]],
 
       [
+        "Booking Calendar",
+        "/management/booking-calendar",
+        CalendarDays,
+        ["OWNER", "MANAGER", "SALES_CASHIER", "TECHNICIAN"],
+      ],
+
+      [
         "Schedules",
         "/management/schedules",
         CalendarDays,
-        ["OWNER", "MANAGER", "TECHNICIAN"],
+        ["OWNER", "MANAGER", "SALES_CASHIER", "TECHNICIAN"],
       ],
     ],
   },
@@ -133,31 +144,11 @@ const nav = [
         ContactRound,
         ["OWNER", "MANAGER", "SALES_CASHIER"],
       ],
-    ],
-  },
-
-  {
-    label: "Website",
-    items: [
       [
-        "Website Content",
-        "/management/website-content",
-        MonitorCog,
-        ["OWNER", "MANAGER"],
-      ],
-
-      [
-        "Feedback",
+        "Feedback & Sentiment",
         "/management/feedback",
         MessageSquareText,
         ["OWNER", "MANAGER"],
-      ],
-
-      [
-        "Contact Messages",
-        "/management/contact-messages",
-        MessageSquareText,
-        ["OWNER", "MANAGER", "SALES_CASHIER"],
       ],
     ],
   },

@@ -275,3 +275,24 @@
     font-size: 0.72rem;
   }
 }
+
+/* Aircon details and the state where a request is no longer editable. */
+.customer-service-aircon-summary {
+  display: block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  color: #457084 !important;
+  font-size: 0.77rem !important;
+  line-height: 1.45;
+}
+
+.customer-service-locked-note {
+  margin: 0 0 8px;
+  padding: 12px;
+  border: 1px solid #d6e5ec;
+  border-radius: 10px;
+  background: #f4f9fb;
+  color: #426479;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}

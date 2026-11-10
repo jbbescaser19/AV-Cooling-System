@@ -1,12 +1,115 @@
 /* Service booking dialog: inset bottom sheet and reachable actions. */
 @media (max-width: 620px) {
-  .service-booking-backdrop { align-items: end; padding: 10px; }
-  .service-booking-dialog { width: min(100%, 540px); max-height: calc(100dvh - 20px); border-radius: 18px; }
-  .service-booking-grid { gap: 11px; padding: 15px; }
-  .service-booking-head { padding: 14px 15px; }
-  .service-booking-actions { gap: 8px; padding: 12px 15px max(12px,env(safe-area-inset-bottom)); }
-  .service-booking-grid .form-control { min-height: 44px; }
+  .service-booking-backdrop {
+    align-items: end;
+    padding: 10px;
+  }
+  .service-booking-dialog {
+    width: min(100%, 540px);
+    max-height: calc(100dvh - 20px);
+    border-radius: 18px;
+  }
+  .service-booking-grid {
+    gap: 11px;
+    padding: 15px;
+  }
+  .service-booking-head {
+    padding: 14px 15px;
+  }
+  .service-booking-actions {
+    gap: 8px;
+    padding: 12px 15px max(12px, env(safe-area-inset-bottom));
+  }
+  .service-booking-grid .form-control {
+    min-height: 44px;
+  }
 }
 @media (max-width: 380px) {
-  .service-booking-actions { grid-template-columns: 1fr; }
+  .service-booking-actions {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Every aircon service identifies the unit before submission. */
+.service-booking-grid .service-aircon-unit {
+  min-width: 0;
+  margin: 0;
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+  border: 1px solid #cbdfe9;
+  border-radius: 12px;
+  background: #f3fafc;
+}
+.service-aircon-unit legend {
+  padding: 0 7px;
+  color: #174e69;
+  font-size: 0.89rem;
+  font-weight: 800;
+}
+.service-aircon-unit legend svg {
+  vertical-align: -3px;
+  margin-right: 5px;
+}
+.service-aircon-unit label {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+  font-weight: 700;
+  font-size: 0.83rem;
+}
+.service-aircon-explanation {
+  margin: 0;
+  color: #526e7e;
+  line-height: 1.55;
+  font-size: 0.82rem;
+}
+.service-aircon-hint {
+  color: #667e8d;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  font-weight: 400;
+}
+.service-aircon-inputs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.service-aircon-inputs > :nth-child(2) {
+  grid-column: span 2;
+}
+@media (max-width: 480px) {
+  .service-booking-grid .service-aircon-unit {
+    padding: 12px;
+  }
+  .service-aircon-inputs {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .service-aircon-inputs > :nth-child(2) {
+    grid-column: auto;
+  }
+}
+
+.service-aircon-shopping {
+  display: grid;
+  gap: 10px;
+}
+.service-aircon-shopping p {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: #526e7e;
+}
+.service-aircon-shopping .btn {
+  width: max-content;
+  max-width: 100%;
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+.service-aircon-selected {
+  margin: 0;
+  font-size: 0.83rem;
+  line-height: 1.5;
+  color: #174e69;
 }

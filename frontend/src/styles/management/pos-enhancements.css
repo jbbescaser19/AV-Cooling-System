@@ -1,0 +1,101 @@
+/* Compact POS catalog with cascading selection, service booking tab. */
+.pos-mode-switch {
+  display: flex;
+  gap: 10px;
+  margin: 0 0 16px;
+  flex-wrap: wrap;
+}
+.pos-mode-switch button {
+  border: 1px solid #b8d2e1;
+  border-radius: 12px;
+  background: #fff;
+  color: #164a65;
+  padding: 11px 17px;
+  cursor: pointer;
+  font-weight: 750;
+}
+.pos-mode-switch button.is-selected {
+  background: #0d526f;
+  border-color: #0d526f;
+  color: white;
+}
+.pos-product-picker {
+  display: grid;
+  gap: 13px;
+}
+.pos-product-picker label,
+.pos-walkin-form label {
+  display: grid;
+  gap: 7px;
+  font-size: 0.88rem;
+  font-weight: 650;
+}
+.pos-product-picker select,
+.pos-walkin-form select,
+.pos-walkin-form input,
+.pos-walkin-form textarea {
+  width: 100%;
+  min-height: 42px;
+  box-sizing: border-box;
+  border: 1px solid #bdd1db;
+  background: #fff;
+  border-radius: 9px;
+  padding: 10px 11px;
+  color: #243d4e;
+  font: inherit;
+}
+.pos-chosen-product {
+  display: flex;
+  gap: 15px;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 16px;
+  background: #f1f8fb;
+  border: 1px solid #c9e1ec;
+  border-radius: 14px;
+}
+.pos-chosen-product > div {
+  display: grid;
+  gap: 5px;
+}
+.pos-chosen-product button,
+.pos-book-submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 11px 18px;
+  background: #0b5c7a;
+  color: white;
+  border: 0;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 750;
+}
+.pos-chosen-product button:disabled,
+.pos-book-submit:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.pos-walkin-form {
+  display: grid;
+  gap: 15px;
+  max-width: 920px;
+}
+.pos-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.pos-book-submit {
+  width: fit-content;
+}
+@media (max-width: 720px) {
+  .pos-form-grid {
+    grid-template-columns: 1fr;
+  }
+  .pos-chosen-product button {
+    width: 100%;
+  }
+}

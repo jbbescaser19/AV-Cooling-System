@@ -1,0 +1,111 @@
+/* Scoped Management-only session and password-confirmation UI. */
+.mgmt-session-shade {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  padding: 20px;
+  display: grid;
+  place-items: center;
+  background: rgba(13, 36, 52, 0.58);
+}
+.mgmt-session-warning,
+.mgmt-reauth-card {
+  width: min(100%, 440px);
+  padding: clamp(22px, 5vw, 32px);
+  border: 1px solid #c8dfe9;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 24px 60px rgba(11, 39, 56, 0.17);
+  color: #17374c;
+}
+.mgmt-session-icon,
+.mgmt-reauth-icon {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: #e4f4f8;
+  color: #155d82;
+  margin-bottom: 15px;
+}
+.mgmt-session-warning h2,
+.mgmt-reauth-card h1 {
+  margin: 0 0 12px;
+  font-size: clamp(1.22rem, 3vw, 1.48rem);
+  line-height: 1.25;
+}
+.mgmt-session-warning p,
+.mgmt-reauth-card p {
+  color: #4e6474;
+  line-height: 1.6;
+  margin: 0 0 20px;
+}
+.mgmt-session-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.mgmt-session-primary,
+.mgmt-reauth-card button {
+  min-height: 44px;
+  padding: 10px 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  border: 0;
+  border-radius: 10px;
+  background: #0a638d;
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.mgmt-session-primary:hover,
+.mgmt-reauth-card button:hover {
+  background: #094f71;
+}
+.mgmt-session-primary:disabled,
+.mgmt-reauth-card button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.mgmt-session-primary:focus-visible,
+.mgmt-reauth-card :is(button, input):focus-visible {
+  outline: 3px solid #49b7d5;
+  outline-offset: 3px;
+}
+.mgmt-reauth-card {
+  margin: clamp(18px, 6vw, 70px) auto;
+}
+.mgmt-reauth-card form {
+  display: grid;
+  gap: 10px;
+}
+.mgmt-reauth-card label {
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+.mgmt-reauth-card input {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid #adc7d4;
+  border-radius: 9px;
+  padding: 10px 12px;
+  font: inherit;
+}
+.mgmt-reauth-card .mgmt-reauth-error {
+  margin: 0;
+  color: #ae2b3b;
+}
+@media (max-width: 540px) {
+  .mgmt-session-warning,
+  .mgmt-reauth-card {
+    border-radius: 14px;
+  }
+  .mgmt-session-primary,
+  .mgmt-reauth-card button {
+    width: 100%;
+  }
+}

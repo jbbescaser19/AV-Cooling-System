@@ -1,146 +1,89 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Building2, LogIn, ShieldCheck } from "lucide-react";
-
+import api from "../../../api/api.js";
 import { loginStaff } from "../../utils/authMock";
-
 import "../../styles/auth/auth.css";
-
 export default function ManagementLoginPage() {
   const navigate = useNavigate();
-
-  const handleSubmit = (event) => {
-    event.preventDefault();
-
-    const formData = new FormData(event.currentTarget);
-
-    const username = String(formData.get("username") || "").trim();
-
-    const role = String(formData.get("role") || "OWNER");
-
-    const staff = {
-      id: `staff-${Date.now()}`,
-
-      name: username || getRoleName(role),
-
-      username: username || role.toLowerCase(),
-
-      role,
-    };
-
-    loginStaff(staff);
-
-    navigate("/management/dashboard", {
-      replace: true,
-    });
-  };
-
+  const [email, setEmail] = useState(""),
+    [password, setPassword] = useState(""),
+    [busy, setBusy] = useState(false),
+    [error, setError] = useState("");
+  async function signIn(e) {
+    e.preventDefault();
+    if (busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      const { data } = await api.post("/api/management/auth/login", {
+        email: email.trim().toLowerCase(),
+        password,
+      });
+      if (!data.success || !data.staff?.role)
+        throw new Error("Staff sign-in was not confirmed.");
+      loginStaff(data.staff);
+      setPassword("");
+      navigate("/management/dashboard", { replace: true });
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+          "Unable to sign in. Check your details and try again.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
   return (
-    <div className="auth-shell mgmt-login">
-      <form className="auth-card" onSubmit={handleSubmit}>
-        <div
-          className="eyebrow"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "6px",
-          }}
-        >
-          <ShieldCheck size={16} />
-          Management Login
+    <main className="auth-shell mgmt-login">
+      <form className="auth-card" onSubmit={signIn}>
+        <div className="eyebrow">
+          <ShieldCheck size={17} /> Secure management access
         </div>
-
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "10px",
-            marginBottom: "8px",
-          }}
-        >
-          <Building2 size={28} />
-
-          <h1
-            style={{
-              margin: 0,
-            }}
-          >
-            AV Cooling Staff
-          </h1>
-        </div>
-
+        <h1>
+          <Building2 size={27} aria-hidden="true" /> AV Cooling Staff
+        </h1>
         <p className="muted">
-          Sign in to access the AV Cooling management system.
+          Sign in using the email and password assigned to your staff account.
+          Your role is checked by the server.
         </p>
-
+        {error && (
+          <p role="alert" className="auth-error">
+            {error}
+          </p>
+        )}
         <div className="form-group">
-          <label htmlFor="management-username">Username</label>
-
+          <label htmlFor="staff-email">Email address</label>
           <input
-            id="management-username"
+            id="staff-email"
+            type="email"
             className="form-control"
-            name="username"
-            type="text"
-            placeholder="Enter username"
+            autoComplete="username"
             required
+            maxLength={255}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            disabled={busy}
           />
         </div>
-
         <div className="form-group">
-          <label htmlFor="management-password">Password</label>
-
+          <label htmlFor="staff-password">Password</label>
           <input
-            id="management-password"
-            className="form-control"
-            name="password"
+            id="staff-password"
             type="password"
-            placeholder="Enter password"
+            className="form-control"
+            autoComplete="current-password"
             required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            disabled={busy}
           />
         </div>
-
-        <div className="form-group">
-          <label htmlFor="management-role">Role</label>
-
-          <select
-            id="management-role"
-            name="role"
-            className="form-control"
-            defaultValue="OWNER"
-          >
-            <option value="OWNER">Owner</option>
-
-            <option value="MANAGER">Manager</option>
-
-            <option value="SALES_CASHIER">Sales / Cashier</option>
-
-            <option value="TECHNICIAN">Technician</option>
-          </select>
-        </div>
-
-        <button type="submit" className="btn btn-primary">
+        <button className="btn btn-primary" disabled={busy} type="submit">
           <LogIn size={17} />
-          Login
+          {busy ? "Signing in…" : "Sign in to Management"}
         </button>
       </form>
-    </div>
+    </main>
   );
-}
-
-function getRoleName(role) {
-  switch (role) {
-    case "OWNER":
-      return "Owner";
-
-    case "MANAGER":
-      return "Manager";
-
-    case "SALES_CASHIER":
-      return "Sales / Cashier";
-
-    case "TECHNICIAN":
-      return "Technician";
-
-    default:
-      return "Staff";
-  }
 }

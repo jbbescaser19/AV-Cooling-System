@@ -1,5 +1,10 @@
 import connectDB from "../../../utils/dbConn.js";
+import {
+  reserveAppointment,
+  releaseAppointment,
+} from "../../scheduling/bookingScheduleService.js";
 import { customerServiceModel } from "../../../models/customer/account/serviceModel.js";
+import { createCustomerNotification } from "../notification/notificationService.js";
 
 import {
   validateCustomerUserId,
@@ -113,16 +118,39 @@ export async function changeMyServiceService(userId, requestId, action, input) {
 
       if (change.action === "cancel") {
         await model.cancelRequest(customerId, change.requestId);
+        await releaseAppointment(connection, "SERVICE", change.requestId);
+        await createCustomerNotification(
+          connection,
+          validatedUserId,
+          "SERVICE_CANCELLED_BY_CUSTOMER",
+          "Service request cancelled",
+          `You cancelled service request #${change.requestId}.`,
+          `/account/services/${change.requestId}`,
+        );
       } else {
         const destinationAddress = validateServiceDestination(
           request.serviceType,
           change.data.destinationAddress,
         );
 
+        await reserveAppointment(
+          connection,
+          "SERVICE",
+          change.requestId,
+          change.data.preferredStart,
+        );
         await model.updateRequest(customerId, change.requestId, {
           ...change.data,
           destinationAddress,
         });
+        await createCustomerNotification(
+          connection,
+          validatedUserId,
+          "SERVICE_UPDATED",
+          "Service request updated",
+          `You updated the details of service request #${change.requestId}.`,
+          `/account/services/${change.requestId}`,
+        );
       }
     }
 
