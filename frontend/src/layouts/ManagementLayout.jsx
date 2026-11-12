@@ -6,7 +6,6 @@ import {
   useLocation,
   useNavigate,
 } from "react-router-dom";
-
 import { Bell, LogOut, Menu, UserRound } from "lucide-react";
 
 import Sidebar from "../components/management/Sidebar";
@@ -16,6 +15,7 @@ import { getStaff, loginStaff, logoutStaff } from "../utils/authMock";
 import api from "../../api/api.js";
 
 import "../styles/management/management.css";
+import "../styles/management/management-scroll.css";
 
 const access = {
   OWNER: [
@@ -140,7 +140,9 @@ export default function ManagementLayout() {
   }, [endSession]);
 
   useEffect(() => {
-    if (!staff) return undefined;
+    // Do not send protected requests from a stale cached staff profile.
+    // Wait until /auth/session has verified the active Management session.
+    if (checking || !session?.id || !staff?.id) return undefined;
 
     let active = true;
 
@@ -171,28 +173,26 @@ export default function ManagementLayout() {
       window.clearInterval(interval);
       window.removeEventListener("av-management-updated", refresh);
     };
-  }, [staff?.id]);
+  }, [checking, session?.id, staff?.id]);
 
   useEffect(() => {
     setOpen(false);
+    // Recover from an old modal/drawer scroll lock when navigating between pages.
+    document.body.style.overflow = "";
   }, [location.pathname]);
 
   useEffect(() => {
     if (!open) return undefined;
 
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
+    // The menu and its links have their own scroll area; do not lock the
+    // whole document and strand a cashier or technician on a long page.
     const escape = (event) => {
-      if (event.key === "Escape") {
-        setOpen(false);
-      }
+      if (event.key === "Escape") setOpen(false);
     };
 
     window.addEventListener("keydown", escape);
 
     return () => {
-      document.body.style.overflow = previous;
       window.removeEventListener("keydown", escape);
     };
   }, [open]);
@@ -279,7 +279,6 @@ export default function ManagementLayout() {
 
           <div>
             <b>AV Cooling Management</b>
-
             <span>
               {staff.role === "SALES_CASHIER"
                 ? "Point of sale and walk-in bookings"

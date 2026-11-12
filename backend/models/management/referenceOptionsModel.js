@@ -16,7 +16,11 @@ export function referenceOptionsModel(db) {
           `SELECT category_id AS id,category_name AS label FROM product_categories WHERE status='ACTIVE' ORDER BY category_name`,
         ),
         select(
-          `SELECT v.variant_id AS id,CONCAT(p.brand,' ',p.model,' · ',v.horsepower,' HP') AS label FROM product_variants v JOIN products p ON p.product_id=v.product_id WHERE p.status='ACTIVE' AND v.status='ACTIVE' ORDER BY p.brand,p.model`,
+          `SELECT v.variant_id AS id, CONCAT(p.brand,' ',p.model,' · ',v.horsepower,' HP') AS label,
+                  GREATEST(0, COALESCE(i.on_hand_quantity, 0)-COALESCE(i.reserved_quantity,0)) AS available
+            FROM product_variants v JOIN products p ON p.product_id=v.product_id
+            LEFT JOIN inventory i ON i.variant_id=v.variant_id
+            WHERE p.status='ACTIVE' AND v.status='ACTIVE' ORDER BY p.brand,p.model`,
         ),
         select(
           `SELECT service_type_id AS id,service_name AS label,service_code AS code FROM service_types WHERE status='ACTIVE' ORDER BY service_name`,

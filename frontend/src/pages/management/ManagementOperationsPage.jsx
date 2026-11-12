@@ -29,8 +29,8 @@ const labels = {
   SERVICE_DECLINED: "Decline request",
   SERVICE_SCHEDULED: "Confirm schedule",
   SERVICE_RESCHEDULED: "Reschedule",
-  SERVICE_STARTED: "Start service",
-  SERVICE_COMPLETED: "Complete service",
+  SERVICE_STARTED: "Record service started (technician report)",
+  SERVICE_COMPLETED: "Record service completed (technician report)",
   SERVICE_CANCELLED: "Cancel request",
 };
 
@@ -194,14 +194,26 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
       );
       return;
     }
+    if (
+      ["SERVICE_STARTED", "SERVICE_COMPLETED"].includes(event) &&
+      internalNote.trim().length < 10
+    ) {
+      setActionError(
+        "Record who reported this job update (e.g. technician's name and phone call) in the internal note, at least 10 characters.",
+      );
+      return;
+    }
     if (event === "SERVICE_STARTED" && !hasAssignedTeam) {
       setActionError("Assign a technician team before starting this service.");
       return;
     }
     if (
-      ["SERVICE_DECLINED", "SERVICE_CANCELLED", "SERVICE_COMPLETED"].includes(
-        event,
-      ) &&
+      [
+        "SERVICE_DECLINED",
+        "SERVICE_CANCELLED",
+        "SERVICE_COMPLETED",
+        "SERVICE_STARTED",
+      ].includes(event) &&
       !window.confirm(`${labels[event]} for service #${selected.id}?`)
     )
       return;
@@ -590,7 +602,12 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
                         </small>
                       </label>
                       <label className="wsm-field">
-                        Internal staff note (optional)
+                        Internal staff note{" "}
+                        {["SERVICE_STARTED", "SERVICE_COMPLETED"].includes(
+                          event,
+                        )
+                          ? "(required for manager's phone-reported update)"
+                          : "(optional)"}
                         <textarea
                           maxLength={1000}
                           rows={3}
@@ -599,8 +616,9 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
                           placeholder="For store staff and assigned technicians only"
                         />
                         <small>
-                          Private. Not included in customer notifications or
-                          customer history.
+                          For start/completion by management, enter who called
+                          and how you verified the work. Private; not shown to
+                          customers.
                         </small>
                       </label>
                     </div>
@@ -632,7 +650,12 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
                     type="submit"
                     form="service-request-action-form"
                     disabled={
-                      busy || (event === "SERVICE_STARTED" && !hasAssignedTeam)
+                      busy ||
+                      (event === "SERVICE_STARTED" && !hasAssignedTeam) ||
+                      (["SERVICE_STARTED", "SERVICE_COMPLETED"].includes(
+                        event,
+                      ) &&
+                        internalNote.trim().length < 10)
                     }
                   >
                     {busy

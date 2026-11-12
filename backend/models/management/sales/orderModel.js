@@ -10,6 +10,9 @@ export function orderModel(db) {
                     CAST(o.total_amount AS CHAR) AS total,
                     CAST(o.delivery_fee AS CHAR) AS deliveryFee,
                     o.ordered_at AS createdAt,
+                    COALESCE(itemSummary.totalUnits, 0) AS totalUnits,
+                    COALESCE(itemSummary.productLines, 0) AS productLines,
+                    COALESCE(itemSummary.firstProduct, '') AS firstProduct,
                     DATE_FORMAT(o.preferred_schedule, '%Y-%m-%dT%H:%i') AS schedule,
                     EXISTS (SELECT 1 FROM work_orders w
                       WHERE w.order_id=o.order_id AND w.status IN ('IN_PROGRESS','COMPLETED')) AS workAlreadyStarted,
@@ -22,7 +25,18 @@ export function orderModel(db) {
                     EXISTS (SELECT 1 FROM fulfillment_events e
                       WHERE e.event_kind='ORDER' AND e.record_id=o.order_id
                         AND e.event_code='INSTALLATION_STARTED') AS installationStarted
-             FROM orders o ORDER BY o.order_id DESC LIMIT 150`);
+             FROM orders o
+             LEFT JOIN (
+               SELECT order_id, COUNT(*) AS productLines,
+                      SUM(quantity) AS totalUnits,
+                      SUBSTRING_INDEX(
+                        GROUP_CONCAT(CONCAT(quantity, ' × ', product_name_snapshot)
+                          ORDER BY order_item_id SEPARATOR ' | '),
+                        ' | ', 1
+                      ) AS firstProduct
+                 FROM order_items GROUP BY order_id
+             ) itemSummary ON itemSummary.order_id = o.order_id
+             ORDER BY o.order_id DESC LIMIT 150`);
       return rows;
     },
     async orderDetails(id) {

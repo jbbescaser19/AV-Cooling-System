@@ -294,7 +294,7 @@ export const workspaceConfig = {
   "facebook-requests": {
     title: "Facebook Agreements",
     description:
-      "Staff manually records Messenger agreements. This page does not read Facebook messages automatically.",
+      "Record Facebook agreements manually. Confirm the contact, selected product or service, and schedule with the customer.",
     columns: [
       ["reference", "Reference"],
       ["customer", "Customer"],
@@ -303,15 +303,23 @@ export const workspaceConfig = {
       ["serviceName", "Service type"],
       ["airconBrand", "Aircon brand"],
       ["airconModel", "Aircon model"],
+      ["destinationAddress", "Relocation destination"],
+      ["facebookAccount", "Facebook account"],
       ["scheduledStart", "Agreed schedule"],
-      ["conversationUrl", "Messenger chat"],
       ["status", "Status"],
     ],
     create: [
       choice("requestKind", "Agreed request", ["AIRCON", "SERVICE"]),
       text("customerName", "Customer name"),
       text("contactNumber", "Phone", true, 30),
-      note("address", "Service or delivery address", true),
+      text(
+        "facebookAccount",
+        "Facebook account / name you spoke with",
+        true,
+        150,
+      ),
+      note("address", "Service location / relocation pickup address", true),
+      note("destinationAddress", "Relocation destination address"),
       date("scheduledStart", "Agreed date and time", "datetime-local"),
       reference("variantId", "Aircon model", "variants", true),
       number("quantity", "Quantity", { min: 1, max: 100000 }),
@@ -327,7 +335,6 @@ export const workspaceConfig = {
         nullable: true,
         required: false,
       },
-      text("conversationUrl", "Messenger conversation link", false, 500),
       note("notes", "What was agreed with the customer"),
     ],
     update: [

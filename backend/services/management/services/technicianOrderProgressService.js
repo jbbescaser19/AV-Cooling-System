@@ -20,10 +20,23 @@ export async function changeTechnicianOrderProgress(staff, rawId, raw) {
     fail("Only authorized field staff can update order work.", 403);
   }
 
-  const { orderId, action, notes } = validateTechnicianOrderProgress(
-    rawId,
-    raw,
-  );
+  const { orderId, action, notes, onBehalfReason } =
+    validateTechnicianOrderProgress(rawId, raw);
+
+  // Managers can record a technician's phone report, but must identify its source.
+  // The actor is the logged-in Manager/Owner in work and order history.
+  if (["OWNER", "MANAGER"].includes(staff.role) && onBehalfReason.length < 10) {
+    fail(
+      "Explain who reported this job update and how it was verified (at least 10 characters).",
+      400,
+    );
+  }
+  if (staff.role === "TECHNICIAN" && onBehalfReason) {
+    fail(
+      "Only management can record an update on behalf of a technician.",
+      403,
+    );
+  }
 
   const connection = await connectDB.getConnection();
 
@@ -160,6 +173,10 @@ export async function changeTechnicianOrderProgress(staff, rawId, raw) {
       await fulfillOrderReservation(connection, orderId, staff.id);
     }
 
+    const actorNote = onBehalfReason
+      ? `Recorded by ${staff.role} ${staff.id} on technician report: ${onBehalfReason}`
+      : "Recorded by assigned technician";
+
     // Update only unfinished work orders.
     for (const job of jobsToUpdate) {
       const { result } = await updateWorkOrders(
@@ -168,7 +185,7 @@ export async function changeTechnicianOrderProgress(staff, rawId, raw) {
         job.id,
         {
           status: target,
-          notes,
+          notes: `${actorNote}${notes ? ` | Work: ${notes}` : ""}`,
           technicianId: null,
           technicianIds: [],
           scheduledStart: null,
@@ -198,7 +215,7 @@ export async function changeTechnicianOrderProgress(staff, rawId, raw) {
       order.status,
       nextStatus,
       staff.id,
-      `${action.replaceAll("_", " ")}${notes ? `: ${notes}` : ""}`,
+      `${action.replaceAll("_", " ")} | ${actorNote}${notes ? ` | ${notes}` : ""}`,
     );
 
     await auditLogModel(connection).audit(

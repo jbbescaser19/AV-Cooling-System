@@ -197,6 +197,11 @@ export default function TechnicianBookingCalendar() {
                 <small>
                   {job.customer} · {job.address}
                 </small>
+                {job.destinationAddress && (
+                  <small>
+                    Destination / install at: {job.destinationAddress}
+                  </small>
+                )}
                 {job.phone && <small>Contact: {job.phone}</small>}
               </div>
             </article>

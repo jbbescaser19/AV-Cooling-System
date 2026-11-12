@@ -125,6 +125,17 @@ export async function applyManagementEvent(kind, reference, staff, rawInput) {
   }
 
   assertStaffRole(staff, data.eventCode);
+  if (
+    kind === "SERVICE" &&
+    ["SERVICE_STARTED", "SERVICE_COMPLETED"].includes(data.eventCode) &&
+    ["OWNER", "MANAGER"].includes(staff.role) &&
+    data.internalNote.trim().length < 10
+  ) {
+    fail(
+      "For a phone-reported start or completion, enter an internal note with the technician name and how the work was confirmed (10+ characters).",
+      400,
+    );
+  }
 
   const matchingKind =
     kind === "ORDER"

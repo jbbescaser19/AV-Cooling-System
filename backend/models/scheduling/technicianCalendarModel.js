@@ -7,6 +7,7 @@ export function technicianCalendarModel(db) {
                 DATE_FORMAT(w.scheduled_start,'%Y-%m-%d') AS date,
                 TIME_FORMAT(w.scheduled_start,'%H:%i') AS start,
                 w.recipient_name AS customer, w.service_address AS address,
+                sr.destination_address AS destinationAddress,
                 w.contact_number AS phone,
                 COALESCE(o.order_number, CONCAT('Service #',sr.service_request_id),
                   CONCAT('Job #',w.work_order_id)) AS reference,

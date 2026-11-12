@@ -22,15 +22,16 @@ export function serviceRequestModel(db) {
         fb.aircon_brand && fb.aircon_model && fb.aircon_horsepower,
       );
       return execute(
-        `INSERT INTO service_requests(customer_id,service_type_id,service_price,customer_concern,customer_notes,preferred_start,contact_number,service_address,status,facebook_request_id,aircon_source,aircon_brand,aircon_model,aircon_horsepower) VALUES (NULL,?,?,?,?,?,?,?,'CONFIRMED',?,?,?,?,?)`,
+        `INSERT INTO service_requests(customer_id,service_type_id,service_price,customer_concern,customer_notes,preferred_start,contact_number,service_address,destination_address,status,facebook_request_id,aircon_source,aircon_brand,aircon_model,aircon_horsepower) VALUES (NULL,?,?,?,?,?,?,?,?,'CONFIRMED',?,?,?,?,?)`,
         [
           fb.service_type_id,
           serviceType.base_price,
           fb.customer_notes,
-          "Manual Facebook Messenger agreement",
+          `Facebook agreement with: ${fb.facebook_account || "Account not recorded"}`,
           fb.preferred_schedule.replace("T", " "),
           fb.contact_number,
           fb.delivery_address,
+          fb.destination_address || null,
           fb.facebook_request_id,
           hasAircon ? "CUSTOMER_OWNED" : null,
           hasAircon ? fb.aircon_brand : null,

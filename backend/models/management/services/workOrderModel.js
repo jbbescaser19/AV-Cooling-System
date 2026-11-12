@@ -82,6 +82,7 @@ export function workOrderModel(db) {
            w.recipient_name AS customer,
            w.contact_number AS phone,
            w.service_address AS address,
+           sr.destination_address AS destinationAddress,
            DATE_FORMAT(w.scheduled_start,'%Y-%m-%dT%H:%i') AS scheduledStart,
            (SELECT u1.name FROM technician_assignments a1
              JOIN technicians t1 ON t1.technician_id=a1.technician_id
@@ -120,6 +121,7 @@ export function workOrderModel(db) {
          JOIN technician_assignments a ON a.work_order_id=w.work_order_id
          JOIN technicians t ON t.technician_id=a.technician_id
          LEFT JOIN orders o ON o.order_id=w.order_id
+         LEFT JOIN service_requests sr ON sr.service_request_id=w.service_request_id
          WHERE t.user_id=? AND a.status IN ('ASSIGNED','IN_PROGRESS','COMPLETED')
            AND w.status IN ('ASSIGNED','IN_PROGRESS','COMPLETED')
          ORDER BY CASE w.status WHEN 'IN_PROGRESS' THEN 0 WHEN 'ASSIGNED' THEN 1 ELSE 2 END,

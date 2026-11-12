@@ -319,7 +319,13 @@ export async function updateWorkOrders(
     }
   }
 
-  result = await model.updateWork(id, data.status, data.notes);
+  // Keep start/report notes in the immutable work history; only completion
+  // summaries belong in the work order's completion_notes column.
+  result = await model.updateWork(
+    id,
+    data.status,
+    data.status === "COMPLETED" ? data.notes : "",
+  );
 
   // Service requests must stay synchronized with technician activity.
   await recordServiceJobProgress(

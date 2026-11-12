@@ -14,6 +14,8 @@ export const facebookRequestSchemas = {
       customerName: str(2, 150),
       contactNumber: str(7, 30),
       address: str(5, 2000),
+      destinationAddress: str(0, 2000).default(""),
+      facebookAccount: str(2, 150),
       scheduledStart: datetime,
       variantId: id.nullable().default(null),
       quantity: positiveQty.default(1),

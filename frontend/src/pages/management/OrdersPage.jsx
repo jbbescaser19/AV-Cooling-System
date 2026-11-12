@@ -14,10 +14,12 @@ import {
 
 import api from "../../../api/api.js";
 import SourceTeamPanel from "../../components/management/SourceTeamPanel";
+import ManagerOrderProgressPanel from "../../components/management/ManagerOrderProgressPanel.jsx";
 import OrderRescheduleModal from "../../components/management/OrderRescheduleModal.jsx";
 import { getStaff } from "../../utils/authMock";
 import "../../styles/management/sales-live.css";
 import "../../styles/management/av-records.css";
+import "../../styles/management/order-product-breakdown.css";
 
 const money = (value) =>
   new Intl.NumberFormat("en-PH", {
@@ -55,6 +57,7 @@ export default function OrdersPage() {
   const [success, setSuccess] = useState("");
   const [refresh, setRefresh] = useState(0);
   const [details, setDetails] = useState(null);
+  const [sourceJobs, setSourceJobs] = useState(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [detailsError, setDetailsError] = useState("");
   const [dialogError, setDialogError] = useState("");
@@ -114,6 +117,7 @@ export default function OrdersPage() {
     }
     const controller = new AbortController();
     setDetails(null);
+    setSourceJobs(null);
     setDetailsError("");
     setDetailsLoading(true);
     setDialogError("");
@@ -163,7 +167,7 @@ export default function OrdersPage() {
       orders.filter(
         (row) =>
           (channel === "ALL" || row.channel === channel) &&
-          `${row.reference} ${row.customer} ${row.contact || ""} ${row.status} ${row.channel} ${row.paymentStatus}`
+          `${row.reference} ${row.customer} ${row.contact || ""} ${row.firstProduct || ""} ${row.status} ${row.channel} ${row.paymentStatus}`
             .toLowerCase()
             .includes(search.toLowerCase().trim()),
       ),
@@ -369,6 +373,7 @@ export default function OrdersPage() {
                 <tr>
                   <th>Order</th>
                   <th>Customer</th>
+                  <th>Products</th>
                   <th>Source</th>
                   <th>Contact</th>
                   <th>Status</th>
@@ -385,6 +390,22 @@ export default function OrdersPage() {
                       <strong>{row.reference}</strong>
                     </td>
                     <td data-label="Customer">{row.customer}</td>
+                    <td data-label="Products">
+                      <div className="av-order-products-preview">
+                        <strong>
+                          {row.firstProduct || "No products recorded"}
+                        </strong>
+                        {Number(row.productLines) > 1 && (
+                          <small>
+                            +{Number(row.productLines) - 1} more product{" "}
+                            {Number(row.productLines) === 2 ? "type" : "types"}
+                          </small>
+                        )}
+                        <small>
+                          {Number(row.totalUnits) || 0} total unit(s)
+                        </small>
+                      </div>
+                    </td>
                     <td data-label="Source">{row.channel}</td>
                     <td data-label="Contact">
                       {getPhoneHref(row.contact) ? (
@@ -527,38 +548,102 @@ export default function OrdersPage() {
                   <span>Payment status</span>
                   <strong>{details.paymentStatus}</strong>
                 </div>
-                {Number(details.additionalFee) > 0 && (
-                  <div className="sales-totals av-fee-summary">
-                    <span>Additional fee · {details.additionalFeeReason}</span>
-                    <strong>{money(details.additionalFee)}</strong>
+                <section
+                  className="av-order-line-items"
+                  aria-label="Products in this order"
+                >
+                  <div className="av-order-line-items__head">
+                    <h3>Products ordered</h3>
+                    <span>
+                      {(details.items || []).reduce(
+                        (count, item) => count + Number(item.quantity || 0),
+                        0,
+                      )}{" "}
+                      total unit(s)
+                    </span>
                   </div>
-                )}
-                <div className="sales-totals sales-total">
-                  <span>Total</span>
-                  <strong>{money(details.total)}</strong>
-                </div>
-                <h3>Order items</h3>
-                {!details.items?.length ? (
-                  <p>No order items recorded.</p>
-                ) : (
-                  details.items.map((item, index) => (
-                    <div
-                      className="sales-totals"
-                      key={`${item.name}-${item.model}-${index}`}
-                    >
-                      <span>
-                        {item.quantity} × {item.name} · {item.model}
-                      </span>
-                      <strong>{money(item.lineTotal)}</strong>
+                  {!details.items?.length ? (
+                    <p>No products were recorded for this order.</p>
+                  ) : (
+                    <div className="av-order-line-items__list">
+                      {details.items.map((item, index) => (
+                        <div
+                          className="av-order-line-items__row"
+                          key={`${item.name}-${item.model}-${index}`}
+                        >
+                          <div className="av-order-line-items__product">
+                            <strong>{item.name}</strong>
+                            <small>{item.model || "Air conditioner"}</small>
+                          </div>
+                          <div className="av-order-line-items__figures">
+                            <span>
+                              <small>Quantity</small>
+                              <strong>{Number(item.quantity)}</strong>
+                            </span>
+                            <span>
+                              <small>Unit price</small>
+                              <strong>{money(item.unitPrice)}</strong>
+                            </span>
+                            <span>
+                              <small>Line total</small>
+                              <strong>{money(item.lineTotal)}</strong>
+                            </span>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  ))
-                )}
+                  )}
+                  <div className="av-order-line-items__summary">
+                    <div>
+                      <span>Product subtotal</span>
+                      <strong>{money(details.subtotal)}</strong>
+                    </div>
+                    {Number(details.discount) > 0 && (
+                      <div>
+                        <span>Discount</span>
+                        <strong>−{money(details.discount)}</strong>
+                      </div>
+                    )}
+                    {Number(details.deliveryFee) > 0 && (
+                      <div>
+                        <span>Delivery fee</span>
+                        <strong>{money(details.deliveryFee)}</strong>
+                      </div>
+                    )}
+                    {Number(details.additionalFee) > 0 && (
+                      <div>
+                        <span>
+                          Additional fee ·{" "}
+                          {details.additionalFeeReason || "Extra charge"}
+                        </span>
+                        <strong>{money(details.additionalFee)}</strong>
+                      </div>
+                    )}
+                    <div className="av-order-line-items__grand">
+                      <span>Order total</span>
+                      <strong>{money(details.total)}</strong>
+                    </div>
+                  </div>
+                </section>
                 {needsFieldWork &&
                   !["PENDING", "CANCELLED"].includes(details.status) && (
                     <SourceTeamPanel
                       key={`ORDER-${details.id}`}
                       kind="ORDER"
                       sourceId={details.id}
+                      onJobsChange={setSourceJobs}
+                    />
+                  )}
+                {canApprove &&
+                  needsFieldWork &&
+                  !["PENDING", "CANCELLED", "COMPLETED"].includes(
+                    details.status,
+                  ) && (
+                    <ManagerOrderProgressPanel
+                      order={details}
+                      jobs={sourceJobs || []}
+                      loading={sourceJobs === null}
+                      onUpdated={() => setRefresh((count) => count + 1)}
                     />
                   )}
                 {details.channel === "FACEBOOK" && (

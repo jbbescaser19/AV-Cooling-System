@@ -1,0 +1,95 @@
+.av-manager-progress {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 15px;
+  border: 1px solid #c9dfe9;
+  border-radius: 14px;
+  background: #f6fbfe;
+}
+.av-manager-progress header {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+}
+.av-manager-progress header > svg {
+  color: #126e8e;
+  flex: 0 0 19px;
+  margin-top: 3px;
+}
+.av-manager-progress h3 {
+  margin: 0;
+  font-size: 0.96rem;
+  color: #17455a;
+}
+.av-manager-progress p {
+  margin: 5px 0;
+  font-size: 0.81rem;
+  line-height: 1.5;
+  color: #456b7e;
+}
+.av-manager-progress form {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.av-manager-progress form label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  font-size: 0.81rem;
+  font-weight: 750;
+  color: #254e63;
+}
+.av-manager-progress form label span {
+  color: #a24a21;
+  font-size: 0.7rem;
+}
+.av-manager-progress textarea {
+  width: 100%;
+  min-width: 0;
+  padding: 11px;
+  border: 1px solid #b7d2df;
+  border-radius: 9px;
+  resize: vertical;
+  background: #fff;
+  font: inherit;
+  font-weight: 400;
+}
+.av-manager-progress__next {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #106688;
+}
+.av-manager-progress__help {
+  padding: 10px;
+  border-radius: 9px;
+  background: #ecf5f8;
+}
+.av-manager-progress__error {
+  padding: 10px;
+  color: #9e3336 !important;
+  background: #fff0f1;
+  border-radius: 9px;
+}
+.av-manager-progress form button {
+  justify-self: start;
+  min-height: 44px;
+}
+.av-manager-progress form button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.av-manager-progress form small {
+  color: #677e8d;
+  font-size: 0.74rem;
+}
+@media (max-width: 600px) {
+  .av-manager-progress {
+    padding: 12px;
+  }
+  .av-manager-progress form button {
+    justify-self: stretch;
+  }
+}

@@ -9,6 +9,7 @@ const schema = z
       "COMPLETE_DELIVERY",
     ]),
     notes: z.string().trim().max(1000).default(""),
+    onBehalfReason: z.string().trim().max(500).default(""),
   })
   .strict();
 

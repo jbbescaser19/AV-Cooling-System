@@ -17,6 +17,8 @@ import api from "../../../api/api.js";
 import {
   DELIVERY_AREAS,
   displayedDeliveryFee,
+  completeDeliveryAddress,
+  deliveryAddressConflict,
 } from "../../utils/deliveryPricing.js";
 import AvailabilityPicker from "../../components/scheduling/AvailabilityPicker";
 import TechnicianTeamPicker from "../../components/management/TechnicianTeamPicker";
@@ -28,6 +30,7 @@ import { getStaff } from "../../utils/authMock";
 import "../../styles/management/sales-live.css";
 import "../../styles/management/pos-enhancements.css";
 import "../../styles/management/pos-customer-fees.css";
+import "../../styles/management/order-product-breakdown.css";
 
 const money = (value) =>
   new Intl.NumberFormat("en-PH", {
@@ -150,8 +153,6 @@ export default function POSPage() {
     [cart, catalog],
   );
 
-  // Real product variants are displayed below the selector, so the product
-  // column is useful all the way down on laptop/desktop instead of blank.
   const quickProducts = useMemo(
     () =>
       [...filtered]
@@ -175,6 +176,7 @@ export default function POSPage() {
 
   const reduction = Number(discount) || 0;
   const fee = Number(additionalFee) || 0;
+
   const validFee =
     Number.isFinite(Number(additionalFee)) &&
     fee >= 0 &&
@@ -182,21 +184,37 @@ export default function POSPage() {
     (fee === 0
       ? !additionalFeeReason.trim()
       : additionalFeeReason.trim().length >= 5);
+
   const validPhone =
     (customerPhone.match(/\d/g) || []).length >= 7 &&
     /^[+0-9()\s-]+$/.test(customerPhone.trim());
+
   const remoteDelivery = withDelivery && deliveryArea === "OTHER";
+
+  const addressConflict =
+    withDelivery && !remoteDelivery
+      ? deliveryAddressConflict(serviceAddress, deliveryArea)
+      : "";
+
+  const savedDeliveryAddress =
+    withDelivery && !remoteDelivery
+      ? completeDeliveryAddress(serviceAddress, deliveryArea)
+      : serviceAddress.trim();
+
   const deliveryFee = withDelivery
     ? remoteDelivery
       ? 0
       : displayedDeliveryFee(deliveryArea)
     : 0;
+
   const total = Math.max(
     0,
     Math.round((subtotal - reduction + (deliveryFee ?? 0) + fee) * 100) / 100,
   );
+
   const cash = Number(cashReceived) || 0;
   const change = Math.max(0, Math.round((cash - total) * 100) / 100);
+
   const canSave =
     !loading &&
     !submitting &&
@@ -214,6 +232,8 @@ export default function POSPage() {
       (deliveryFee !== null &&
         Boolean(scheduledStart) &&
         serviceAddress.trim().length >= (remoteDelivery ? 10 : 5) &&
+        savedDeliveryAddress.length <= 2000 &&
+        !addressConflict &&
         (!remoteDelivery || fee > 0)));
 
   const checkoutReasons = [
@@ -244,7 +264,11 @@ export default function POSPage() {
       ? "For Other area, enter the agreed additional delivery fee."
       : null,
     withDelivery && serviceAddress.trim().length < (remoteDelivery ? 10 : 5)
-      ? "Enter the full delivery address."
+      ? "Enter the house, street, barangay and other delivery details."
+      : null,
+    addressConflict || null,
+    withDelivery && savedDeliveryAddress.length > 2000
+      ? "The completed delivery address is too long (2,000 characters maximum)."
       : null,
     withDelivery && !scheduledStart
       ? "Select an available delivery appointment."
@@ -329,7 +353,7 @@ export default function POSPage() {
         deliveryArea: withDelivery ? deliveryArea : null,
         installationIncluded: withInstallation,
         scheduledStart: withDelivery ? scheduledStart : null,
-        serviceAddress: withDelivery ? serviceAddress.trim() : "",
+        serviceAddress: withDelivery ? savedDeliveryAddress : "",
         technicianIds: withDelivery && mayDiscount ? technicianIds : [],
       });
 
@@ -466,6 +490,7 @@ export default function POSPage() {
                       ))}
                     </select>
                   </label>
+
                   <label>
                     2. Model
                     <select
@@ -484,6 +509,7 @@ export default function POSPage() {
                       ))}
                     </select>
                   </label>
+
                   <label>
                     3. Horsepower (HP)
                     <select
@@ -500,6 +526,7 @@ export default function POSPage() {
                       ))}
                     </select>
                   </label>
+
                   {chosen && (
                     <div className="pos-chosen-product">
                       <div>
@@ -617,6 +644,7 @@ export default function POSPage() {
                   setCashVerified(false);
                 }}
               />
+
               <label>
                 Customer name
                 <input
@@ -629,6 +657,7 @@ export default function POSPage() {
                   }}
                 />
               </label>
+
               <label>
                 Contact number (required)
                 <input
@@ -736,6 +765,7 @@ export default function POSPage() {
                 />
                 <span>Book an installation for this walk-in purchase</span>
               </label>
+
               {withDelivery && (
                 <div className="pos-installation-fields">
                   <label>
@@ -749,9 +779,9 @@ export default function POSPage() {
                       }}
                     >
                       <option value="">Choose delivery area</option>
-                      {DELIVERY_AREAS.map(([code, city, fee]) => (
+                      {DELIVERY_AREAS.map(([code, city, charge]) => (
                         <option key={code} value={code}>
-                          {city} · {fee === 0 ? "FREE" : money(fee)}
+                          {city} · {charge === 0 ? "FREE" : money(charge)}
                         </option>
                       ))}
                       <option value="OTHER">
@@ -768,6 +798,7 @@ export default function POSPage() {
                       </p>
                     )}
                   </label>
+
                   <AvailabilityPicker
                     value={scheduledStart}
                     onChange={(value) => {
@@ -781,8 +812,11 @@ export default function POSPage() {
                         : "Choose available delivery time"
                     }
                   />
+
                   <label>
-                    Delivery / installation address
+                    {remoteDelivery
+                      ? "Complete delivery / installation address"
+                      : "House, street and barangay"}
                     <textarea
                       value={serviceAddress}
                       minLength={5}
@@ -791,9 +825,35 @@ export default function POSPage() {
                       onChange={(event) =>
                         setServiceAddress(event.target.value)
                       }
-                      placeholder="Customer's complete delivery address"
+                      placeholder={
+                        remoteDelivery
+                          ? "Full address including city and province"
+                          : "House / unit, street, barangay"
+                      }
                     />
+                    {!remoteDelivery && deliveryArea && (
+                      <small>
+                        The selected city and province are added automatically.
+                      </small>
+                    )}
                   </label>
+
+                  {addressConflict && (
+                    <p className="sales-error" role="alert">
+                      {addressConflict}
+                    </p>
+                  )}
+
+                  {savedDeliveryAddress && withDelivery && !addressConflict && (
+                    <div className="pos-delivery-address-preview" role="status">
+                      <strong>Delivery address to save</strong>
+                      <span>{savedDeliveryAddress}</span>
+                      <small>
+                        Confirm this is correct before collecting payment.
+                      </small>
+                    </div>
+                  )}
+
                   {mayDiscount ? (
                     <TechnicianTeamPicker
                       value={technicianIds}
@@ -813,6 +873,7 @@ export default function POSPage() {
                 <span>Subtotal</span>
                 <strong>{money(subtotal)}</strong>
               </div>
+
               {withDelivery && (
                 <div className="sales-totals">
                   <span>Delivery fee</span>
@@ -825,6 +886,7 @@ export default function POSPage() {
                   </strong>
                 </div>
               )}
+
               {mayDiscount && (
                 <label>
                   Discount (₱)
@@ -841,6 +903,7 @@ export default function POSPage() {
                   />
                 </label>
               )}
+
               <div className="pos-fee-fields">
                 <div className="pos-fee-fields__heading">
                   <strong>Additional fee (optional)</strong>
@@ -865,6 +928,7 @@ export default function POSPage() {
                     }}
                   />
                 </label>
+
                 {fee > 0 && (
                   <label>
                     Reason for extra fee (required)
@@ -882,6 +946,7 @@ export default function POSPage() {
                     />
                   </label>
                 )}
+
                 {!validFee && (
                   <p className="pos-fee-fields__error">
                     Enter a valid fee and a reason (at least 5 characters), or
@@ -889,16 +954,19 @@ export default function POSPage() {
                   </p>
                 )}
               </div>
+
               {fee > 0 && validFee && (
                 <div className="sales-totals pos-fee-summary">
                   <span>Additional fee · {additionalFeeReason.trim()}</span>
                   <strong>{money(fee)}</strong>
                 </div>
               )}
+
               <div className="sales-totals sales-total">
                 <span>Total to collect</span>
                 <strong>{money(total)}</strong>
               </div>
+
               <label>
                 Cash received (₱)
                 <input
@@ -913,10 +981,12 @@ export default function POSPage() {
                   }}
                 />
               </label>
+
               <div className="sales-totals">
                 <span>Change to return</span>
                 <strong>{money(change)}</strong>
               </div>
+
               <label className="sales-checkline">
                 <input
                   type="checkbox"
@@ -925,11 +995,13 @@ export default function POSPage() {
                 />
                 <span>I have physically received and counted the cash.</span>
               </label>
+
               <ActionGuidance
                 title="Complete these before cash sale"
                 reasons={checkoutReasons}
                 readyText="Ready to complete the cash sale."
               />
+
               <button
                 type="submit"
                 className="sales-primary"
@@ -938,6 +1010,7 @@ export default function POSPage() {
                 <Wallet size={18} />
                 {submitting ? "Saving sale…" : "Complete cash sale"}
               </button>
+
               <small className="sales-muted">
                 Stock is deducted and the payment is marked paid only after the
                 sale is saved successfully.
@@ -959,6 +1032,7 @@ export default function POSPage() {
                   <Printer size={17} /> Print
                 </button>
               </div>
+
               <p>
                 <strong>Order:</strong> {receipt.orderNumber}
               </p>
@@ -973,11 +1047,37 @@ export default function POSPage() {
                   <strong>Phone:</strong> {receipt.contact}
                 </p>
               )}
-              {receipt.items?.map((item) => (
-                <p key={item.variantId}>
-                  {item.quantity} × {item.productName} · {money(item.lineTotal)}
-                </p>
-              ))}
+
+              <div className="av-pos-receipt-items">
+                <strong className="av-pos-receipt-items__heading">
+                  Products purchased
+                </strong>
+                {receipt.items?.length ? (
+                  receipt.items.map((item) => (
+                    <div
+                      className="av-pos-receipt-items__item"
+                      key={item.variantId}
+                    >
+                      <div>
+                        <strong>{item.productName}</strong>
+                        <small>
+                          {item.model}
+                          {item.horsepower ? ` · ${item.horsepower} HP` : ""}
+                        </small>
+                        <span>
+                          {item.quantity} × {money(item.unitPrice)} each
+                        </span>
+                      </div>
+                      <strong>{money(item.lineTotal)}</strong>
+                    </div>
+                  ))
+                ) : (
+                  <p>
+                    Saved sale. Open the order record to review its products.
+                  </p>
+                )}
+              </div>
+
               {receipt.subtotal != null && (
                 <div className="sales-totals">
                   <span>Subtotal</span>

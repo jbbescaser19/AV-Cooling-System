@@ -55,7 +55,7 @@ const roles = {
   schedules: ["OWNER", "MANAGER", "SALES_CASHIER", "TECHNICIAN"],
   customers: ["OWNER", "MANAGER", "SALES_CASHIER"],
   feedback: ["OWNER", "MANAGER"],
-  "facebook-requests": ["OWNER", "MANAGER", "SALES_CASHIER"],
+  "facebook-requests": ["OWNER", "MANAGER"],
   reports: ["OWNER", "MANAGER"],
   notifications: ["OWNER", "MANAGER", "SALES_CASHIER", "TECHNICIAN"],
   staff: ["OWNER"],
@@ -72,7 +72,7 @@ const writeRoles = {
   schedules: ["OWNER", "MANAGER"],
   customers: ["OWNER", "MANAGER"],
   feedback: ["OWNER", "MANAGER"],
-  "facebook-requests": ["OWNER", "MANAGER", "SALES_CASHIER"],
+  "facebook-requests": ["OWNER", "MANAGER"],
   notifications: ["OWNER", "MANAGER", "SALES_CASHIER", "TECHNICIAN"],
   staff: ["OWNER"],
 };

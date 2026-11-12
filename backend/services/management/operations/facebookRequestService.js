@@ -15,8 +15,15 @@ export async function createFacebookRequests(model, staff, data, connection) {
     if (!data.variantId || data.serviceTypeId) {
       fail("Choose an aircon variant, not a service type.");
     }
-    if (!(await model.activeVariant(data.variantId))[0]) {
-      fail("That aircon variant is unavailable.", 409);
+    const variant = await model.lockSellableVariant(data.variantId);
+    if (!variant || Number(variant.available) < Number(data.quantity)) {
+      fail(
+        "This aircon model is out of stock or does not have enough available units. Refresh and select another model or quantity.",
+        409,
+      );
+    }
+    if (data.destinationAddress) {
+      fail("A destination address is for Aircon Relocation service only.", 400);
     }
   } else {
     if (!data.serviceTypeId || data.variantId) {
@@ -25,6 +32,19 @@ export async function createFacebookRequests(model, staff, data, connection) {
     const type = (await model.getServiceType(data.serviceTypeId))[0];
     if (type?.status !== "ACTIVE") {
       fail("That service type is unavailable.", 409);
+    }
+    if (type.service_code === "relocation") {
+      if (data.destinationAddress.trim().length < 5) {
+        fail("Enter the relocation destination address.", 400);
+      }
+      if (
+        data.destinationAddress.trim().toLowerCase() ===
+        data.address.trim().toLowerCase()
+      ) {
+        fail("Pickup and destination must be different locations.", 400);
+      }
+    } else if (data.destinationAddress) {
+      fail("Destination address is only used for Aircon Relocation.", 400);
     }
     if (
       data.airconBrand.trim().length < 2 ||

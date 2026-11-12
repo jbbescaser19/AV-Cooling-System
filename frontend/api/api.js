@@ -18,28 +18,98 @@ const managementNoRefreshEndpoints = [
   "/api/management/auth/logout",
 ];
 
-// Only one refresh request is sent when many Management/customer calls expire.
-let customerRefreshPromise = null;
+// Access tokens stay in secure HttpOnly cookies, never localStorage.
+// The expiry timestamp is non-secret and helps avoid an unnecessary 401
+// when staff submit a sale near the 15-minute access-token expiry.
+let managementAccessExpiresAt = 0;
 let managementRefreshPromise = null;
+let customerRefreshPromise = null;
+let sessionEndedNotified = false;
 
 function managementSessionEnded() {
-  window.dispatchEvent(new Event("av-management-session-ended"));
+  managementAccessExpiresAt = 0;
+  if (!sessionEndedNotified) {
+    sessionEndedNotified = true;
+    window.dispatchEvent(new Event("av-management-session-ended"));
+  }
 }
 
+function updateManagementExpiry(response) {
+  const url = String(response?.config?.url || "");
+  if (!url.includes("/api/management/auth/")) return;
+
+  if (url.includes("/auth/logout")) {
+    managementAccessExpiresAt = 0;
+    return;
+  }
+
+  const expiresAt = Number(response?.data?.session?.accessExpiresAt);
+  if (Number.isFinite(expiresAt) && expiresAt > Date.now()) {
+    managementAccessExpiresAt = expiresAt;
+    sessionEndedNotified = false;
+  }
+}
+
+function refreshManagementAccess() {
+  if (!managementRefreshPromise) {
+    managementRefreshPromise = api
+      .post("/api/management/auth/refresh", {})
+      .then((response) => {
+        updateManagementExpiry(response);
+        return response;
+      })
+      .finally(() => {
+        managementRefreshPromise = null;
+      });
+  }
+  return managementRefreshPromise;
+}
+
+api.interceptors.request.use(async (request) => {
+  const url = String(request.url || "");
+  if (
+    !url.includes("/api/management/") ||
+    url.includes("/api/management/auth/")
+  ) {
+    return request;
+  }
+
+  // A session is established or resumed by the Management login/layout.
+  // Refresh shortly before expiry to prevent an interrupted POS submission.
+  if (
+    managementAccessExpiresAt &&
+    Date.now() >= managementAccessExpiresAt - 60_000
+  ) {
+    try {
+      await refreshManagementAccess();
+    } catch (error) {
+      if ([401, 403].includes(error.response?.status)) {
+        managementSessionEnded();
+      }
+      return Promise.reject(error);
+    }
+  }
+  return request;
+});
+
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    updateManagementExpiry(response);
+    return response;
+  },
   async (error) => {
     const request = error.config;
-    const requestUrl = String(request?.url || "");
-    const unauthorized = error.response?.status === 401;
-    if (!unauthorized || !request) return Promise.reject(error);
+    const url = String(request?.url || "");
+    if (error.response?.status !== 401 || !request) {
+      return Promise.reject(error);
+    }
 
-    if (requestUrl.includes("/api/management/")) {
-      const skipRefresh = managementNoRefreshEndpoints.some((endpoint) =>
-        requestUrl.includes(endpoint),
-      );
-
-      if (skipRefresh) return Promise.reject(error);
+    if (url.includes("/api/management/")) {
+      if (
+        managementNoRefreshEndpoints.some((endpoint) => url.includes(endpoint))
+      ) {
+        return Promise.reject(error);
+      }
       if (request._managementRetry) {
         managementSessionEnded();
         return Promise.reject(error);
@@ -47,17 +117,9 @@ api.interceptors.response.use(
       request._managementRetry = true;
 
       try {
-        if (!managementRefreshPromise) {
-          managementRefreshPromise = api
-            .post("/api/management/auth/refresh", {})
-            .finally(() => {
-              managementRefreshPromise = null;
-            });
-        }
-        await managementRefreshPromise;
+        await refreshManagementAccess();
         return await api(request);
       } catch (refreshError) {
-        // An offline server is not proof that a session has expired.
         if ([401, 403].includes(refreshError.response?.status)) {
           managementSessionEnded();
         }
@@ -65,10 +127,12 @@ api.interceptors.response.use(
       }
     }
 
-    const skipCustomerRefresh = customerNoRefreshEndpoints.some((endpoint) =>
-      requestUrl.includes(endpoint),
-    );
-    if (skipCustomerRefresh || request._retry) return Promise.reject(error);
+    if (
+      customerNoRefreshEndpoints.some((endpoint) => url.includes(endpoint)) ||
+      request._retry
+    ) {
+      return Promise.reject(error);
+    }
 
     request._retry = true;
     try {

@@ -1,0 +1,40 @@
+/* Keep Cashier POS and Technician jobs scrollable, including on iOS/Android.
+   Dialogs still manage their own scroll lock while open. */
+.mgmt-shell,
+.mgmt-workspace,
+.mgmt-main {
+  min-height: 0;
+  overflow: visible;
+}
+.mgmt-shell {
+  min-height: 100dvh;
+}
+.mgmt-workspace {
+  min-height: 100dvh;
+}
+.mgmt-main {
+  padding-bottom: max(64px, env(safe-area-inset-bottom));
+}
+.mgmt-sidebar {
+  min-height: 0;
+  height: 100dvh;
+}
+.mgmt-sidebar .side-scroll {
+  min-height: 0;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.mgmt-main :is(.pos-page-shell, .tech-dashboard, .av-technician-work) {
+  min-height: 0;
+  overflow: visible;
+}
+@media (max-width: 1024px) {
+  .mgmt-workspace {
+    margin-left: 0;
+  }
+  .mgmt-main {
+    width: 100%;
+    min-width: 0;
+    padding-bottom: max(72px, env(safe-area-inset-bottom));
+  }
+}

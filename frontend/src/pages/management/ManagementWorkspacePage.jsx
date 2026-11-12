@@ -233,6 +233,13 @@ function InputField({
   if (field.key === "serviceTypeId" && form.requestKind === "AIRCON")
     return null;
   if (field.key === "quantity" && form.requestKind === "SERVICE") return null;
+  if (module === "facebook-requests" && field.key === "destinationAddress") {
+    const type = (options.serviceTypes || []).find(
+      (item) => String(item.id) === String(form.serviceTypeId),
+    );
+    if (form.requestKind !== "SERVICE" || type?.code !== "relocation")
+      return null;
+  }
 
   const needsServiceAircon = form.requestKind === "SERVICE";
   if (
@@ -243,6 +250,7 @@ function InputField({
   }
   const required =
     field.required ||
+    (module === "facebook-requests" && field.key === "destinationAddress") ||
     (needsServiceAircon &&
       ["airconBrand", "airconModel", "airconHp"].includes(field.key));
 
@@ -318,8 +326,21 @@ function InputField({
                 {option.replaceAll("_", " ")}
               </option>
             ) : (
-              <option key={option.id} value={option.id}>
+              <option
+                key={option.id}
+                value={option.id}
+                disabled={
+                  module === "facebook-requests" &&
+                  field.key === "variantId" &&
+                  Number(option.available) <= 0
+                }
+              >
                 {option.label}
+                {module === "facebook-requests" && field.key === "variantId"
+                  ? Number(option.available) <= 0
+                    ? " — OUT OF STOCK"
+                    : ` — ${option.available} available`
+                  : ""}
               </option>
             ),
           )}
@@ -425,8 +446,14 @@ function Editor({
       ...prev,
       [key]: value,
       ...(key === "requestKind"
-        ? { variantId: "", serviceTypeId: "", quantity: 1 }
+        ? {
+            variantId: "",
+            serviceTypeId: "",
+            quantity: 1,
+            destinationAddress: "",
+          }
         : {}),
+      ...(key === "serviceTypeId" ? { destinationAddress: "" } : {}),
       ...(key === "sourceType" ? { sourceId: "" } : {}),
     }));
     setError("");
@@ -436,6 +463,18 @@ function Editor({
     ? inventoryRows.find((item) => String(item.id) === String(form.variantId))
     : null;
   const addedQuantity = Number(form.quantity);
+  const selectedFbVariant =
+    module === "facebook-requests" && isNew && form.requestKind === "AIRCON"
+      ? (options.variants || []).find(
+          (v) => String(v.id) === String(form.variantId),
+        )
+      : null;
+  const invalidFbStock = Boolean(
+    selectedFbVariant &&
+    (Number(selectedFbVariant.available) <= 0 ||
+      Number(form.quantity) > Number(selectedFbVariant.available)),
+  );
+
   const canPreviewStock =
     selectedInventory &&
     Number.isSafeInteger(addedQuantity) &&
@@ -444,6 +483,12 @@ function Editor({
   async function submit(event) {
     event.preventDefault();
     if (saving) return;
+    if (invalidFbStock) {
+      setError(
+        "This product has insufficient available stock. Select another model or reduce the quantity.",
+      );
+      return;
+    }
 
     if (
       module === "facebook-requests" &&
@@ -505,6 +550,21 @@ function Editor({
         payload.technicianIds = technicianIds;
       }
       if (module === "facebook-requests" && isNew) {
+        const selectedType = (options.serviceTypes || []).find(
+          (option) => String(option.id) === String(payload.serviceTypeId),
+        );
+        if (
+          payload.requestKind === "SERVICE" &&
+          selectedType?.code === "relocation"
+        ) {
+          if (String(payload.destinationAddress || "").trim().length < 5) {
+            setError("Enter the destination address for Aircon Relocation.");
+            setSaving(false);
+            return;
+          }
+        } else {
+          payload.destinationAddress = "";
+        }
         payload.variantId =
           payload.requestKind === "AIRCON" ? payload.variantId : null;
         payload.serviceTypeId =
@@ -583,7 +643,9 @@ function Editor({
           {module === "facebook-requests" && (
             <p className="wsm-info">
               <ShieldCheck size={17} />
-              Staff must enter only details genuinely agreed on Messenger.
+              Record the Facebook account you spoke with and only the details
+              confirmed by the customer. This form does not access Messenger
+              messages.
             </p>
           )}
           {module === "schedules" &&
@@ -607,6 +669,22 @@ function Editor({
               disabled={saving}
             />
           ))}
+          {module === "facebook-requests" &&
+            isNew &&
+            form.requestKind === "AIRCON" && (
+              <p
+                className={invalidFbStock ? "wsm-error" : "wsm-info"}
+                role="status"
+              >
+                {selectedFbVariant
+                  ? Number(selectedFbVariant.available) <= 0
+                    ? "OUT OF STOCK — choose a different aircon model."
+                    : `${selectedFbVariant.available} unit(s) available for this model.`
+                  : "Choose an in-stock aircon model. Out-of-stock models cannot be selected."}
+                {invalidFbStock &&
+                  " Reduce the quantity or select another model."}
+              </p>
+            )}
           {module === "facebook-requests" &&
             !isNew &&
             form.action === "CONVERT" && (
@@ -645,6 +723,7 @@ function Editor({
               className="wsm-primary"
               disabled={
                 saving ||
+                invalidFbStock ||
                 (module === "schedules" &&
                   isNew &&
                   (options.technicians || []).length === 0)
@@ -1066,8 +1145,9 @@ export default function ManagementWorkspacePage({ module }) {
 
       {module === "facebook-requests" && (
         <p className="wsm-footnote">
-          Staff must verify identity, stock, schedule and cash collection
-          separately. Facebook messages are not automatically accessible.
+          Record the Facebook account you spoke with. Staff must independently
+          verify identity, available stock, appointment and payment. The system
+          does not access private Facebook messages.
         </p>
       )}
       {module === "feedback" && (
