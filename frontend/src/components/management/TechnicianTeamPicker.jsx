@@ -2,8 +2,6 @@ import { useEffect, useState } from "react";
 import api from "../../../api/api.js";
 import "../../styles/management/technician-team-picker.css";
 
-/** The first selected technician is the team leader, displayed as Team <name>.
- * This uses the existing technician_assignments table; no team table is needed. */
 export default function TechnicianTeamPicker({
   value = [],
   onChange,
@@ -12,8 +10,10 @@ export default function TechnicianTeamPicker({
   const [technicians, setTechnicians] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
   useEffect(() => {
     const controller = new AbortController();
+
     api
       .get("/api/management/workspace/technicians", {
         signal: controller.signal,
@@ -35,59 +35,77 @@ export default function TechnicianTeamPicker({
         }
       })
       .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
       });
+
     return () => controller.abort();
   }, []);
+
   function toggle(id, checked) {
     const next = checked ? [...value, id] : value.filter((item) => item !== id);
+
     onChange(next);
   }
+
   const leader = technicians.find(
     (tech) => Number(tech.id) === Number(value[0]),
   );
+
   return (
     <fieldset className="av-team-picker" disabled={disabled || loading}>
       <legend>Technician team</legend>
+
       <p className="av-team-picker__hint">
-        Select up to 6 workers. Set one as team leader (TL). If none are
-        selected during confirmation, you can assign the team here later, before
-        work starts.
+        Select up to 6 workers. The first technician is the team leader (TL).
+        You can change the team leader below.
       </p>
+
       {loading && <p role="status">Loading technicians…</p>}
+
       {error && <p role="alert">{error}</p>}
+
       {!loading && !error && !technicians.length && (
         <p>No active technicians available for assignment.</p>
       )}
+
       <div className="av-team-picker__choices">
-        {technicians.map((tech) => (
-          <label className="av-team-picker__choice" key={tech.id}>
-            <input
-              type="checkbox"
-              checked={value.includes(Number(tech.id))}
-              onChange={(event) =>
-                toggle(Number(tech.id), event.target.checked)
-              }
-              disabled={
-                disabled ||
-                (!value.includes(Number(tech.id)) && value.length >= 6)
-              }
-            />
-            <span>{tech.name}</span>
-          </label>
-        ))}
+        {technicians.map((tech) => {
+          const id = Number(tech.id);
+          const checked = value.includes(id);
+
+          return (
+            <label className="av-team-picker__choice" key={tech.id}>
+              <input
+                type="checkbox"
+                checked={checked}
+                onChange={(event) => toggle(id, event.target.checked)}
+                disabled={disabled || (!checked && value.length >= 6)}
+              />
+
+              <span>{tech.name}</span>
+            </label>
+          );
+        })}
       </div>
+
       {value.length > 0 && (
         <label
           className="av-team-picker__hint"
-          style={{ display: "grid", gap: 6, marginTop: 10 }}
+          style={{
+            display: "grid",
+            gap: 6,
+            marginTop: 10,
+          }}
         >
           Team leader (TL)
           <select
             value={value[0]}
             disabled={disabled}
-            onChange={(e) => {
-              const id = Number(e.target.value);
+            onChange={(event) => {
+              const id = Number(event.target.value);
+
               onChange([id, ...value.filter((item) => item !== id)]);
             }}
           >
@@ -100,6 +118,7 @@ export default function TechnicianTeamPicker({
           </select>
         </label>
       )}
+
       <p className="av-team-picker__hint">
         {leader
           ? `Team ${leader.name} · ${value.length} worker(s)`

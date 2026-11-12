@@ -1,20 +1,46 @@
 import {
-  STAFF_ABSOLUTE_MS,
-  STAFF_IDLE_MS,
-  STAFF_WARNING_MS,
+  STAFF_ACCESS_MS,
+  STAFF_REFRESH_MS,
+  STAFF_REAUTH_MS,
   signInStaff,
+  refreshStaffSession,
   recordStaffActivity,
   reauthenticateStaff,
   revokeStaffSession,
 } from "../../services/management/staffAuthService.js";
 
-const cookie = {
+const sharedCookieOptions = {
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
   sameSite: "lax",
-  path: "/api/management",
-  maxAge: STAFF_ABSOLUTE_MS,
 };
+
+const accessCookie = {
+  ...sharedCookieOptions,
+  path: "/api/management",
+  maxAge: STAFF_ACCESS_MS,
+};
+
+const refreshCookie = {
+  ...sharedCookieOptions,
+  path: "/api/management/auth",
+  maxAge: STAFF_REFRESH_MS,
+};
+
+function setAccessCookie(res, token) {
+  res.cookie("staffAccessToken", token, accessCookie);
+}
+
+function setRefreshCookie(res, token) {
+  res.cookie("staffRefreshToken", token, refreshCookie);
+}
+
+function clearAuthCookies(res) {
+  const { maxAge: _accessMaxAge, ...accessClear } = accessCookie;
+  const { maxAge: _refreshMaxAge, ...refreshClear } = refreshCookie;
+  res.clearCookie("staffAccessToken", accessClear);
+  res.clearCookie("staffRefreshToken", refreshClear);
+}
 
 function sendError(res, error) {
   const status =
@@ -32,14 +58,28 @@ function sendError(res, error) {
 export const staffAuthController = {
   async login(req, res) {
     try {
-      const { token, staff, session } = await signInStaff(
+      const { token, refreshToken, staff, session } = await signInStaff(
         req.body?.email,
         req.body?.password,
         req.ip,
       );
-      res.cookie("staffAccessToken", token, cookie);
+      setAccessCookie(res, token);
+      setRefreshCookie(res, refreshToken);
       return res.json({ success: true, staff, session });
     } catch (error) {
+      return sendError(res, error);
+    }
+  },
+
+  async refresh(req, res) {
+    try {
+      const { token, staff, session } = await refreshStaffSession(
+        req.cookies?.staffRefreshToken,
+      );
+      setAccessCookie(res, token);
+      return res.json({ success: true, staff, session });
+    } catch (error) {
+      if (error.status === 401) clearAuthCookies(res);
       return sendError(res, error);
     }
   },
@@ -50,9 +90,10 @@ export const staffAuthController = {
       staff: req.staff,
       session: req.staffSession,
       policy: {
-        maximumMs: STAFF_ABSOLUTE_MS,
-        inactivityMs: STAFF_IDLE_MS,
-        warningMs: STAFF_WARNING_MS,
+        accessMs: STAFF_ACCESS_MS,
+        refreshMs: STAFF_REFRESH_MS,
+        reauthenticationMs: STAFF_REAUTH_MS,
+        inactivityMs: null,
       },
     });
   },
@@ -83,9 +124,11 @@ export const staffAuthController = {
 
   async logout(req, res) {
     try {
-      await revokeStaffSession(req.cookies?.staffAccessToken);
-      const { maxAge, ...clearOptions } = cookie;
-      res.clearCookie("staffAccessToken", clearOptions);
+      await revokeStaffSession(
+        req.cookies?.staffAccessToken,
+        req.cookies?.staffRefreshToken,
+      );
+      clearAuthCookies(res);
       return res.json({ success: true });
     } catch (error) {
       return sendError(res, error);

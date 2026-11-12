@@ -1,9 +1,12 @@
+import { quoteService } from "../../shared/serviceQuotationService.js";
 import connectDB from "../../../utils/dbConn.js";
 import { createCustomerNotification } from "../notification/notificationService.js";
 import { workspaceModel } from "../../../models/management/workspaceModel.js";
 import { serviceRequestModel } from "../../../models/customer/services/serviceRequestModel.js";
 import { airconPurchaseModel } from "../../../models/customer/services/airconPurchaseModel.js";
 import { validateNewServiceRequest } from "../../../validators/customer/serviceValidator.js";
+import { servicePaymentModel } from "../../../models/customer/services/servicePaymentModel.js";
+import { assertServicePaymentAvailable } from "./servicePaymentService.js";
 import { reserveAppointment } from "../../scheduling/bookingScheduleService.js";
 import { parseBookingStart } from "../../../validators/scheduling/bookingScheduleValidator.js";
 
@@ -47,8 +50,10 @@ export async function getActiveServiceTypesService() {
 }
 
 function mapAirconPurchase(item) {
+  // A completed order is a recorded fulfillment outcome even when older
+  // orders do not have a separate ORDER_DELIVERED event.
   const delivered =
-    (item.fulfillmentMethod === "PICKUP" && item.orderStatus === "COMPLETED") ||
+    item.orderStatus === "COMPLETED" ||
     (item.fulfillmentMethod === "DELIVERY" &&
       Boolean(Number(item.deliveryConfirmed)));
   const installationEligible =
@@ -59,6 +64,7 @@ function mapAirconPurchase(item) {
   return {
     orderItemId: Number(item.orderItemId),
     orderNumber: item.orderNumber,
+    orderStatus: item.orderStatus,
     label: `${item.orderNumber} · ${item.brand} ${item.model} · ${Number(item.horsepower)} HP`,
     brand: item.brand,
     model: item.model,
@@ -88,6 +94,7 @@ export async function getInstallationProductsService(userId) {
 
 export async function createServiceRequestService(userId, input) {
   const data = validateNewServiceRequest(input);
+  assertServicePaymentAvailable(data.paymentCode);
   const preferredStart = preferredStartForMySQL(
     data.preferredDate,
     data.preferredTime,
@@ -160,11 +167,19 @@ export async function createServiceRequestService(userId, input) {
       };
     }
 
-    const basePrice = String(selectedService.basePrice);
+    const quote = quoteService({
+      code: data.serviceType,
+      basePrice: selectedService.basePrice,
+      copperFeet: data.copperFeet,
+      includeDismantling: data.includeDismantling,
+    });
+    const basePrice = quote.total.toFixed(2);
     const [result] = await model.createRequest({
       customerId: customer.customerId,
       serviceTypeId: selectedService.serviceTypeId,
       servicePrice: basePrice,
+      copperFeet: data.copperFeet,
+      includeDismantling: data.includeDismantling,
       preferredStart,
       contactNumber: customer.contactNumber,
       serviceAddress: data.serviceAddress,
@@ -179,6 +194,11 @@ export async function createServiceRequestService(userId, input) {
       "SERVICE",
       result.insertId,
       preferredStart,
+    );
+    await servicePaymentModel(connection).createPending(
+      result.insertId,
+      data.paymentCode,
+      basePrice,
     );
 
     await createCustomerNotification(
@@ -201,6 +221,8 @@ export async function createServiceRequestService(userId, input) {
       serviceType: data.serviceType,
       serviceName: selectedService.serviceName,
       estimatedBasePrice: basePrice,
+      paymentCode: data.paymentCode,
+      paymentStatus: "PENDING",
       preferredStart,
       aircon,
       status: "PENDING",

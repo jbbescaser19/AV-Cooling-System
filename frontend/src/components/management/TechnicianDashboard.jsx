@@ -8,12 +8,12 @@ import {
   RefreshCw,
   Wrench,
 } from "lucide-react";
+
 import TechnicianAssignedJobsPanel from "./TechnicianAssignedJobsPanel";
 import "../../styles/management/technician-dashboard.css";
 
 const number = (value) => Number(value || 0).toLocaleString("en-PH");
 
-/** The technician dashboard is personal: no business-wide pending customer requests. */
 export default function TechnicianDashboard({
   summary = {},
   generatedAt,
@@ -53,21 +53,26 @@ export default function TechnicianDashboard({
       <header className="tech-dashboard__header">
         <div>
           <span className="tech-dashboard__eyebrow">
-            <Wrench size={16} /> TECHNICIAN DASHBOARD
+            <Wrench size={16} />
+            TECHNICIAN DASHBOARD
           </span>
+
           <h1>My assigned work</h1>
+
           <p>
             Only jobs assigned to your technician account appear here. New
             unassigned requests stay with Management.
           </p>
         </div>
+
         <button
           type="button"
           className="tech-dashboard__refresh"
           onClick={onRefresh}
           disabled={loading}
         >
-          <RefreshCw size={17} /> {loading ? "Updating…" : "Refresh"}
+          <RefreshCw size={17} />
+          {loading ? "Updating…" : "Refresh"}
         </button>
       </header>
 
@@ -83,7 +88,9 @@ export default function TechnicianDashboard({
             <span className="tech-dashboard__metric-icon">
               <Icon size={21} />
             </span>
+
             <span className="tech-dashboard__metric-label">{label}</span>
+
             <strong>{number(value)}</strong>
             <small>{detail}</small>
           </div>
@@ -92,16 +99,20 @@ export default function TechnicianDashboard({
 
       <div className="tech-dashboard__context">
         <span>
-          <Clock3 size={17} /> {number(summary.dueToday)} job(s) due today
+          <Clock3 size={17} />
+          {number(summary.dueToday)} job(s) due today
         </span>
+
         <span>
-          <CalendarDays size={17} /> {number(summary.awaitingStart)} assigned
-          job(s) not started
+          <CalendarDays size={17} />
+          {number(summary.awaitingStart)} assigned job(s) not started
         </span>
+
         <Link to="/management/schedules">View my schedules</Link>
       </div>
 
       <TechnicianAssignedJobsPanel limit={8} />
+
       <p className="tech-dashboard__footnote">
         {generatedAt
           ? `Updated ${new Date(generatedAt).toLocaleString("en-PH")}. `

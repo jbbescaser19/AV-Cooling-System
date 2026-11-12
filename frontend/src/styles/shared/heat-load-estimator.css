@@ -1,0 +1,139 @@
+/* Shared aircon-capacity calculator: Shop, Customer Account, Management */
+.heat-estimator {
+  margin: 12px 0 24px;
+  padding: clamp(16px, 3vw, 26px);
+  border: 1px solid #d5e3ee;
+  border-radius: 18px;
+  color: #16354d;
+  background: #ffffff;
+  box-shadow: 0 8px 28px rgba(15, 46, 69, 0.05);
+}
+.heat-estimator > summary {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 1rem;
+  font-weight: 750;
+  list-style: none;
+}
+.heat-estimator > summary::-webkit-details-marker {
+  display: none;
+}
+.heat-estimator__action {
+  flex-shrink: 0;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: #e2f4fb;
+  color: #0e6282;
+  font-size: 0.78rem;
+}
+.heat-estimator__body {
+  display: grid;
+  gap: 16px;
+}
+.heat-estimator--compact[open] .heat-estimator__body {
+  margin-top: 18px;
+}
+.heat-estimator__intro {
+  margin: 0;
+  line-height: 1.6;
+  color: #53697b;
+}
+.heat-estimator__fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+}
+.heat-estimator__fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-size: 0.86rem;
+  font-weight: 650;
+}
+.heat-estimator__fields select,
+.heat-estimator__fields input:not([type="checkbox"]) {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid #bacddd;
+  border-radius: 9px;
+  padding: 9px 11px;
+  background: #fff;
+  color: #173349;
+  font: inherit;
+}
+.heat-estimator__fields .heat-estimator__check {
+  flex-direction: row;
+  gap: 10px;
+  align-items: center;
+  min-height: 42px;
+}
+.heat-estimator__check input {
+  width: 18px;
+  height: 18px;
+}
+.heat-estimator__fields input:focus-visible,
+.heat-estimator__fields select:focus-visible,
+.heat-estimator > summary:focus-visible {
+  outline: 3px solid #5ac0dc;
+  outline-offset: 2px;
+}
+.heat-estimator__help,
+.heat-estimator__disclaimer,
+.heat-estimator__result-note {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #596d7b;
+  line-height: 1.6;
+}
+.heat-estimator__result {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(195px, 1fr));
+  gap: 13px;
+  border: 1px solid #a1d7b4;
+  border-radius: 14px;
+  background: #effbf2;
+  padding: 18px;
+}
+.heat-estimator__result > div {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.heat-estimator__result span {
+  color: #476754;
+  font-size: 0.82rem;
+}
+.heat-estimator__result strong {
+  color: #14532d;
+  font-size: 1.06rem;
+}
+.heat-estimator__result .heat-estimator__hp {
+  font-size: clamp(1.3rem, 2.8vw, 1.8rem);
+}
+.heat-estimator__result-note {
+  grid-column: 1 / -1;
+}
+.heat-estimator__error {
+  margin: 0;
+  color: #9f2835;
+}
+.shop-capacity-prompt {
+  margin: 0;
+  font-weight: 650;
+  color: #14526b;
+}
+@media (max-width: 500px) {
+  .heat-estimator {
+    padding: 15px;
+  }
+  .heat-estimator__fields {
+    grid-template-columns: 1fr;
+  }
+  .heat-estimator > summary {
+    align-items: flex-start;
+  }
+}

@@ -1,0 +1,609 @@
+/* Compact assigned-work cards */
+
+.av-technician-work .av-technician-work__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  align-items: start;
+  gap: 12px;
+}
+
+.av-technician-work .av-job-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: 10px;
+  min-width: 0;
+  padding: 14px;
+}
+
+.av-technician-work .av-job-card__action-panel {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 0 0;
+  border: 0;
+  border-top: 1px solid #e2edf2;
+  border-radius: 0;
+  background: transparent;
+}
+
+.av-technician-work .av-job-card__action-caption {
+  display: none;
+}
+
+.av-technician-work .av-job-card__primary,
+.av-technician-work .av-job-card__calendar {
+  flex: 1 1 125px;
+}
+
+.av-technician-work .av-job-card__details {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.av-technician-work .av-job-card:not(.is-expanded) .av-job-card__more-meta,
+.av-technician-work .av-job-card:not(.is-expanded) .av-job-card__workflow-note {
+  display: none;
+}
+
+.av-technician-work .av-job-card__toggle-details {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 36px;
+  margin-top: 4px;
+  padding: 5px 3px;
+  border: 0;
+  background: transparent;
+  color: #126d90;
+  font: inherit;
+  font-size: 0.79rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.av-technician-work .av-job-card.is-expanded .av-job-card__toggle-details svg {
+  transform: rotate(180deg);
+}
+
+/* History button: opens a modal, not a dropdown */
+
+.av-technician-work .av-job-card__extras {
+  padding-top: 10px;
+}
+
+.av-technician-work .av-job-card__extras > .av-job-card__history-launch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  justify-self: start;
+  gap: 9px;
+  width: auto;
+  max-width: 100%;
+  min-height: 42px;
+  padding: 5px 9px 5px 5px;
+  border: 1px solid #cfe3ee;
+  border-radius: 11px;
+  background: #f0f8fc;
+  box-shadow: none;
+  color: #155d7d;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-align: left;
+  text-decoration: none;
+  white-space: normal;
+  cursor: pointer;
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.av-technician-work .av-job-card__history-launch:hover {
+  background: #e3f3fa;
+  border-color: #89c8e1;
+  transform: translateY(-1px);
+}
+
+.av-technician-work .av-job-card__history-launch > svg:last-child {
+  flex: 0 0 auto;
+}
+
+.av-technician-work .av-job-card__history-launch-icon {
+  display: grid;
+  flex: 0 0 31px;
+  place-items: center;
+  width: 31px;
+  height: 31px;
+  border-radius: 8px;
+  background: #d7edf7;
+}
+
+.av-technician-work .av-job-card__history-launch:focus-visible {
+  outline: 3px solid #55b8d9;
+  outline-offset: 3px;
+}
+
+/* Modal overlay */
+
+.av-history-backdrop {
+  position: fixed;
+  z-index: 10000;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 22px;
+  box-sizing: border-box;
+  background: rgb(7 22 34 / 67%);
+  backdrop-filter: blur(4px);
+}
+
+.av-history-modal,
+.av-history-modal * {
+  box-sizing: border-box;
+}
+
+.av-history-modal {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  width: min(100%, 720px);
+  max-height: min(780px, calc(100dvh - 44px));
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid #dce8ed;
+  border-radius: 20px;
+  background: #fff;
+  color: #193e52;
+  box-shadow: 0 24px 80px rgb(5 27 42 / 30%);
+}
+
+/* Modal header */
+
+.av-history-modal__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+  padding: 22px 24px 18px;
+  border-bottom: 1px solid #e6edf1;
+  background: linear-gradient(120deg, #eff8fc 0%, #fff 85%);
+}
+
+.av-history-modal__header-icon {
+  display: grid;
+  flex: 0 0 44px;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid #c9e4f0;
+  border-radius: 13px;
+  background: #e0f2f9;
+  color: #176b8b;
+}
+
+.av-history-modal__title {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.av-history-modal__eyebrow {
+  margin: 0 0 3px;
+  color: #226e8b;
+  font-size: 0.7rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+}
+
+.av-history-modal__title h2 {
+  margin: 0;
+  color: #123a50;
+  font-size: clamp(1.13rem, 3vw, 1.45rem);
+  line-height: 1.25;
+}
+
+.av-history-modal__title > p:last-child {
+  margin: 6px 0 0;
+  color: #647c8d;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.av-history-modal__close {
+  display: grid;
+  flex: 0 0 40px;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid #d8e6ed;
+  border-radius: 11px;
+  background: #fff;
+  color: #49697b;
+  cursor: pointer;
+}
+
+.av-history-modal__close:hover {
+  background: #eaf5fa;
+}
+
+/* Scrollable modal content */
+
+.av-history-modal__content {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 22px 24px 28px;
+}
+
+/* Fixed modal footer */
+
+.av-history-modal__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 13px 24px;
+  border-top: 1px solid #e5edf1;
+  background: #fbfdfe;
+}
+
+.av-history-modal__footer p {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: #617c8c;
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+
+.av-history-modal__footer p svg {
+  flex: 0 0 auto;
+}
+
+.av-history-modal__done {
+  flex: 0 0 auto;
+  min-height: 42px;
+  min-width: 90px;
+  padding: 9px 18px;
+  border: 0;
+  border-radius: 10px;
+  background: #096d91;
+  color: #fff;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.av-history-modal__done:hover {
+  background: #075574;
+}
+
+.av-history-modal :is(button, a):focus-visible {
+  outline: 3px solid #56b8da;
+  outline-offset: 3px;
+}
+
+/* Activity timeline */
+
+.av-history-activity__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin-bottom: 19px;
+}
+
+.av-history-activity__heading h3 {
+  margin: 0;
+  color: #17445a;
+  font-size: 1rem;
+}
+
+.av-history-activity__heading p {
+  margin: 3px 0 0;
+  color: #738999;
+  font-size: 0.77rem;
+}
+
+.av-history-activity__heading > span {
+  padding: 5px 10px;
+  border-radius: 100px;
+  background: #eaf4f9;
+  color: #236481;
+  font-size: 0.73rem;
+  font-weight: 800;
+}
+
+.av-history-activity__list {
+  position: relative;
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: 0 0 0 25px;
+  list-style: none;
+}
+
+.av-history-activity__list::before {
+  position: absolute;
+  top: 12px;
+  bottom: 20px;
+  left: 7px;
+  width: 2px;
+  background: #d8e9f1;
+  content: "";
+}
+
+.av-history-activity__item {
+  position: relative;
+  min-width: 0;
+}
+
+.av-history-activity__dot {
+  position: absolute;
+  top: 15px;
+  left: -24px;
+  width: 14px;
+  height: 14px;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: #1c8cb0;
+  box-shadow: 0 0 0 2px #d8e9f1;
+}
+
+.av-history-activity__card {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid #dee9ee;
+  border-radius: 13px;
+  background: #fff;
+  box-shadow: 0 3px 12px rgb(12 52 74 / 4%);
+}
+
+.av-history-activity__card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+}
+
+.av-history-activity__card-head h4 {
+  margin: 0;
+  color: #17465c;
+  font-size: 0.9rem;
+  line-height: 1.3;
+}
+
+.av-history-activity__card-head time {
+  color: #738a99;
+  font-size: 0.74rem;
+}
+
+/* Staff information */
+
+.av-history-activity__person {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  margin-top: 8px;
+  color: #45697d;
+  font-size: 0.78rem;
+}
+
+.av-history-activity__person strong {
+  font-weight: 750;
+}
+
+.av-history-activity__person span {
+  padding: 3px 7px;
+  border-radius: 6px;
+  background: #edf3f6;
+  color: #64788a;
+  font-size: 0.68rem;
+  font-weight: 750;
+  text-transform: capitalize;
+}
+
+/* Appointment information */
+
+.av-history-activity__schedule {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 10px;
+  border-radius: 9px;
+  background: #eef7fb;
+  color: #28647f;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.av-history-activity__schedule svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+/* Customer reasons and private notes */
+
+.av-history-activity__note {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 10px;
+}
+
+.av-history-activity__note--reason {
+  border: 1px solid #e0e9ee;
+  background: #f9fbfc;
+}
+
+.av-history-activity__note--private {
+  border: 1px solid #cce4f0;
+  background: #eff8fd;
+}
+
+.av-history-activity__note h5 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: #325c70;
+  font-size: 0.73rem;
+  font-weight: 850;
+}
+
+.av-history-activity__note--private h5 {
+  color: #146e8d;
+}
+
+.av-history-activity__note p {
+  margin: 7px 0 0;
+  color: #294e63;
+  font-size: 0.81rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* Loading, empty and error states */
+
+.av-history-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 230px;
+  padding: 22px;
+  color: #337f9b;
+  text-align: center;
+}
+
+.av-history-state h3 {
+  margin: 3px 0 0;
+  color: #214d63;
+  font-size: 1rem;
+}
+
+.av-history-state p {
+  margin: 0;
+  color: #6a8494;
+  font-size: 0.81rem;
+}
+
+.av-history-state button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 41px;
+  margin-top: 10px;
+  padding: 8px 13px;
+  border: 1px solid #aad4e4;
+  border-radius: 9px;
+  background: #ebf7fb;
+  color: #165e7b;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.av-history-state__spin {
+  animation: av-history-spin 1s linear infinite;
+}
+
+@keyframes av-history-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Mobile and small tablets */
+
+@media (max-width: 600px) {
+  .av-technician-work .av-technician-work__list {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .av-technician-work .av-job-card {
+    padding: 12px;
+  }
+
+  .av-history-backdrop {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .av-history-modal {
+    width: 100%;
+    max-height: calc(100dvh - 12px);
+    border-radius: 20px 20px 0 0;
+    border-bottom: 0;
+  }
+
+  .av-history-modal__header {
+    padding: 16px 14px 14px;
+    gap: 10px;
+  }
+
+  .av-history-modal__header-icon {
+    flex-basis: 38px;
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+  }
+
+  .av-history-modal__close {
+    width: 38px;
+    height: 38px;
+    flex-basis: 38px;
+  }
+
+  .av-history-modal__content {
+    padding: 17px 13px;
+  }
+
+  .av-history-modal__footer {
+    padding: 12px 14px max(12px, env(safe-area-inset-bottom));
+  }
+
+  .av-history-modal__footer p {
+    font-size: 0.68rem;
+  }
+
+  .av-history-modal__done {
+    min-width: 73px;
+  }
+
+  .av-history-activity__list {
+    gap: 11px;
+    padding-left: 22px;
+  }
+
+  .av-history-activity__dot {
+    left: -21px;
+  }
+
+  .av-history-activity__card {
+    padding: 13px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .av-history-state__spin {
+    animation: none;
+  }
+
+  .av-technician-work .av-job-card__history-launch {
+    transition: none;
+  }
+}

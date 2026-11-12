@@ -1,4 +1,8 @@
 import {
+  listMyServicePayments,
+  submitServiceTransfer,
+} from "../../../services/customer/services/servicePaymentService.js";
+import {
   createServiceRequestService,
   getActiveServiceTypesService,
   getInstallationProductsService,
@@ -79,5 +83,30 @@ export async function getCustomerServiceRequestsController(req, res) {
     });
   } catch (error) {
     return sendError(res, error, "getRequests");
+  }
+}
+
+export async function listMyServicePaymentsController(req, res) {
+  try {
+    return res.json({
+      success: true,
+      ...(await listMyServicePayments(req.auth.userId)),
+    });
+  } catch (error) {
+    return sendError(res, error, "servicePayments");
+  }
+}
+export async function submitServiceTransferController(req, res) {
+  try {
+    return res.json({
+      success: true,
+      ...(await submitServiceTransfer(
+        req.auth.userId,
+        req.params.requestId,
+        req.body,
+      )),
+    });
+  } catch (error) {
+    return sendError(res, error, "serviceTransfer");
   }
 }

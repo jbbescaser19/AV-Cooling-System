@@ -12,10 +12,11 @@ export function orderModel(db) {
       return rows[0] || null;
     },
 
-    async paymentMethod() {
+    async paymentMethod(code) {
       const [rows] = await db.execute(
         `SELECT payment_method_id AS id FROM payment_methods
-         WHERE code = 'CASH' AND is_enabled = 1 LIMIT 1`,
+         WHERE code = ? AND is_enabled = 1 LIMIT 1`,
+        [code],
       );
       return rows[0]?.id ?? null;
     },
@@ -78,13 +79,14 @@ export function orderModel(db) {
           order_status, payment_status, fulfillment_method, subtotal,
           discount_amount, delivery_fee, total_amount, recipient_name,
           contact_number, delivery_address, customer_notes, preferred_schedule)
-         VALUES (?, ?, ?, 'ONLINE', 'PENDING', 'PENDING', ?, ?, 0, 0, ?, ?, ?, ?, ?, ?)`,
+         VALUES (?, ?, ?, 'ONLINE', 'PENDING', 'PENDING', ?, ?, 0, ?, ?, ?, ?, ?, ?, ?)`,
         [
           data.orderNumber,
           data.customerId,
           data.paymentMethodId,
           data.fulfillment,
-          data.total,
+          data.subtotal,
+          data.deliveryFee,
           data.total,
           data.recipientName,
           data.contactNumber,
@@ -114,12 +116,12 @@ export function orderModel(db) {
       );
     },
 
-    async insertPayment(orderId, paymentMethodId, total) {
+    async insertPayment(orderId, paymentMethodId, total, note) {
       await db.execute(
         `INSERT INTO payments
          (order_id, payment_method_id, amount, payment_status, notes)
-         VALUES (?, ?, ?, 'PENDING', 'Cash payment for delivery and installation; collection as arranged with store.')`,
-        [orderId, paymentMethodId, total],
+         VALUES (?, ?, ?, 'PENDING', ?)`,
+        [orderId, paymentMethodId, total, note],
       );
     },
 
@@ -250,6 +252,8 @@ export function orderModel(db) {
                 pm.code AS paymentCode, pm.name AS paymentMethod,
                 CAST(pay.amount AS DOUBLE) AS paymentAmount,
                 pay.payment_status AS recordedPaymentStatus,
+                (SELECT tc.reference_code FROM payment_transfer_claims tc
+                   WHERE tc.payment_id=pay.payment_id LIMIT 1) AS transferReference,
                 EXISTS(SELECT 1 FROM work_orders wo WHERE wo.order_id = o.order_id
                   AND wo.status <> 'CANCELLED') AS hasWorkOrder,
                 EXISTS(SELECT 1 FROM payments pblock WHERE pblock.order_id = o.order_id

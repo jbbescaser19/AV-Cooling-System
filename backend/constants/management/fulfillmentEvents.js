@@ -8,8 +8,8 @@ export const EVENT_LABELS = {
     "Your delivery and installation appointment has been scheduled.",
   ],
   SCHEDULE_CHANGED: [
-    "Installation rescheduled",
-    "Your delivery and installation schedule has changed.",
+    "Order appointment rescheduled",
+    "The appointment for your order has changed.",
   ],
   ORDER_OUT_FOR_DELIVERY: [
     "Out for delivery",

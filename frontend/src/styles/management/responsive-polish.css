@@ -1,0 +1,236 @@
+/* Shared responsive finishing for the management workspace.
+   Existing feature styling and functionality are preserved. */
+
+.mgmt-shell,
+.mgmt-workspace,
+.mgmt-main,
+.mgmt-main > * {
+  min-width: 0;
+}
+
+.mgmt-shell {
+  overflow-x: clip;
+}
+
+.mgmt-main {
+  width: min(100%, 1680px);
+}
+
+.mgmt-main
+  :is(
+    .sales-ui,
+    .wsm-page,
+    .dashboard-page,
+    .mgmt-panel,
+    .wsm-panel,
+    .sales-panel,
+    .metric-card,
+    .module-card,
+    .orders-toolbar,
+    .wsm-table-head,
+    .sales-filters,
+    .wsm-table-tools,
+    .mgmt-page-head
+  ) {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.mgmt-main
+  :is(
+    .metric-grid,
+    .metric-grid-six,
+    .module-card-grid,
+    .dashboard-panels,
+    .sales-summary-cards,
+    .sales-columns,
+    .wsm-table-tools
+  )
+  > * {
+  min-width: 0;
+}
+
+.mgmt-main :is(input, select, textarea) {
+  box-sizing: border-box;
+  max-width: 100%;
+}
+
+.mgmt-main :is(.wsm-overflow, .responsive-table, .sales-table-scroll) {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.mgmt-main :is(.wsm-head, .sales-hero, .mgmt-page-head) > div:first-child {
+  min-width: 0;
+}
+
+.mgmt-main :is(.wsm-head, .sales-hero, .mgmt-page-head) h1 {
+  overflow-wrap: break-word;
+  line-height: 1.18;
+}
+
+.mgmt-main :is(.wsm-head, .sales-hero) > button,
+.mgmt-main :is(.wsm-head, .sales-hero) > a {
+  flex-shrink: 0;
+}
+
+.mgmt-main :is(.wsm-table-tools, .sales-filters, .mgmt-panel-header) {
+  flex-wrap: wrap;
+}
+
+.mgmt-main :is(.wsm-status, .status-pill, .sales-pill) {
+  vertical-align: middle;
+  line-height: 1.4;
+}
+
+.mgmt-main :is(.wsm-dialog, .sales-modal) {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: calc(100vw - 24px);
+}
+
+.mgmt-main :is(.wsm-form, .wsm-field, .sales-step) {
+  min-width: 0;
+}
+
+.mgmt-main :is(.wsm-form, .sales-step) > * {
+  min-width: 0;
+}
+
+.mgmt-shell :is(button, a, input, textarea, select):focus-visible {
+  outline: 3px solid #58b7d7;
+  outline-offset: 2px;
+}
+
+@media (min-width: 1025px) and (max-width: 1399px) {
+  .mgmt-main {
+    padding-inline: clamp(15px, 2vw, 25px);
+  }
+
+  .mgmt-main :is(.dashboard-panels, .sales-columns, .pos-layout-full) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .mgmt-main :is(.pos-summary, .dashboard-alert-panel) {
+    position: static;
+  }
+}
+
+@media (max-width: 1024px) {
+  .mgmt-workspace {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .mgmt-topbar {
+    min-width: 0;
+  }
+
+  .mgmt-topbar > div:nth-child(2) {
+    min-width: 0;
+  }
+
+  .mgmt-top-actions {
+    flex-shrink: 0;
+  }
+
+  .mgmt-main :is(.module-card-grid, .sales-summary-cards) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .mgmt-main {
+    padding: 16px 12px 32px;
+  }
+
+  .mgmt-topbar > div:nth-child(2) b {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.81rem;
+  }
+
+  .mgmt-main :is(.wsm-page, .sales-ui, .dashboard-page) {
+    gap: 14px;
+  }
+
+  .mgmt-main :is(.wsm-head, .sales-hero, .dashboard-hero) {
+    border-radius: 15px;
+    padding: 18px;
+  }
+
+  .mgmt-main :is(.wsm-head, .sales-hero) {
+    align-items: stretch;
+  }
+
+  .mgmt-main :is(.wsm-head, .sales-hero) > button,
+  .mgmt-main :is(.wsm-head, .sales-hero) > a {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .mgmt-main :is(.wsm-panel, .sales-panel, .mgmt-panel) {
+    border-radius: 14px;
+    padding: 14px;
+  }
+
+  .mgmt-main :is(.wsm-table-tools, .sales-filters, .orders-toolbar) {
+    align-items: stretch;
+  }
+
+  .mgmt-main :is(.wsm-search, .mgmt-search-box, .sales-search) {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .mgmt-main :is(.wsm-search, .mgmt-search-box, .sales-search) input {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .mgmt-main :is(.module-card-grid, .sales-summary-cards) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .mgmt-main :is(.wsm-dialog-head, .sales-section-head) {
+    gap: 10px;
+  }
+
+  .mgmt-main :is(.wsm-form, .wsm-dialog-head) {
+    padding: 15px;
+  }
+}
+
+@media (max-width: 390px) {
+  .mgmt-main {
+    padding-inline: 9px;
+  }
+
+  .mgmt-topbar {
+    padding-inline: 8px;
+  }
+
+  .mgmt-topbar .mgmt-menu {
+    min-width: 44px;
+    padding-inline: 8px;
+  }
+
+  .mgmt-main :is(.metric-grid, .metric-grid-six) {
+    gap: 8px;
+  }
+
+  .mgmt-main :is(.metric-card, .wsm-panel, .sales-panel) {
+    padding: 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mgmt-shell *,
+  .mgmt-shell *::before,
+  .mgmt-shell *::after {
+    scroll-behavior: auto !important;
+  }
+}

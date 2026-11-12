@@ -1,0 +1,129 @@
+/* One semantic status palette for the entire customer / Ecommerce area. */
+.customer-status.customer-status--neutral,
+.customer-status.customer-status--warning,
+.customer-status.customer-status--confirmed,
+.customer-status.customer-status--scheduled,
+.customer-status.customer-status--progress,
+.customer-status.customer-status--success,
+.customer-status.customer-status--danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  max-width: 100%;
+  padding: 5px 10px;
+  border: 1px solid var(--customer-status-border);
+  border-radius: 999px;
+  background: var(--customer-status-bg);
+  color: var(--customer-status-fg) !important;
+  font-size: 0.73rem !important;
+  font-weight: 800;
+  line-height: 1.3;
+  letter-spacing: 0.01em;
+  overflow-wrap: anywhere;
+  text-align: center;
+}
+
+.customer-status--neutral {
+  --customer-status-bg: #f1f5f9;
+  --customer-status-fg: #475569;
+  --customer-status-border: #cbd5e1;
+}
+.customer-status--warning {
+  --customer-status-bg: #fff4d6;
+  --customer-status-fg: #854d0e;
+  --customer-status-border: #f6d693;
+}
+.customer-status--confirmed {
+  --customer-status-bg: #eaf2ff;
+  --customer-status-fg: #1e40af;
+  --customer-status-border: #bcd3ff;
+}
+.customer-status--scheduled {
+  --customer-status-bg: #e0f8fd;
+  --customer-status-fg: #0e7490;
+  --customer-status-border: #a7dce9;
+}
+.customer-status--progress {
+  --customer-status-bg: #f2eaff;
+  --customer-status-fg: #6d28d9;
+  --customer-status-border: #d6c1fd;
+}
+.customer-status--success {
+  --customer-status-bg: #e9f8ef;
+  --customer-status-fg: #166534;
+  --customer-status-border: #aee2bb;
+}
+.customer-status--danger {
+  --customer-status-bg: #fff0f0;
+  --customer-status-fg: #991b1b;
+  --customer-status-border: #f6bebe;
+}
+
+/* Status in notification cards / activity history must also be readable. */
+.notification-title-button .customer-status {
+  text-align: left;
+  white-space: normal;
+}
+.order-timeline .customer-status,
+.notification-activity-list .customer-status {
+  margin-bottom: 4px;
+}
+
+/* Shared positioning rule: status is always the last item in a summary row.
+   These selectors affect placement only; semantic status colors stay unchanged. */
+.customer-record-list > .customer-payment-record {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  align-items: center;
+  column-gap: 14px;
+  width: 100%;
+  min-width: 0;
+}
+
+.customer-payment-record > .customer-payment-record__summary {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.customer-payment-record > .customer-payment-record__badge {
+  grid-column: 2;
+  justify-self: end;
+  align-self: center;
+  margin-inline-start: auto;
+  white-space: normal;
+}
+
+.customer-orders .order-card-top > .customer-status,
+.customer-orders .order-modal-intro > .customer-status {
+  flex: 0 0 auto;
+  margin-inline-start: auto;
+  align-self: flex-start;
+}
+
+.customer-orders
+  .order-detail-list
+  > .order-payment-status-row
+  > .customer-status,
+.notification-record-row > .customer-status {
+  margin-inline-start: auto;
+  flex: 0 0 auto;
+  align-self: flex-start;
+}
+
+.customer-service-desktop-side > .customer-status,
+.customer-service-mobile-actions > .customer-status {
+  justify-self: end;
+  margin-inline-start: auto;
+}
+
+@media (max-width: 520px) {
+  .customer-record-list > .customer-payment-record {
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 8px;
+  }
+
+  .customer-payment-record > .customer-payment-record__badge {
+    max-width: min(42vw, 160px);
+  }
+}

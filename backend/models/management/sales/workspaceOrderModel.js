@@ -30,14 +30,24 @@ export function orderModel(db) {
       );
       return rows[0] || null;
     },
-    fbCreateOrder(fb, methodId, total, staffId, reference, preferredStart) {
+    fbCreateOrder(
+      fb,
+      methodId,
+      subtotal,
+      deliveryFee,
+      total,
+      staffId,
+      reference,
+      preferredStart,
+    ) {
       return execute(
-        `INSERT INTO orders(order_number,created_by,payment_method_id,order_channel,order_status,payment_status,fulfillment_method,subtotal,discount_amount,delivery_fee,total_amount,recipient_name,contact_number,delivery_address,customer_notes,preferred_schedule) VALUES (?,?,?,'FACEBOOK','CONFIRMED','PENDING','DELIVERY',?,0,0,?,?,?,?,?,?)`,
+        `INSERT INTO orders(order_number,created_by,payment_method_id,order_channel,order_status,payment_status,fulfillment_method,subtotal,discount_amount,delivery_fee,total_amount,recipient_name,contact_number,delivery_address,customer_notes,preferred_schedule) VALUES (?,?,?,'FACEBOOK','CONFIRMED','PENDING','DELIVERY',?,0,?,?,?,?,?,?,?)`,
         [
           reference,
           staffId,
           methodId,
-          total,
+          subtotal,
+          deliveryFee,
           total,
           fb.customer_name,
           fb.contact_number,

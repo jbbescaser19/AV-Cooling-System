@@ -23,6 +23,9 @@ const customerOwnedAirconSchema = z.strictObject({
 });
 
 const newServiceSchema = z.strictObject({
+  paymentCode: z.enum(["CASH", "GCASH", "BANK_TRANSFER"]).default("CASH"),
+  copperFeet: z.number().int().min(1).max(100).default(10),
+  includeDismantling: z.boolean().default(false),
   serviceType: z
     .string()
     .trim()

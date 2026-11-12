@@ -1,6 +1,53 @@
 /** SQL for the pos management feature. */
 export function posModel(db) {
   return {
+    async searchReturningCustomers(pattern) {
+      // Show only matching contact details needed for POS.
+      // No passwords, emails, or full management customer records are exposed.
+      const [rows] = await db.execute(
+        `SELECT matches.name, matches.phone, matches.address, matches.source
+         FROM (
+           SELECT matchesBySource.*,
+             ROW_NUMBER() OVER (
+               PARTITION BY LOWER(TRIM(matchesBySource.name)), TRIM(matchesBySource.phone)
+               ORDER BY matchesBySource.recordedAt DESC
+             ) AS rowNumber
+           FROM (
+             SELECT u.name AS name, c.phone AS phone,
+               COALESCE((SELECT a.full_address FROM customer_addresses a
+                  WHERE a.customer_id = c.customer_id
+                  ORDER BY a.is_default DESC, a.created_at DESC, a.address_id DESC
+                  LIMIT 1), '') AS address,
+               'Registered customer' AS source, c.created_at AS recordedAt
+             FROM customers c JOIN users u ON u.user_id=c.user_id
+             WHERE c.status='ACTIVE' AND u.status='ACTIVE'
+               AND u.account_type='CUSTOMER' AND c.phone IS NOT NULL
+             UNION ALL
+             SELECT o.recipient_name AS name, o.contact_number AS phone,
+               COALESCE(o.delivery_address,'') AS address,
+               'Previous order' AS source, o.ordered_at AS recordedAt
+             FROM orders o
+             UNION ALL
+             SELECT COALESCE(sr.walk_in_customer_name, u.name) AS name,
+               sr.contact_number AS phone,
+               sr.service_address AS address,
+               'Previous service' AS source, sr.created_at AS recordedAt
+             FROM service_requests sr
+             LEFT JOIN customers c ON c.customer_id=sr.customer_id
+             LEFT JOIN users u ON u.user_id=c.user_id
+           ) matchesBySource
+           WHERE matchesBySource.name IS NOT NULL
+             AND matchesBySource.phone IS NOT NULL
+             AND matchesBySource.phone <> ''
+             AND (LOWER(matchesBySource.name) LIKE LOWER(?) ESCAPE '!'
+               OR matchesBySource.phone LIKE ? ESCAPE '!')
+         ) matches
+         WHERE matches.rowNumber=1
+         ORDER BY matches.recordedAt DESC LIMIT 12`,
+        [pattern, pattern],
+      );
+      return rows;
+    },
     async catalog() {
       const [rows] =
         await db.execute(`SELECT v.variant_id AS variantId, p.product_name AS productName,
@@ -17,7 +64,10 @@ export function posModel(db) {
     async previousPosSale(orderNumber, staffId) {
       const [rows] = await db.execute(
         `SELECT order_id AS id, order_number AS orderNumber,
-                    recipient_name AS customer, CAST(total_amount AS CHAR) AS total,
+                    recipient_name AS customer, contact_number AS contact,
+                    CAST(total_amount AS CHAR) AS total,
+                    CAST(additional_fee_amount AS CHAR) AS additionalFee,
+                    additional_fee_reason AS additionalFeeReason,
                     payment_status AS paymentStatus
              FROM orders WHERE order_number = ? AND created_by = ?
                AND order_channel = 'POS' LIMIT 1`,
@@ -56,9 +106,10 @@ export function posModel(db) {
         `INSERT INTO orders
              (order_number, created_by, payment_method_id, order_channel,
               order_status, payment_status, fulfillment_method, subtotal,
-              discount_amount, delivery_fee, total_amount, recipient_name,
+              discount_amount, delivery_fee, additional_fee_amount, additional_fee_reason,
+              total_amount, recipient_name,
               contact_number, delivery_address, preferred_schedule, customer_notes, completed_at)
-             VALUES (?, ?, ?, 'POS', ?, 'PAID', ?, ?, ?, 0,
+             VALUES (?, ?, ?, 'POS', ?, 'PAID', ?, ?, ?, ?, ?, ?,
                      ?, ?, ?, ?, ?, ?, ?)`,
         [
           data.orderNumber,
@@ -68,13 +119,18 @@ export function posModel(db) {
           scheduled ? "DELIVERY" : "PICKUP",
           data.subtotal,
           data.discount,
+          data.deliveryFee,
+          data.additionalFee,
+          data.additionalFeeReason || null,
           data.total,
           data.customerName,
           data.customerPhone,
           scheduled ? data.serviceAddress : null,
           scheduled ? `${data.scheduledStart.replace("T", " ")}:00` : null,
           scheduled
-            ? "Paid at POS; installation appointment requested"
+            ? data.installationIncluded
+              ? "Paid at POS; delivery and installation appointment requested"
+              : "Paid at POS; delivery appointment requested"
             : "Paid cash at POS; take-home purchase",
           scheduled ? null : new Date(),
         ],
@@ -107,7 +163,12 @@ export function posModel(db) {
         [variantId, -quantity, staffId],
       );
     },
-    async recordOrderHistory(orderId, staffId, scheduled = false) {
+    async recordOrderHistory(
+      orderId,
+      staffId,
+      scheduled = false,
+      installationIncluded = false,
+    ) {
       await db.execute(
         `INSERT INTO order_status_history
              (order_id, old_status, new_status, changed_by, notes)
@@ -117,7 +178,9 @@ export function posModel(db) {
           scheduled ? "CONFIRMED" : "COMPLETED",
           staffId,
           scheduled
-            ? "Cash received; appointment awaits installation"
+            ? installationIncluded
+              ? "Cash received; appointment awaits delivery and installation"
+              : "Cash received; appointment awaits delivery"
             : "Cash collected; walk-in sale completed",
         ],
       );

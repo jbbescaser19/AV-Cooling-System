@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import ProductRail from "../../components/ecommerce/ProductRail";
+import HeatLoadEstimator from "../../components/common/HeatLoadEstimator";
 import { readCatalogBrands } from "../../utils/catalogStore";
 import useStorefrontCatalog from "../../hooks/useStorefrontCatalog";
 import "../../styles/ecommerce/pages.css";
@@ -34,6 +35,13 @@ export default function ShopPage() {
               currently available. Stock updates come from our inventory system.
             </p>
           </div>
+        </div>
+        <div className="shop-capacity-guide">
+          <p className="shop-capacity-prompt">
+            Not sure whether you need a 1 HP, 1.5 HP, or 2 HP aircon? Check your
+            room before choosing a model.
+          </p>
+          <HeatLoadEstimator compact />
         </div>
         {status === "error" && (
           <div

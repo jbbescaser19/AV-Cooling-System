@@ -69,14 +69,19 @@ export default function OrderConfirmationPage() {
                 </div>
               </div>
               <p className="checkout-small-print">
-                Your order is pending store confirmation. Cash payment has not
-                been collected.
+                Your order is pending store confirmation.{" "}
+                {order.paymentCode === "CASH"
+                  ? "Cash has not been collected."
+                  : `Selected payment: ${order.paymentMethod}. Use the store-verified payment details from checkout and report the transaction reference in Account → Payments. The order remains unpaid until staff confirms funds.`}
               </p>
             </>
           )}
           <div className="checkout-confirmation-actions">
             <Link className="btn btn-dark" to="/account/orders">
               View my orders
+            </Link>
+            <Link className="btn btn-soft" to="/account/payments">
+              My payments
             </Link>
             <Link className="btn btn-soft" to="/shop">
               Continue shopping

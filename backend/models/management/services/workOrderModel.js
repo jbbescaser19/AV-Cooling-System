@@ -95,6 +95,17 @@ export function workOrderModel(db) {
              WHERE a1.work_order_id=w.work_order_id AND a1.status<>'CANCELLED') AS teamMembers,
            o.order_channel AS orderChannel,
            o.payment_status AS paymentStatus,
+           EXISTS (
+             SELECT 1 FROM work_orders i
+             WHERE i.order_id = w.order_id
+               AND i.work_type = 'INSTALLATION'
+               AND i.status <> 'CANCELLED'
+           ) AS hasInstallationJob,
+           (SELECT i.status FROM work_orders i
+            WHERE i.order_id = w.order_id
+              AND i.work_type = 'INSTALLATION'
+              AND i.status <> 'CANCELLED'
+            ORDER BY i.work_order_id DESC LIMIT 1) AS installationStatus,
            (SELECT d.work_order_id
             FROM work_orders d
             WHERE d.order_id=w.order_id AND d.work_type='DELIVERY'

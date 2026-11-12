@@ -1,4 +1,6 @@
+import { getDeliveryFee } from "../../shared/deliveryPricingService.js";
 import connectDB from "../../../utils/dbConn.js";
+import { auditLogModel } from "../../../models/management/administration/auditLogModel.js";
 import { ensureConfirmedWorkOrders } from "../services/confirmationWorkOrderService.js";
 import { posModel } from "../../../models/management/sales/posModel.js";
 import { reserveAppointment } from "../../scheduling/bookingScheduleService.js";
@@ -10,6 +12,18 @@ import { fail, cents, peso, validStaff } from "./salesHelpers.js";
 function posData(db) {
   // POS needs product stock/order operations and Cash payment recording together.
   return { ...posModel(db), ...paymentModel(db) };
+}
+
+export async function searchPosCustomers(staff, rawQuery) {
+  validStaff(staff);
+  const query = typeof rawQuery === "string" ? rawQuery.trim() : "";
+  const minLength = /^\d+$/.test(query) ? 4 : 3;
+  if (query.length < minLength || query.length > 80) {
+    fail(`Search by at least ${minLength} characters (max 80).`, 400);
+  }
+  // LIKE wildcards are escaped; input cannot enumerate every customer with % or _.
+  const pattern = `%${query.replace(/[!%_]/g, "!$&")}%`;
+  return { items: await posModel(connectDB).searchReturningCustomers(pattern) };
 }
 
 export async function getPosCatalog(staff) {
@@ -97,10 +111,29 @@ export async function createPosSale(staff, raw) {
       });
     }
     const discount = cents(input.discount);
+    const additionalFee = cents(input.additionalFee);
     const received = cents(input.cashReceived);
     if (discount >= subtotal)
       fail("Discount must be less than the sale subtotal.");
-    const total = subtotal - discount;
+    // An "other area" has no published automatic delivery rate.
+    // Staff enter the agreed special trip charge as an auditable extra fee.
+    // Public checkout still requires a published delivery zone.
+    if (
+      input.delivery &&
+      input.deliveryArea === "OTHER" &&
+      additionalFee <= 0
+    ) {
+      fail(
+        "Enter an agreed additional delivery fee and a reason for this location.",
+        400,
+      );
+    }
+    const deliveryFee = input.delivery
+      ? input.deliveryArea === "OTHER"
+        ? 0
+        : cents(getDeliveryFee(input.deliveryArea, input.serviceAddress))
+      : 0;
+    const total = subtotal - discount + deliveryFee + additionalFee;
     if (total <= 0 || received < total)
       fail("Cash received must cover the total.");
     const change = received - total;
@@ -112,7 +145,11 @@ export async function createPosSale(staff, raw) {
       customerPhone: input.customerPhone,
       subtotal: peso(subtotal),
       discount: peso(discount),
+      additionalFee: peso(additionalFee),
+      additionalFeeReason: input.additionalFeeReason,
+      deliveryFee: peso(deliveryFee),
       total: peso(total),
+      installationIncluded: input.installationIncluded,
       scheduledStart: input.scheduledStart,
       serviceAddress: input.serviceAddress,
     });
@@ -129,7 +166,7 @@ export async function createPosSale(staff, raw) {
         fail("Stock changed during checkout. Refresh POS and retry.", 409);
       await model.addItem(orderId, {
         ...item,
-        installationIncluded: Boolean(input.scheduledStart),
+        installationIncluded: input.installationIncluded,
       });
       await model.recordStockSale(item.variantId, item.quantity, staff.id);
     }
@@ -144,6 +181,13 @@ export async function createPosSale(staff, raw) {
       orderId,
       staff.id,
       Boolean(input.scheduledStart),
+      input.installationIncluded,
+    );
+    await auditLogModel(connection).audit(
+      staff.id,
+      "CONFIRM_POS_CASH",
+      "orders",
+      orderId,
     );
     if (input.scheduledStart) {
       await ensureConfirmedWorkOrders(
@@ -161,9 +205,13 @@ export async function createPosSale(staff, raw) {
         id: orderId,
         orderNumber,
         customer: input.customerName,
+        contact: input.customerPhone,
         items: lines,
         subtotal: peso(subtotal),
         discount: peso(discount),
+        additionalFee: peso(additionalFee),
+        additionalFeeReason: input.additionalFeeReason,
+        deliveryFee: peso(deliveryFee),
         total: peso(total),
         cashReceived: peso(received),
         change: peso(change),

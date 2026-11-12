@@ -19,7 +19,15 @@ export async function transitionService(model, service, data, scheduleSQL) {
     }
   } else if (code === "SERVICE_RESCHEDULED") {
     requireStatus(status, code, "CONFIRMED");
-    await requirePreviousEvent(model, "SERVICE", id, "SERVICE_SCHEDULED");
+    if (
+      !service.schedule ||
+      (!(await has("SERVICE_SCHEDULED")) && !(await has("SERVICE_ACCEPTED")))
+    ) {
+      fail(
+        "Confirm a future appointment before rescheduling this service.",
+        409,
+      );
+    }
     if (await has("SERVICE_STARTED")) {
       fail("Service has already started.");
     }
@@ -28,7 +36,15 @@ export async function transitionService(model, service, data, scheduleSQL) {
     }
   } else if (code === "SERVICE_STARTED") {
     requireStatus(status, code, "CONFIRMED");
-    await requirePreviousEvent(model, "SERVICE", id, "SERVICE_SCHEDULED");
+    if (
+      !service.schedule ||
+      (!(await has("SERVICE_SCHEDULED")) && !(await has("SERVICE_ACCEPTED")))
+    ) {
+      fail(
+        "Accept the request and confirm an appointment before starting.",
+        409,
+      );
+    }
     if (await has(code)) {
       fail("Service was already started.");
     }

@@ -1,18 +1,22 @@
 import bcrypt from "bcrypt";
-import { randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import jwt from "jsonwebtoken";
 
 import connectDB from "../../utils/dbConn.js";
 import { staffModel } from "../../models/management/staffModel.js";
 import { staffSessionModel } from "../../models/management/staffSessionModel.js";
 
-export const STAFF_ABSOLUTE_MS = 8 * 60 * 60 * 1000;
-export const STAFF_IDLE_MS = 15 * 60 * 1000;
-export const STAFF_WARNING_MS = 2 * 60 * 1000;
+export const STAFF_ACCESS_MS = 15 * 60 * 1000;
+export const STAFF_REFRESH_MS = 7 * 24 * 60 * 60 * 1000;
+export const STAFF_REAUTH_MS = 10 * 60 * 1000;
 
 const attempts = new Map();
 const WINDOW_MS = 15 * 60 * 1000;
 const MAX_ATTEMPTS = 6;
+const SID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const REFRESH_PATTERN =
+  /^([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\.([A-Za-z0-9_-]{43})$/i;
 
 function fail(message, status = 401) {
   throw Object.assign(new Error(message), { status });
@@ -21,8 +25,8 @@ function fail(message, status = 401) {
 function enforceAttemptLimit(key) {
   const now = Date.now();
   if (attempts.size >= 3000) {
-    for (const [attemptKey, item] of attempts) {
-      if (now - item.start >= WINDOW_MS) attempts.delete(attemptKey);
+    for (const [entryKey, item] of attempts) {
+      if (now - item.start >= WINDOW_MS) attempts.delete(entryKey);
     }
     if (attempts.size >= 3000) attempts.delete(attempts.keys().next().value);
   }
@@ -43,10 +47,28 @@ function recordFailedAttempt(key) {
   attempts.set(key, entry);
 }
 
-function validateStaffToken(token, { ignoreExpiration = false } = {}) {
-  if (!token) fail("Staff login required.");
-  if (!process.env.ACCESS_SECRET)
+function mintAccessToken(staffId, sessionId) {
+  if (!process.env.ACCESS_SECRET) {
     fail("Staff authentication is not configured.", 500);
+  }
+  const token = jwt.sign(
+    { scope: "staff", sid: sessionId },
+    process.env.ACCESS_SECRET,
+    {
+      algorithm: "HS256",
+      subject: String(staffId),
+      expiresIn: "15m",
+    },
+  );
+  const payload = jwt.decode(token);
+  return { token, accessExpiresAt: Number(payload.exp) * 1000 };
+}
+
+function validateStaffToken(token, { ignoreExpiration = false } = {}) {
+  if (!token) fail("Management login required.");
+  if (!process.env.ACCESS_SECRET) {
+    fail("Staff authentication is not configured.", 500);
+  }
 
   let payload;
   try {
@@ -56,34 +78,61 @@ function validateStaffToken(token, { ignoreExpiration = false } = {}) {
     });
   } catch (error) {
     if (
-      error.name === "JsonWebTokenError" ||
-      error.name === "TokenExpiredError" ||
-      error.name === "NotBeforeError"
+      ["JsonWebTokenError", "TokenExpiredError", "NotBeforeError"].includes(
+        error.name,
+      )
     ) {
-      fail("Staff session expired. Sign in again.");
+      fail("Management access expired. Refresh your session or sign in again.");
     }
     throw error;
   }
 
+  // Reject older 8-hour Management JWTs after deploying the new 15-minute policy.
   if (
     payload.scope !== "staff" ||
     !/^[1-9]\d*$/.test(String(payload.sub ?? "")) ||
-    !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-      String(payload.sid ?? ""),
-    )
+    !SID_PATTERN.test(String(payload.sid ?? "")) ||
+    !Number.isInteger(payload.iat) ||
+    !Number.isInteger(payload.exp) ||
+    payload.exp - payload.iat > STAFF_ACCESS_MS / 1000 ||
+    payload.exp <= payload.iat
   ) {
-    fail("Invalid staff session.");
+    fail("Invalid Management access token.");
   }
-  return { staffId: Number(payload.sub), sessionId: payload.sid };
+
+  return {
+    staffId: Number(payload.sub),
+    sessionId: payload.sid,
+    accessExpiresAt: payload.exp * 1000,
+  };
 }
 
-function toResponse(row, sessionId) {
-  const lastActivityAt = Number(row.lastActivityAt);
+function createRefreshToken(sessionId) {
+  return `${sessionId}.${randomBytes(32).toString("base64url")}`;
+}
+
+function parseRefreshToken(raw) {
+  if (typeof raw !== "string") fail("Management login required.");
+  const match = REFRESH_PATTERN.exec(raw);
+  if (!match) fail("Invalid Management refresh session.");
   return {
-    staff: { id: row.id, name: row.name, email: row.email, role: row.role },
+    sessionId: match[1],
+    refreshTokenHash: createHash("sha256").update(raw).digest("hex"),
+  };
+}
+
+function sessionResponse(row, sessionId, accessExpiresAt) {
+  return {
+    staff: {
+      id: row.id,
+      name: row.name,
+      email: row.email,
+      role: row.role,
+    },
     session: {
       id: sessionId,
-      idleExpiresAt: lastActivityAt + STAFF_IDLE_MS,
+      accessExpiresAt,
+      refreshExpiresAt: Number(row.absoluteExpiresAt),
       absoluteExpiresAt: Number(row.absoluteExpiresAt),
       reauthenticatedUntil:
         row.reauthenticatedUntil == null
@@ -122,24 +171,22 @@ export async function signInStaff(
     recordFailedAttempt(key);
     fail("Invalid email or password.");
   }
-  if (!process.env.ACCESS_SECRET)
-    fail("Staff authentication is not configured.", 500);
 
   const sessionId = randomUUID();
-  const token = jwt.sign(
-    { scope: "staff", sid: sessionId },
-    process.env.ACCESS_SECRET,
-    {
-      algorithm: "HS256",
-      subject: String(staff.id),
-      expiresIn: "8h",
-    },
-  );
+  const refreshToken = createRefreshToken(sessionId);
+  const refreshTokenHash = createHash("sha256")
+    .update(refreshToken)
+    .digest("hex");
+  const { token, accessExpiresAt } = mintAccessToken(staff.id, sessionId);
 
   const connection = await connectDB.getConnection();
   try {
     await connection.beginTransaction();
-    await staffSessionModel(connection).create(sessionId, staff.id);
+    await staffSessionModel(connection).create(
+      sessionId,
+      staff.id,
+      refreshTokenHash,
+    );
     await staffModel(connection).recordLogin(staff.id);
     await connection.commit();
   } catch (error) {
@@ -154,23 +201,42 @@ export async function signInStaff(
     sessionId,
     staff.id,
   );
-  if (!row) fail("Staff session could not be started.", 500);
-  return { token, ...toResponse(row, sessionId) };
+  if (!row) fail("Management session could not be started.", 500);
+
+  return {
+    token,
+    refreshToken,
+    ...sessionResponse(row, sessionId, accessExpiresAt),
+  };
 }
 
+/** Called on each protected Management API request. No inactivity timeout. */
 export async function verifyStaffSession(token) {
-  const { staffId, sessionId } = validateStaffToken(token);
+  const { staffId, sessionId, accessExpiresAt } = validateStaffToken(token);
   const row = await staffSessionModel(connectDB).findActive(sessionId, staffId);
-  if (!row) fail("Your management session has ended. Sign in again.");
-  return toResponse(row, sessionId);
+  if (!row) fail("Management session ended. Sign in again.");
+  return sessionResponse(row, sessionId, accessExpiresAt);
 }
 
+/** Issue a new 15-minute access cookie from the same 7-day, revocable device session. */
+export async function refreshStaffSession(rawRefreshToken) {
+  const { sessionId, refreshTokenHash } = parseRefreshToken(rawRefreshToken);
+  const row = await staffSessionModel(connectDB).findActiveByRefresh(
+    sessionId,
+    refreshTokenHash,
+  );
+  if (!row)
+    fail("Management refresh session expired or was revoked. Sign in again.");
+
+  const { token, accessExpiresAt } = mintAccessToken(row.id, sessionId);
+  return {
+    token,
+    ...sessionResponse(row, sessionId, accessExpiresAt),
+  };
+}
+
+/** Retained for compatibility with older clients; activity does not extend expiry. */
 export async function recordStaffActivity(token) {
-  const { staffId, sessionId } = validateStaffToken(token);
-  const model = staffSessionModel(connectDB);
-  if (!(await model.recordActivity(sessionId, staffId))) {
-    fail("Your management session has ended. Sign in again.");
-  }
   return verifyStaffSession(token);
 }
 
@@ -183,15 +249,16 @@ export async function reauthenticateStaff(
   await verifyStaffSession(token);
   const key = `reauth:${remoteAddress}:${sessionId}`;
   enforceAttemptLimit(key);
+
   const hash = await staffModel(connectDB).findActivePasswordHashById(staffId);
   const valid =
-    typeof password === "string" &&
-    password.length > 0 &&
-    hash &&
-    (await bcrypt.compare(password, hash));
+    typeof password === "string" && password.length > 0 && hash
+      ? await bcrypt.compare(password, hash)
+      : false;
   if (!valid) {
     recordFailedAttempt(key);
-    fail("Incorrect password.");
+    // 403 distinguishes a wrong password from an expired access token (401).
+    fail("Incorrect password.", 403);
   }
   if (
     !(await staffSessionModel(connectDB).recordReauthentication(
@@ -199,21 +266,36 @@ export async function reauthenticateStaff(
       staffId,
     ))
   ) {
-    fail("Your management session has ended. Sign in again.");
+    fail("Management session ended. Sign in again.");
   }
   attempts.delete(key);
   return verifyStaffSession(token);
 }
 
-export async function revokeStaffSession(token) {
-  if (!token) return;
-  try {
-    const { staffId, sessionId } = validateStaffToken(token, {
-      ignoreExpiration: true,
-    });
-    await staffSessionModel(connectDB).revoke(sessionId, staffId);
-  } catch (error) {
-    // Invalid/expired tokens cannot authenticate anything. Never skip a database error.
-    if (error.status !== 401) throw error;
+/** Logout still works if the 15-minute access cookie has already expired. */
+export async function revokeStaffSession(accessToken, rawRefreshToken) {
+  let revokedUsingRefresh = false;
+  if (rawRefreshToken) {
+    try {
+      const { sessionId, refreshTokenHash } =
+        parseRefreshToken(rawRefreshToken);
+      revokedUsingRefresh = await staffSessionModel(connectDB).revokeByRefresh(
+        sessionId,
+        refreshTokenHash,
+      );
+    } catch (error) {
+      if (error.status !== 401) throw error;
+    }
+  }
+
+  if (accessToken && !revokedUsingRefresh) {
+    try {
+      const { staffId, sessionId } = validateStaffToken(accessToken, {
+        ignoreExpiration: true,
+      });
+      await staffSessionModel(connectDB).revoke(sessionId, staffId);
+    } catch (error) {
+      if (error.status !== 401) throw error;
+    }
   }
 }

@@ -6,7 +6,24 @@ const saleSchema = z
   .strictObject({
     requestKey: z.string().uuid(),
     customerName: z.string().trim().min(2).max(150),
-    customerPhone: z.string().trim().max(30).default(""),
+    customerPhone: z
+      .string()
+      .trim()
+      .min(7)
+      .max(30)
+      .refine(
+        (phone) =>
+          (phone.match(/\d/g) || []).length >= 7 &&
+          /^[+0-9()\s-]+$/.test(phone),
+        "Enter a valid contact number with at least 7 digits.",
+      ),
+    delivery: z.boolean().default(false),
+    installationIncluded: z.boolean().default(false),
+    deliveryArea: z
+      .string()
+      .regex(/^[A-Z_]{3,40}$/)
+      .nullable()
+      .default(null),
     items: z
       .array(
         z.strictObject({
@@ -17,6 +34,8 @@ const saleSchema = z
       .min(1)
       .max(30),
     discount: z.number().finite().min(0).max(9999999).default(0),
+    additionalFee: z.number().finite().min(0).max(99999.99).default(0),
+    additionalFeeReason: z.string().trim().max(255).default(""),
     cashReceived: z.number().finite().min(0).max(99999999),
     scheduledStart: z
       .string()
@@ -35,6 +54,59 @@ const saleSchema = z
     technicianIds: technicianIdsSchema,
   })
   .superRefine((data, context) => {
+    if (data.additionalFee > 0 && data.additionalFeeReason.length < 5) {
+      context.addIssue({
+        code: "custom",
+        path: ["additionalFeeReason"],
+        message: "Explain the additional fee (at least 5 characters).",
+      });
+    }
+    if (data.additionalFee === 0 && data.additionalFeeReason.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["additionalFeeReason"],
+        message: "Remove the fee reason or enter an additional fee.",
+      });
+    }
+
+    if (data.delivery && data.deliveryArea === "OTHER") {
+      if (data.additionalFee <= 0) {
+        context.addIssue({
+          code: "custom",
+          path: ["additionalFee"],
+          message:
+            "For other locations, enter the agreed delivery fee and its reason.",
+        });
+      }
+      if (data.serviceAddress.length < 10) {
+        context.addIssue({
+          code: "custom",
+          path: ["serviceAddress"],
+          message: "Enter the complete remote delivery address.",
+        });
+      }
+    }
+    if (data.installationIncluded && !data.delivery) {
+      context.addIssue({
+        code: "custom",
+        path: ["installationIncluded"],
+        message: "Installation includes delivery.",
+      });
+    }
+    if (data.delivery && (!data.scheduledStart || !data.deliveryArea)) {
+      context.addIssue({
+        code: "custom",
+        path: ["deliveryArea"],
+        message: "Choose a delivery area and appointment.",
+      });
+    }
+    if (!data.delivery && data.scheduledStart) {
+      context.addIssue({
+        code: "custom",
+        path: ["scheduledStart"],
+        message: "Choose delivery before selecting an appointment.",
+      });
+    }
     if (!data.scheduledStart && data.technicianIds.length) {
       context.addIssue({
         code: "custom",

@@ -1,5 +1,5 @@
 /**
- * SQL access for Management staff accounts.
+ * SQL access for management staff accounts.
  * No authentication decisions belong in this model.
  */
 
@@ -44,16 +44,12 @@ export function staffModel(db) {
 
     async findActivePasswordHashById(userId) {
       const [rows] = await db.execute(
-        `SELECT
-           password_hash AS passwordHash
+        `SELECT password_hash AS passwordHash
          FROM users
-         WHERE user_id = ?
-           AND account_type = 'STAFF'
-           AND status = 'ACTIVE'
-         LIMIT 1`,
+         WHERE user_id = ? AND account_type = 'STAFF'
+           AND status = 'ACTIVE' LIMIT 1`,
         [userId],
       );
-
       return rows[0]?.passwordHash || null;
     },
 

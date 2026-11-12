@@ -1,0 +1,372 @@
+/* AV Cooling technician work — responsive, consistent action placement.
+   Scoped to assigned jobs so other Management pages keep their own design. */
+.av-technician-work {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.av-technician-work__heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.av-technician-work__heading > div:first-child {
+  min-width: 0;
+  flex: 1 1 280px;
+}
+.av-technician-work__heading h2 {
+  margin: 5px 0 6px;
+  color: #143d55;
+  font-size: clamp(1.25rem, 2vw, 1.6rem);
+}
+.av-technician-work__heading p {
+  margin: 0;
+  color: #5d7788;
+  line-height: 1.55;
+}
+.av-technician-work__heading-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.av-technician-work__heading-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+}
+.av-technician-work__list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  width: 100%;
+  min-width: 0;
+}
+.av-technician-work__empty {
+  padding: 20px;
+  border: 1px solid #d9e7ef;
+  border-radius: 14px;
+  background: #f7fbfd;
+}
+
+.av-job-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(200px, 235px);
+  align-items: start;
+  column-gap: clamp(16px, 2.2vw, 28px);
+  row-gap: 16px;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: clamp(17px, 2vw, 25px);
+  border: 1px solid #d6e5ed;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(12, 52, 72, 0.055);
+}
+.av-job-card__main {
+  min-width: 0;
+}
+.av-job-card__topline {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.av-job-card__type {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #0b688a;
+  font-size: 0.75rem;
+  font-weight: 850;
+  text-transform: uppercase;
+  letter-spacing: 0.045em;
+}
+.av-job-card__status {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 6px 11px;
+  border-radius: 999px;
+  color: #3b6478;
+  background: #e9f2f8;
+  font-size: 0.72rem;
+  font-weight: 850;
+  text-transform: capitalize;
+  overflow-wrap: anywhere;
+}
+.av-job-card__status.is-completed {
+  background: #e0f7e9;
+  color: #176c43;
+}
+.av-job-card__status.is-in_progress {
+  background: #e5edff;
+  color: #355b9b;
+}
+.av-job-card__status.is-assigned {
+  background: #e6f3ff;
+  color: #0b6597;
+}
+.av-job-card__status.is-pending {
+  background: #fff1d7;
+  color: #965b12;
+}
+.av-job-card__status.is-needs_review {
+  background: #ffede5;
+  color: #a14a25;
+}
+.av-job-card h3 {
+  margin: 0 0 5px;
+  color: #123a51;
+  font-size: clamp(1.12rem, 1.7vw, 1.4rem);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.av-job-card__customer {
+  margin: 0 0 15px;
+  color: #416177;
+  font-weight: 700;
+}
+.av-job-card__details {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 11px 20px;
+}
+.av-job-card__details > :is(div, a) {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  min-width: 0;
+  color: #44657a;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  text-decoration: none;
+}
+.av-job-card__details svg {
+  flex: 0 0 16px;
+  margin-top: 2px;
+  color: #147a9a;
+}
+.av-job-card__details > a:hover {
+  color: #076384;
+  text-decoration: underline;
+}
+.av-job-card__workflow-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin: 15px 0 0;
+  padding: 11px 13px;
+  border: 1px solid #d5e7f0;
+  border-radius: 11px;
+  color: #375e75;
+  background: #f1f8fc;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+.av-job-card__workflow-note svg {
+  flex: 0 0 16px;
+  margin-top: 2px;
+  color: #0b7090;
+}
+
+/* The primary action is intentionally in the upper-right on desktop/laptop. */
+.av-job-card__action-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 11px;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 15px;
+  border: 1px solid #d6e7f0;
+  border-radius: 13px;
+  background: #f2f8fc;
+  align-self: start;
+}
+.av-job-card__action-caption {
+  color: #607c90;
+  font-size: 0.7rem;
+  font-weight: 850;
+  letter-spacing: 0.075em;
+}
+.av-job-card .av-job-card__primary {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  min-height: 49px;
+  padding: 11px 14px;
+  box-sizing: border-box;
+  border-radius: 11px;
+  font-weight: 850;
+  white-space: normal;
+  text-align: center;
+}
+.av-job-card__calendar {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 8px;
+  border-radius: 9px;
+  color: #0b6787;
+  font-size: 0.84rem;
+  font-weight: 800;
+  text-decoration: none;
+  text-align: center;
+}
+.av-job-card__calendar:hover {
+  color: #084d67;
+  background: #e2f1f8;
+}
+.av-job-card__finished,
+.av-job-card__hint,
+.av-job-card__action-help {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #28684e;
+  font-size: 0.82rem;
+  font-weight: 750;
+  line-height: 1.5;
+}
+.av-job-card__hint,
+.av-job-card__action-help {
+  color: #925a23;
+}
+.av-job-card__extras,
+.av-job-card__completion {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 11px;
+  min-width: 0;
+  padding-top: 15px;
+  border-top: 1px solid #e2edf2;
+}
+.av-job-card__extras > button {
+  justify-self: start;
+  min-height: 44px;
+}
+.av-job-card__completion label {
+  color: #204b61;
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+.av-job-card__completion label span {
+  color: #6a8395;
+  font-weight: 500;
+}
+.av-job-card__completion textarea {
+  display: block;
+  width: 100%;
+  min-height: 95px;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 12px;
+  border: 1px solid #bcd4e0;
+  border-radius: 11px;
+  background: #fff;
+  color: #153f55;
+  font: inherit;
+  resize: vertical;
+}
+.av-job-card__completion-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.av-job-card__completion-actions button {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 7px;
+  min-height: 44px;
+}
+.av-technician-work :is(button, a, textarea):focus-visible {
+  outline: 3px solid #80c9e0;
+  outline-offset: 3px;
+}
+
+@media (max-width: 1100px) {
+  .av-job-card {
+    grid-template-columns: minmax(0, 1fr) 205px;
+  }
+  .av-job-card__details {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 760px) {
+  .av-job-card {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 13px;
+  }
+  .av-job-card__action-panel {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .av-job-card__action-caption {
+    display: none;
+  }
+  .av-job-card .av-job-card__primary {
+    flex: 1 1 190px;
+    width: auto;
+  }
+  .av-job-card__calendar {
+    flex: 1 1 140px;
+  }
+}
+@media (max-width: 520px) {
+  .av-job-card {
+    padding: 16px 14px;
+  }
+  .av-job-card__details {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .av-job-card__action-panel {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    padding: 12px;
+  }
+  .av-job-card .av-job-card__primary,
+  .av-job-card__calendar {
+    width: 100%;
+  }
+  .av-job-card__extras > button {
+    width: 100%;
+    justify-content: center;
+  }
+  .av-job-card__completion-actions button {
+    flex: 1 1 145px;
+  }
+  .av-technician-work__heading-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .av-technician-work * {
+    scroll-behavior: auto;
+    transition: none !important;
+  }
+}

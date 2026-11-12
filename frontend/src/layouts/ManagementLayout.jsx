@@ -6,20 +6,25 @@ import {
   useLocation,
   useNavigate,
 } from "react-router-dom";
+
 import { Bell, LogOut, Menu, UserRound } from "lucide-react";
+
 import Sidebar from "../components/management/Sidebar";
-import ManagementSessionGuard from "../components/management/ManagementSessionGuard";
 import ManagementReauthGate from "../components/management/ManagementReauthGate";
+import UpcomingAgendaAlerts from "../components/management/UpcomingAgendaAlerts";
 import { getStaff, loginStaff, logoutStaff } from "../utils/authMock";
 import api from "../../api/api.js";
+
 import "../styles/management/management.css";
 
 const access = {
   OWNER: [
     "dashboard",
+    "capacity-calculator",
     "pos",
     "booking-calendar",
     "orders",
+    "installation-history",
     "payments",
     "categories",
     "products",
@@ -41,9 +46,11 @@ const access = {
   ],
   MANAGER: [
     "dashboard",
+    "capacity-calculator",
     "pos",
     "booking-calendar",
     "orders",
+    "installation-history",
     "payments",
     "categories",
     "products",
@@ -61,61 +68,64 @@ const access = {
     "notifications",
     "archive",
   ],
-  SALES_CASHIER: [
+  SALES_CASHIER: ["pos", "notifications"],
+  TECHNICIAN: [
     "dashboard",
-    "pos",
+    "capacity-calculator",
     "booking-calendar",
-    "orders",
-    "payments",
-    "products",
-    "variants",
-    "customers",
-    "facebook-requests",
-    "notifications",
     "schedules",
+    "notifications",
   ],
-  TECHNICIAN: ["dashboard", "booking-calendar", "schedules", "notifications"],
 };
+
 export default function ManagementLayout() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [open, setOpen] = useState(false),
-    [staff, setStaff] = useState(() => getStaff()),
-    [session, setSession] = useState(null),
-    [checking, setChecking] = useState(true),
-    [unread, setUnread] = useState(0),
-    [logoutError, setLogoutError] = useState(""),
-    [loggingOut, setLoggingOut] = useState(false);
+
+  const [open, setOpen] = useState(false);
+  const [staff, setStaff] = useState(() => getStaff());
+  const [session, setSession] = useState(null);
+  const [checking, setChecking] = useState(true);
+  const [unread, setUnread] = useState(0);
+  const [logoutError, setLogoutError] = useState("");
+  const [loggingOut, setLoggingOut] = useState(false);
+
   useEffect(() => {
     let active = true;
+
     api
       .get("/api/management/auth/session")
       .then(({ data }) => {
         if (!active) return;
+
         const person = data.staff;
+
         if (!data.success || !person?.role) {
           setStaff(null);
           setSession(null);
           return;
         }
+
         loginStaff(person);
         setStaff(person);
         setSession(data.session);
       })
       .catch(() => {
-        if (active) {
-          logoutStaff();
-          setStaff(null);
-          setSession(null);
-        }
+        if (!active) return;
+
+        logoutStaff();
+        setStaff(null);
+        setSession(null);
       })
       .finally(() => {
         if (active) setChecking(false);
       });
+
     return () => {
       active = false;
     };
   }, []);
+
   const endSession = useCallback(() => {
     logoutStaff();
     setStaff(null);
@@ -124,66 +134,93 @@ export default function ManagementLayout() {
 
   useEffect(() => {
     window.addEventListener("av-management-session-ended", endSession);
+
     return () =>
       window.removeEventListener("av-management-session-ended", endSession);
   }, [endSession]);
 
   useEffect(() => {
     if (!staff) return undefined;
+
     let active = true;
-    const refresh = async () => {
+
+    async function refresh() {
       try {
         const { data } = await api.get(
           "/api/management/workspace/notifications",
         );
-        if (active)
-          setUnread((data.items || []).filter((x) => !Number(x.isRead)).length);
+
+        if (active) {
+          setUnread(
+            (data.items || []).filter((item) => !Number(item.isRead)).length,
+          );
+        }
       } catch {
         if (active) setUnread(0);
       }
-    };
+    }
+
     refresh();
+
     const interval = window.setInterval(refresh, 60000);
+
     window.addEventListener("av-management-updated", refresh);
+
     return () => {
       active = false;
       window.clearInterval(interval);
       window.removeEventListener("av-management-updated", refresh);
     };
   }, [staff?.id]);
+
   useEffect(() => {
     setOpen(false);
   }, [location.pathname]);
+
   useEffect(() => {
-    if (!open) return;
-    const old = document.body.style.overflow;
+    if (!open) return undefined;
+
+    const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    const esc = (e) => {
-      if (e.key === "Escape") setOpen(false);
+
+    const escape = (event) => {
+      if (event.key === "Escape") {
+        setOpen(false);
+      }
     };
-    window.addEventListener("keydown", esc);
+
+    window.addEventListener("keydown", escape);
+
     return () => {
-      document.body.style.overflow = old;
-      window.removeEventListener("keydown", esc);
+      document.body.style.overflow = previous;
+      window.removeEventListener("keydown", escape);
     };
   }, [open]);
+
   async function signOut() {
     if (loggingOut) return;
+
     setLoggingOut(true);
     setLogoutError("");
+
     try {
       await api.post("/api/management/auth/logout", {});
+
       endSession();
-      navigate("/management/login", { replace: true });
-    } catch (e) {
+
+      navigate("/management/login", {
+        replace: true,
+      });
+    } catch (error) {
       setLogoutError(
-        e.response?.data?.message || "Could not sign out. Try again.",
+        error.response?.data?.message || "Could not sign out. Try again.",
       );
     } finally {
       setLoggingOut(false);
     }
   }
-  if (checking)
+
+  if (checking) {
     return (
       <div className="mgmt-shell">
         <main className="mgmt-main" role="status">
@@ -191,88 +228,119 @@ export default function ManagementLayout() {
         </main>
       </div>
     );
-  if (!staff || !session) return <Navigate to="/management/login" replace />;
+  }
+
+  if (!staff || !session) {
+    return <Navigate to="/management/login" replace />;
+  }
+
   const slug = location.pathname.split("/")[2] || "dashboard";
-  if (!(access[staff.role] || []).includes(slug))
-    return <Navigate to="/management/dashboard" replace />;
+
+  const allowed = access[staff.role] || [];
+
+  if (!allowed.includes(slug)) {
+    return (
+      <Navigate
+        to={
+          staff.role === "SALES_CASHIER"
+            ? "/management/pos"
+            : "/management/dashboard"
+        }
+        replace
+      />
+    );
+  }
+
   return (
-    <ManagementSessionGuard
-      session={session}
-      onActivity={setSession}
-      onExpired={endSession}
-    >
-      <div className="mgmt-shell">
-        <Sidebar open={open} onClose={() => setOpen(false)} />
-        {open && (
+    <div className="mgmt-shell">
+      <Sidebar open={open} onClose={() => setOpen(false)} />
+
+      {open && (
+        <button
+          type="button"
+          className="drawer-backdrop"
+          aria-label="Close navigation"
+          onClick={() => setOpen(false)}
+        />
+      )}
+
+      <div className="mgmt-workspace">
+        <header className="mgmt-topbar">
           <button
+            className="mgmt-menu"
             type="button"
-            className="drawer-backdrop"
-            aria-label="Close navigation"
-            onClick={() => setOpen(false)}
-          />
-        )}
-        <div className="mgmt-workspace">
-          <header className="mgmt-topbar">
-            <button
-              className="mgmt-menu"
-              type="button"
-              aria-label="Open management menu"
-              aria-expanded={open}
-              onClick={() => setOpen(true)}
+            aria-label="Open management menu"
+            aria-expanded={open}
+            onClick={() => setOpen(true)}
+          >
+            <Menu size={19} />
+            <span className="mgmt-menu-label">Menu</span>
+          </button>
+
+          <div>
+            <b>AV Cooling Management</b>
+
+            <span>
+              {staff.role === "SALES_CASHIER"
+                ? "Point of sale and walk-in bookings"
+                : "Sales, inventory, service, and operations"}
+            </span>
+          </div>
+
+          <div className="mgmt-top-actions">
+            <Link
+              className="mgmt-notification-link"
+              to="/management/notifications"
+              aria-label={`${unread} unread management notifications`}
+              title="Notifications"
             >
-              <Menu size={19} />
-              <span className="mgmt-menu-label">Menu</span>
+              <Bell size={19} />
+
+              {unread > 0 && (
+                <span className="mgmt-notification-count">
+                  {unread > 99 ? "99+" : unread}
+                </span>
+              )}
+            </Link>
+
+            <span className="staff-chip">
+              <UserRound size={16} />
+              {staff.role.replaceAll("_", " ")}
+            </span>
+
+            <button
+              type="button"
+              className="mgmt-logout-button"
+              title="Log out"
+              aria-label="Log out"
+              onClick={signOut}
+              disabled={loggingOut}
+            >
+              <LogOut size={18} />
             </button>
-            <div>
-              <b>AV Cooling Management</b>
-              <span>Sales, inventory, service, and operations</span>
-            </div>
-            <div className="mgmt-top-actions">
-              <Link
-                className="mgmt-notification-link"
-                to="/management/notifications"
-                aria-label={`${unread} unread management notifications`}
-                title="Notifications"
-              >
-                <Bell size={19} />
-                {unread > 0 && (
-                  <span className="mgmt-notification-count">
-                    {unread > 99 ? "99+" : unread}
-                  </span>
-                )}
-              </Link>
-              <span className="staff-chip">
-                <UserRound size={16} />
-                {staff.role.replaceAll("_", " ")}
-              </span>
-              <button
-                type="button"
-                className="mgmt-logout-button"
-                title="Log out"
-                aria-label="Log out"
-                onClick={signOut}
-                disabled={loggingOut}
-              >
-                <LogOut size={18} />
-              </button>
-            </div>
-          </header>
-          {logoutError && (
-            <p role="alert" className="wsm-error">
-              {logoutError}
-            </p>
-          )}
-          <main className="mgmt-main">
-            {slug === "staff" ? (
-              <ManagementReauthGate session={session} onVerified={setSession}>
-                <Outlet />
-              </ManagementReauthGate>
-            ) : (
+          </div>
+        </header>
+
+        {logoutError && (
+          <p role="alert" className="wsm-error">
+            {logoutError}
+          </p>
+        )}
+
+        {staff.role !== "SALES_CASHIER" && (
+          <UpcomingAgendaAlerts staff={staff} />
+        )}
+
+        <main className="mgmt-main">
+          {slug === "staff" ? (
+            <ManagementReauthGate session={session} onVerified={setSession}>
               <Outlet />
-            )}
-          </main>
-        </div>
+            </ManagementReauthGate>
+          ) : (
+            <Outlet />
+          )}
+        </main>
       </div>
-    </ManagementSessionGuard>
+    </div>
   );
 }

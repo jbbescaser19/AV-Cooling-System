@@ -1,4 +1,5 @@
 import connectDB from "../../../utils/dbConn.js";
+import { servicePaymentModel } from "../../../models/customer/services/servicePaymentModel.js";
 import {
   reserveAppointment,
   releaseAppointment,
@@ -117,8 +118,20 @@ export async function changeMyServiceService(userId, requestId, action, input) {
       }
 
       if (change.action === "cancel") {
+        const paymentModel = servicePaymentModel(connection);
+        if (
+          (await paymentModel.paymentStatusForCancellation(
+            change.requestId,
+          )) === "PAID"
+        ) {
+          throw serviceError(
+            "Payment is already recorded. Contact the store for cancellation and refund.",
+            409,
+          );
+        }
         await model.cancelRequest(customerId, change.requestId);
         await releaseAppointment(connection, "SERVICE", change.requestId);
+        await paymentModel.cancelPending(change.requestId);
         await createCustomerNotification(
           connection,
           validatedUserId,

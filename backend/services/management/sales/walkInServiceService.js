@@ -1,3 +1,6 @@
+import { quoteService } from "../../shared/serviceQuotationService.js";
+import { cents, peso } from "./salesHelpers.js";
+import { servicePaymentModel } from "../../../models/customer/services/servicePaymentModel.js";
 import connectDB from "../../../utils/dbConn.js";
 import { walkInServiceModel } from "../../../models/management/sales/walkInServiceModel.js";
 import { validateWalkInService } from "../../../validators/management/sales/walkInServiceValidator.js";
@@ -27,19 +30,50 @@ export async function bookWalkInService(staff, raw) {
     if (prior) {
       await db.commit();
       return {
-        booking: {
-          ...prior,
-          paymentStatus: "NOT_RECORDED",
-          assignment: "ALREADY_BOOKED",
-        },
+        booking: { ...prior, assignment: "ALREADY_BOOKED" },
         alreadySaved: true,
       };
     }
     const service = await model.lockServiceType(data.serviceTypeId);
     if (!service)
       deny("This service is not active. Refresh and choose another.", 409);
-    const id = await model.createWalkIn(data, service.price);
+    // A relocation has two distinct physical locations. Service type comes
+    // from the locked database row, not an untrusted code from the browser.
+    if (service.code === "relocation") {
+      if (data.destinationAddress.length < 5) {
+        deny(
+          "Enter the relocation destination address (at least 5 characters).",
+          400,
+        );
+      }
+      if (
+        data.serviceAddress.replace(/\s+/g, " ").toLowerCase() ===
+        data.destinationAddress.replace(/\s+/g, " ").toLowerCase()
+      ) {
+        deny(
+          "Pickup and destination addresses must be different for relocation.",
+          400,
+        );
+      }
+    }
+    if (service.code !== "relocation" && data.destinationAddress) {
+      deny(
+        "A destination address can only be added for Aircon Relocation.",
+        400,
+      );
+    }
+    const quote = quoteService({
+      code: service.code,
+      basePrice: service.price,
+      copperFeet: data.copperFeet,
+      includeDismantling: data.includeDismantling,
+    });
+    // Price is recalculated from the locked service type; client totals are ignored.
+    const fee = cents(data.additionalFee);
+    const total = peso(cents(quote.total) + fee);
+    const id = await model.createWalkIn(data, total);
     await reserveAppointment(db, "SERVICE", id, data.scheduledStart);
+    await servicePaymentModel(db).createPending(id, "CASH", total);
     await ensureConfirmedWorkOrders(
       db,
       "SERVICE",
@@ -53,9 +87,15 @@ export async function bookWalkInService(staff, raw) {
         id,
         service: service.name,
         customer: data.customerName,
+        pickupAddress: data.serviceAddress,
+        destinationAddress:
+          service.code === "relocation" ? data.destinationAddress : null,
         scheduledStart: data.scheduledStart,
-        price: Number(service.price),
-        paymentStatus: "NOT_RECORDED",
+        price: Number(total),
+        basePrice: quote.total,
+        additionalFee: peso(fee),
+        additionalFeeReason: data.additionalFeeReason,
+        paymentStatus: "PENDING",
         assignment: data.technicianIds.length
           ? "ASSIGNED"
           : "PENDING_ASSIGNMENT",
@@ -69,11 +109,7 @@ export async function bookWalkInService(staff, raw) {
       );
       if (prior)
         return {
-          booking: {
-            ...prior,
-            paymentStatus: "NOT_RECORDED",
-            assignment: "ALREADY_BOOKED",
-          },
+          booking: { ...prior, assignment: "ALREADY_BOOKED" },
           alreadySaved: true,
         };
     }

@@ -26,7 +26,17 @@ export function assertStaffRole(staff, eventCode) {
   if (["OWNER", "MANAGER"].includes(staff?.role)) {
     return;
   }
-  if (staff?.role === "SALES_CASHIER" && eventCode === "PAYMENT_CONFIRMED") {
+  if (
+    staff?.role === "SALES_CASHIER" &&
+    [
+      "PAYMENT_CONFIRMED",
+      "ORDER_ACCEPTED",
+      "INSTALLATION_SCHEDULED",
+      "SERVICE_ACCEPTED",
+      "SERVICE_SCHEDULED",
+      "SERVICE_RESCHEDULED",
+    ].includes(eventCode)
+  ) {
     return;
   }
   fail("This staff role cannot record that event.", 403);

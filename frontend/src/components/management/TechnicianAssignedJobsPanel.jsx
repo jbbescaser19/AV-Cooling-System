@@ -1,29 +1,196 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { CheckCircle2, Clock3, Play, RefreshCw, Wrench } from "lucide-react";
+import {
+  ArrowUpRight,
+  CalendarDays,
+  ChevronDown,
+  History,
+  CheckCircle2,
+  Clock3,
+  MapPin,
+  Phone,
+  Play,
+  RefreshCw,
+  Truck,
+  Users,
+  Wrench,
+  X,
+} from "lucide-react";
+
 import api from "../../../api/api.js";
 import { getStaff } from "../../utils/authMock.js";
-import "../../styles/management/technician-jobs.css";
+import ServiceHistoryModal from "./ServiceHistoryModal.jsx";
 
-/**
- * Technician job actions live in the existing Schedules page.
- * Work-order records remain the internal source of truth, not a separate page.
- */
+import "../../styles/management/technician-jobs.css";
+import "../../styles/management/combined-technician-jobs.css";
+
+function groupAssignedJobs(rows) {
+  const groups = new Map();
+
+  for (const job of rows) {
+    const isOrder =
+      job.orderId && ["DELIVERY", "INSTALLATION"].includes(job.workType);
+
+    const key = isOrder ? `order-${job.orderId}` : `job-${job.id}`;
+
+    if (!groups.has(key)) {
+      groups.set(key, { key, jobs: [] });
+    }
+
+    if (
+      !groups.get(key).jobs.some((known) => String(known.id) === String(job.id))
+    ) {
+      groups.get(key).jobs.push(job);
+    }
+  }
+
+  const rank = (group) => {
+    const statuses = group.jobs.map((job) => job.status);
+
+    if (statuses.includes("IN_PROGRESS")) return 0;
+    if (statuses.includes("ASSIGNED")) return 1;
+    if (statuses.includes("PENDING")) return 2;
+
+    if (statuses.every((value) => value === "COMPLETED")) {
+      return 4;
+    }
+
+    return 3;
+  };
+
+  return [...groups.values()].sort(
+    (a, b) =>
+      rank(a) - rank(b) ||
+      Math.max(...b.jobs.map((job) => Number(job.id))) -
+        Math.max(...a.jobs.map((job) => Number(job.id))),
+  );
+}
+
+function getProgress(group) {
+  const delivery = group.jobs.find((job) => job.workType === "DELIVERY");
+
+  const installation = group.jobs.find(
+    (job) => job.workType === "INSTALLATION",
+  );
+
+  const first = group.jobs[0];
+  const isOrder = Boolean(first.orderId);
+
+  const hasInstallation =
+    isOrder &&
+    (Boolean(installation) ||
+      group.jobs.some((job) => Number(job.hasInstallationJob) === 1));
+
+  const isService = !isOrder || hasInstallation;
+
+  const deliveryStatus = delivery?.status || first.deliveryStatus || null;
+
+  const installationStatus =
+    installation?.status || first.installationStatus || null;
+
+  const statuses = isOrder
+    ? hasInstallation
+      ? [deliveryStatus, installationStatus].filter(Boolean)
+      : [deliveryStatus || first.status]
+    : group.jobs.map((job) => job.status);
+
+  const completed =
+    statuses.length > 0 && statuses.every((value) => value === "COMPLETED");
+
+  const aligned =
+    statuses.length > 0 && statuses.every((value) => value === statuses[0]);
+
+  const staged =
+    isOrder && hasInstallation && deliveryStatus && installationStatus;
+
+  const readyForInstallation =
+    staged &&
+    ["COMPLETED", "IN_PROGRESS"].includes(deliveryStatus) &&
+    installationStatus === "ASSIGNED";
+
+  const installationInProgress =
+    staged &&
+    deliveryStatus === "COMPLETED" &&
+    installationStatus === "IN_PROGRESS";
+
+  const status = completed
+    ? "COMPLETED"
+    : readyForInstallation
+      ? "ASSIGNED"
+      : installationInProgress
+        ? "IN_PROGRESS"
+        : aligned
+          ? statuses[0]
+          : "NEEDS_REVIEW";
+
+  const verb = isService ? "Service" : "Delivery";
+
+  const action =
+    status === "ASSIGNED"
+      ? `START_${verb.toUpperCase()}`
+      : status === "IN_PROGRESS"
+        ? `COMPLETE_${verb.toUpperCase()}`
+        : null;
+
+  return {
+    delivery,
+    installation,
+    isOrder,
+    isService,
+    hasInstallation,
+    status,
+    completed,
+    action,
+    verb,
+    deliveryStatus,
+    installationStatus,
+    readyForInstallation,
+  };
+}
+
+function teamLabel(job) {
+  const leader = String(job.teamLeader || "").trim();
+
+  if (!leader) return "";
+
+  const names = String(job.teamMembers || "")
+    .split(",")
+    .map((name) => name.trim())
+    .filter(Boolean)
+    .filter((name) => name.toLowerCase() !== leader.toLowerCase());
+
+  return `Team ${leader}${names.length ? ` · ${names.join(", ")}` : ""}`;
+}
+
+function wallClock(value) {
+  if (!value) return "No appointment set";
+
+  return `${String(value).replace("T", " at ").slice(0, 16)} (PH time)`;
+}
+
 export default function TechnicianAssignedJobsPanel({ limit = null }) {
   const isTechnician = getStaff()?.role === "TECHNICIAN";
+
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [busyId, setBusyId] = useState(null);
-  const [completionId, setCompletionId] = useState(null);
+  const [busyKey, setBusyKey] = useState(null);
+  const [completingKey, setCompletingKey] = useState(null);
   const [completionNotes, setCompletionNotes] = useState("");
+
+  const [historyRequest, setHistoryRequest] = useState(null);
+  const [expandedInfoKey, setExpandedInfoKey] = useState(null);
+
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [revision, setRevision] = useState(0);
 
   useEffect(() => {
     if (!isTechnician) return undefined;
+
     const controller = new AbortController();
+
     setLoading(true);
+
     api
       .get("/api/management/workspace/work-orders", {
         signal: controller.signal,
@@ -31,6 +198,7 @@ export default function TechnicianAssignedJobsPanel({ limit = null }) {
       .then(({ data }) => {
         if (!controller.signal.aborted) {
           setJobs(Array.isArray(data.items) ? data.items : []);
+
           setError("");
         }
       })
@@ -38,105 +206,130 @@ export default function TechnicianAssignedJobsPanel({ limit = null }) {
         if (!controller.signal.aborted) {
           setError(
             requestError.response?.data?.message ||
-              "Unable to load your assigned jobs.",
+              "Unable to load assigned work.",
           );
         }
       })
       .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
       });
+
     return () => controller.abort();
   }, [isTechnician, revision]);
 
-  // A newly confirmed assignment should appear without navigating away.
-  // Background reads never count as session activity on the server.
   useEffect(() => {
     if (!isTechnician) return undefined;
-    const refresh = () => setRevision((value) => value + 1);
-    const refreshWhenVisible = () => {
-      if (document.visibilityState === "visible") refresh();
+
+    const reload = () => setRevision((value) => value + 1);
+
+    const whenVisible = () => {
+      if (document.visibilityState === "visible") {
+        reload();
+      }
     };
-    const poll = window.setInterval(refreshWhenVisible, 60000);
-    window.addEventListener("focus", refreshWhenVisible);
-    window.addEventListener("av-management-updated", refresh);
+
+    const interval = window.setInterval(whenVisible, 60000);
+
+    window.addEventListener("focus", whenVisible);
+    window.addEventListener("av-management-updated", reload);
+
     return () => {
-      window.clearInterval(poll);
-      window.removeEventListener("focus", refreshWhenVisible);
-      window.removeEventListener("av-management-updated", refresh);
+      window.clearInterval(interval);
+
+      window.removeEventListener("focus", whenVisible);
+
+      window.removeEventListener("av-management-updated", reload);
     };
   }, [isTechnician]);
 
-  const sorted = useMemo(() => {
-    const priority = {
-      IN_PROGRESS: 0,
-      ASSIGNED: 1,
-      PENDING: 2,
-      COMPLETED: 3,
-      CANCELLED: 4,
-    };
-    return [...jobs].sort(
-      (a, b) =>
-        (priority[a.status] ?? 5) - (priority[b.status] ?? 5) ||
-        Number(b.id) - Number(a.id),
-    );
-  }, [jobs]);
+  const groups = useMemo(() => groupAssignedJobs(jobs), [jobs]);
 
-  const visibleJobs =
-    limit && Number.isInteger(limit) && limit > 0
-      ? sorted.slice(0, limit)
-      : sorted;
+  const visible =
+    Number.isInteger(limit) && limit > 0 ? groups.slice(0, limit) : groups;
 
-  const activeCount = jobs.filter((job) =>
-    ["ASSIGNED", "IN_PROGRESS"].includes(job.status),
+  const activeCount = groups.filter((group) =>
+    group.jobs.some((job) => ["ASSIGNED", "IN_PROGRESS"].includes(job.status)),
   ).length;
 
-  async function changeStatus(job, status, notes = "") {
-    if (busyId !== null) return;
+  async function performAction(group, action, notes = "") {
+    if (busyKey !== null || !action) return;
+
+    if (action.startsWith("COMPLETE_") && notes.trim().length < 5) {
+      setError("Enter a completion summary of at least 5 characters.");
+      return;
+    }
+
     if (
-      status === "IN_PROGRESS" &&
-      !window.confirm(`Start ${job.workType.toLowerCase()} job #${job.id}?`)
+      action.startsWith("START_") &&
+      !window.confirm(
+        `Start ${
+          action.endsWith("SERVICE") ? "service" : "delivery"
+        } for this customer?`,
+      )
     ) {
       return;
     }
-    if (status === "COMPLETED" && notes.trim().length < 5) {
-      setError(
-        `Write a short completion summary (at least 5 characters). ${Math.max(0, 5 - notes.trim().length)} more needed.`,
-      );
-      return;
-    }
 
-    setBusyId(job.id);
+    const primary = group.jobs[0];
+
+    setBusyKey(group.key);
     setError("");
     setNotice("");
+
     try {
-      const { data } = await api.patch(
-        `/api/management/workspace/work-orders/${encodeURIComponent(job.id)}`,
-        {
-          status,
-          notes: notes.trim(),
-          technicianId: null,
-          technicianIds: [],
-          scheduledStart: null,
-        },
-      );
-      if (!data.success)
-        throw new Error(data.message || "The job update was not saved.");
-      setNotice(
-        status === "IN_PROGRESS"
-          ? `Job #${job.id} has started.`
-          : `Job #${job.id} was marked completed.`,
-      );
-      setCompletionId(null);
+      if (primary.orderId) {
+        const { data } = await api.patch(
+          `/api/management/workspace/technician-order-progress/${encodeURIComponent(
+            primary.orderId,
+          )}`,
+          {
+            action,
+            notes: notes.trim(),
+          },
+        );
+
+        if (!data.success) {
+          throw new Error(data.message || "The update was not saved.");
+        }
+      } else {
+        const status = action.startsWith("START_")
+          ? "IN_PROGRESS"
+          : "COMPLETED";
+
+        const { data } = await api.patch(
+          `/api/management/workspace/work-orders/${encodeURIComponent(
+            primary.id,
+          )}`,
+          {
+            status,
+            notes: notes.trim(),
+            technicianId: null,
+            technicianIds: [],
+            scheduledStart: null,
+          },
+        );
+
+        if (!data.success) {
+          throw new Error(data.message || "The update was not saved.");
+        }
+      }
+
+      setNotice(`${action.replaceAll("_", " ")} saved successfully.`);
+
+      setCompletingKey(null);
       setCompletionNotes("");
+
       window.dispatchEvent(new Event("av-management-updated"));
     } catch (requestError) {
       setError(
         requestError.response?.data?.message ||
           requestError.message ||
-          "Could not update your job.",
+          "Unable to update the job.",
       );
     } finally {
-      setBusyId(null);
+      setBusyKey(null);
     }
   }
 
@@ -144,29 +337,35 @@ export default function TechnicianAssignedJobsPanel({ limit = null }) {
 
   return (
     <section
-      className="technician-jobs wsm-panel"
-      aria-label="My assigned technician jobs"
+      className="technician-jobs av-technician-work"
+      aria-label="My assigned jobs"
     >
-      <div className="technician-jobs__heading">
+      <div className="av-technician-work__heading">
         <div>
           <span className="technician-jobs__eyebrow">
-            <Wrench size={15} /> MY JOBS
+            <Wrench size={15} />
+            MY JOBS
           </span>
+
           <h2>Assigned work</h2>
+
           <p>
-            Start or complete the jobs assigned to your team, right here in
-            Schedules.
+            Call the customer before the visit. Start work when your team begins
+            on-site.
           </p>
         </div>
-        <div className="technician-jobs__actions">
+
+        <div className="av-technician-work__heading-actions">
           <span className="technician-jobs__count">{activeCount} active</span>
+
           <button
             type="button"
             className="wsm-secondary"
+            disabled={loading || busyKey !== null}
             onClick={() => setRevision((value) => value + 1)}
-            disabled={loading || busyId !== null}
           >
-            <RefreshCw size={15} /> Refresh
+            <RefreshCw size={16} />
+            Refresh
           </button>
         </div>
       </div>
@@ -176,155 +375,282 @@ export default function TechnicianAssignedJobsPanel({ limit = null }) {
           {error}
         </p>
       )}
+
       {notice && (
         <p className="wsm-success" role="status">
           {notice}
         </p>
       )}
+
       {loading ? (
-        <p className="technician-jobs__empty" role="status">
-          Loading your jobs…
+        <p className="av-technician-work__empty" role="status">
+          Loading your assigned jobs…
         </p>
-      ) : sorted.length === 0 ? (
-        <p className="technician-jobs__empty">
-          You have no assigned jobs yet. Your team leader or Management will
-          assign them.
+      ) : visible.length === 0 ? (
+        <p className="av-technician-work__empty">
+          No jobs assigned to you yet.
         </p>
       ) : (
-        <div className="technician-jobs__list">
-          {visibleJobs.map((job) => {
-            const canStart = job.status === "ASSIGNED";
-            const canFinish = job.status === "IN_PROGRESS";
-            const isCompleting = completionId === job.id;
+        <div className="av-technician-work__list">
+          {visible.map((group) => {
+            const primary = group.jobs[0];
+            const progress = getProgress(group);
+
+            const { action, status, isService } = progress;
+
+            const isCompleting = completingKey === group.key;
+
+            const infoExpanded = expandedInfoKey === group.key;
+
+            const combined = progress.hasInstallation;
+
+            const typeLabel = primary.serviceRequestId
+              ? "Service request"
+              : combined
+                ? "Delivery & Installation"
+                : "Delivery only";
+
+            const title = primary.serviceRequestId
+              ? `Service #${primary.serviceRequestId}`
+              : `Order #${primary.orderId}`;
+
+            const startLabel = isService ? "Start Service" : "Start Delivery";
+
+            const finishLabel = isService
+              ? "Complete Service"
+              : "Complete Delivery";
+
             return (
-              <article key={job.id} className="technician-jobs__card">
-                <div className="technician-jobs__card-main">
-                  <div className="technician-jobs__title">
-                    <strong>
-                      {job.workType.replaceAll("_", " ")} #{job.id}
-                    </strong>
+              <article
+                className={`av-job-card${infoExpanded ? " is-expanded" : ""}`}
+                key={group.key}
+              >
+                <div className="av-job-card__main">
+                  <div className="av-job-card__topline">
+                    <span className="av-job-card__type">
+                      {isService ? <Wrench size={16} /> : <Truck size={16} />}
+                      {typeLabel}
+                    </span>
+
                     <span
-                      className={`technician-jobs__status technician-jobs__status--${job.status.toLowerCase()}`}
+                      className={`av-job-card__status is-${status.toLowerCase()}`}
                     >
-                      {job.status.replaceAll("_", " ")}
+                      {status.replaceAll("_", " ")}
                     </span>
                   </div>
-                  <p>
-                    {job.customer || "Customer not provided"}
-                    {job.serviceRequestId
-                      ? ` · Service #${job.serviceRequestId}`
-                      : job.orderId
-                        ? ` · Order #${job.orderId}`
-                        : ""}
+
+                  <h3>{title}</h3>
+
+                  <p className="av-job-card__customer">
+                    {primary.customer || "Customer name unavailable"}
                   </p>
-                  {job.teamLeader && (
-                    <small>
-                      Team {job.teamLeader}: {job.teamMembers || job.teamLeader}
-                    </small>
+
+                  <div className="av-job-card__details">
+                    <div>
+                      <CalendarDays size={16} />
+                      <span>{wallClock(primary.scheduledStart)}</span>
+                    </div>
+
+                    {primary.phone && (
+                      <a
+                        href={`tel:${String(primary.phone).replace(
+                          /[^\d+]/g,
+                          "",
+                        )}`}
+                      >
+                        <Phone size={16} />
+                        {primary.phone}
+                      </a>
+                    )}
+
+                    {primary.address && (
+                      <div className="av-job-card__more-meta">
+                        <MapPin size={16} />
+                        <span>{primary.address}</span>
+                      </div>
+                    )}
+
+                    {primary.teamLeader && (
+                      <div className="av-job-card__more-meta">
+                        <Users size={16} />
+                        <span>{teamLabel(primary)}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {combined && (
+                    <p className="av-job-card__workflow-note">
+                      <Wrench size={16} aria-hidden="true" />
+
+                      {progress.deliveryStatus === "COMPLETED" &&
+                      progress.installationStatus !== "COMPLETED"
+                        ? "Delivery is complete. Start Service when installation begins; the delivery record stays unchanged."
+                        : progress.readyForInstallation
+                          ? "Delivery has started. Start Service when installation begins."
+                          : "The same team handles delivery and installation. Start Service when work begins, then complete the job when finished."}
+                    </p>
                   )}
-                  {job.address && <small>Location: {job.address}</small>}
-                  {job.phone && <small>Contact: {job.phone}</small>}
-                  <small>
-                    <Clock3 size={14} />{" "}
-                    {job.scheduledStart
-                      ? new Date(job.scheduledStart).toLocaleString("en-PH", {
-                          dateStyle: "medium",
-                          timeStyle: "short",
+
+                  {(primary.address || primary.teamLeader || combined) && (
+                    <button
+                      className="av-job-card__toggle-details"
+                      type="button"
+                      aria-expanded={infoExpanded}
+                      onClick={() =>
+                        setExpandedInfoKey((current) =>
+                          current === group.key ? null : group.key,
+                        )
+                      }
+                    >
+                      {infoExpanded ? "Less details" : "More details"}
+
+                      <ChevronDown size={15} aria-hidden="true" />
+                    </button>
+                  )}
+                </div>
+
+                <div className="av-job-card__action-panel">
+                  <span className="av-job-card__action-caption">
+                    NEXT ACTION
+                  </span>
+
+                  {action && !isCompleting && (
+                    <button
+                      type="button"
+                      className="wsm-primary av-job-card__primary"
+                      disabled={busyKey !== null}
+                      onClick={() =>
+                        action.startsWith("START_")
+                          ? performAction(group, action)
+                          : (setCompletingKey(group.key),
+                            setCompletionNotes(""),
+                            setError(""))
+                      }
+                    >
+                      {action.startsWith("START_") ? (
+                        <Play size={17} />
+                      ) : (
+                        <CheckCircle2 size={17} />
+                      )}
+
+                      {busyKey === group.key
+                        ? "Saving…"
+                        : action.startsWith("START_")
+                          ? startLabel
+                          : finishLabel}
+                    </button>
+                  )}
+
+                  {isCompleting && (
+                    <span className="av-job-card__action-help">
+                      Complete the summary below before confirming.
+                    </span>
+                  )}
+
+                  {status === "COMPLETED" && (
+                    <div className="av-job-card__finished">
+                      <CheckCircle2 size={19} />
+                      Job completed
+                    </div>
+                  )}
+
+                  {status === "PENDING" && (
+                    <div className="av-job-card__hint">
+                      Waiting for Management to assign the team.
+                    </div>
+                  )}
+
+                  {status === "NEEDS_REVIEW" && (
+                    <div className="av-job-card__hint">
+                      Linked job stages have different statuses. Ask a Manager
+                      to review them.
+                    </div>
+                  )}
+
+                  <Link
+                    className="av-job-card__calendar"
+                    to="/management/booking-calendar"
+                  >
+                    <Clock3 size={16} />
+                    View calendar
+                  </Link>
+                </div>
+
+                {primary.serviceRequestId && (
+                  <div className="av-job-card__extras">
+                    <button
+                      type="button"
+                      className="av-job-card__history-launch"
+                      aria-haspopup="dialog"
+                      aria-label={`Open service history and private staff notes for service #${primary.serviceRequestId}`}
+                      onClick={() =>
+                        setHistoryRequest({
+                          requestId: primary.serviceRequestId,
+                          customer: primary.customer || "Customer",
                         })
-                      : "Schedule not set"}
-                  </small>
-                </div>
-                <div className="technician-jobs__card-actions">
-                  {canStart && (
-                    <button
-                      type="button"
-                      className="wsm-primary"
-                      disabled={busyId !== null}
-                      onClick={() => changeStatus(job, "IN_PROGRESS")}
+                      }
                     >
-                      <Play size={16} />{" "}
-                      {busyId === job.id ? "Saving…" : "Start job"}
+                      <span className="av-job-card__history-launch-icon">
+                        <History size={17} aria-hidden="true" />
+                      </span>
+
+                      <span>View history &amp; notes</span>
+
+                      <ArrowUpRight size={16} aria-hidden="true" />
                     </button>
-                  )}
-                  {canFinish && !isCompleting && (
-                    <button
-                      type="button"
-                      className="wsm-primary"
-                      disabled={busyId !== null}
-                      onClick={() => {
-                        setCompletionId(job.id);
-                        setCompletionNotes("");
-                        setError("");
-                      }}
-                    >
-                      <CheckCircle2 size={16} /> Complete job
-                    </button>
-                  )}
-                  {job.status === "PENDING" && (
-                    <small>
-                      Management must assign a team before this job can start.
-                    </small>
-                  )}
-                </div>
-                {isCompleting && (
+                  </div>
+                )}
+
+                {isCompleting && action && (
                   <form
-                    className="technician-jobs__complete"
+                    className="av-job-card__completion"
                     onSubmit={(event) => {
                       event.preventDefault();
-                      changeStatus(job, "COMPLETED", completionNotes);
+
+                      performAction(group, action, completionNotes);
                     }}
                   >
-                    <label htmlFor={`completion-notes-${job.id}`}>
-                      Completion summary (required)
+                    <label htmlFor={`av-completion-${group.key}`}>
+                      Completion summary <span>(required)</span>
                     </label>
-                    <p className="technician-jobs__summary-help">
-                      Briefly record what your team did and the result. For
-                      example: “Cleaned filters, tested cooling, and confirmed
-                      normal operation.”
-                    </p>
+
                     <textarea
-                      id={`completion-notes-${job.id}`}
+                      id={`av-completion-${group.key}`}
                       required
                       minLength={5}
                       maxLength={1000}
                       rows={3}
-                      placeholder="Example: Cleaned filters, tested cooling; unit working normally."
                       value={completionNotes}
-                      disabled={busyId !== null}
+                      disabled={busyKey !== null}
+                      placeholder="Describe the work completed and any findings."
                       onChange={(event) =>
                         setCompletionNotes(event.target.value)
                       }
                     />
-                    <small
-                      className="technician-jobs__char-hint"
-                      aria-live="polite"
-                    >
-                      {completionNotes.trim().length < 5
-                        ? `${5 - completionNotes.trim().length} more characters required before confirming.`
-                        : "Ready to confirm. This note will be saved in the job history."}
-                    </small>
-                    {error && (
-                      <p className="wsm-error" role="alert">
-                        {error}
-                      </p>
-                    )}
-                    <div className="technician-jobs__complete-actions">
+
+                    <div className="av-job-card__completion-actions">
                       <button
-                        type="button"
                         className="wsm-secondary"
-                        onClick={() => setCompletionId(null)}
-                        disabled={busyId !== null}
+                        type="button"
+                        disabled={busyKey !== null}
+                        onClick={() => setCompletingKey(null)}
                       >
+                        <X size={16} />
                         Cancel
                       </button>
+
                       <button
-                        type="submit"
                         className="wsm-primary"
+                        type="submit"
                         disabled={
-                          busyId !== null || completionNotes.trim().length < 5
+                          busyKey !== null || completionNotes.trim().length < 5
                         }
                       >
-                        {busyId === job.id ? "Saving…" : "Confirm completion"}
+                        <CheckCircle2 size={16} />
+
+                        {busyKey === group.key
+                          ? "Saving…"
+                          : "Confirm completion"}
                       </button>
                     </div>
                   </form>
@@ -334,10 +660,19 @@ export default function TechnicianAssignedJobsPanel({ limit = null }) {
           })}
         </div>
       )}
-      {limit && sorted.length > limit && (
+
+      {historyRequest && (
+        <ServiceHistoryModal
+          requestId={historyRequest.requestId}
+          customer={historyRequest.customer}
+          onClose={() => setHistoryRequest(null)}
+        />
+      )}
+
+      {limit && groups.length > limit && (
         <p className="technician-jobs__more">
           <Link to="/management/schedules">
-            View all {sorted.length} jobs in Schedules
+            View all assigned work in Schedules
           </Link>
         </p>
       )}

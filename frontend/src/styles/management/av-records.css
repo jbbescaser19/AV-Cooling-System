@@ -1,0 +1,574 @@
+/* Orders and Service Requests: deliberately separate widescreen tables,
+   laptop/tablet record cards, and single-column mobile cards. */
+.av-records-responsive {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.av-records-responsive
+  :is(.sales-hero, .wsm-head, .sales-panel, .sales-filters) {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.av-records-responsive .sales-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.av-records-responsive .sales-filters > .sales-search {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+
+.av-records-responsive .sales-filters > select {
+  flex: 0 1 190px;
+  width: auto;
+  min-width: 150px;
+  max-width: 100%;
+  min-height: 44px;
+}
+
+.av-records-responsive .sales-table-scroll {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid #dce8ef;
+  border-radius: 14px;
+}
+
+.av-records-responsive .sales-table {
+  width: 100%;
+  min-width: 1370px;
+  border-collapse: collapse;
+}
+
+.av-records-responsive .sales-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 13px 12px;
+  color: #46677a;
+  background: #eef6fa;
+  font-size: 0.71rem;
+  text-transform: uppercase;
+  letter-spacing: 0.035em;
+}
+
+.av-records-responsive .sales-table td {
+  padding: 13px 12px;
+  vertical-align: middle;
+  line-height: 1.5;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+.av-records-responsive .sales-table tbody tr:hover {
+  background: #f8fbfd;
+}
+
+.av-records-responsive .sales-table td:first-child {
+  max-width: 260px;
+  overflow-wrap: anywhere;
+}
+
+.av-records-responsive .sales-table td a {
+  color: #075f84;
+  font-weight: 800;
+}
+
+.av-records-responsive .sales-table td[data-label="Contact"],
+.av-records-responsive .sales-table td[data-label="Total"] {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.av-records-responsive .sales-table td[data-label="Status"],
+.av-records-responsive .sales-table td[data-label="Payment"] {
+  white-space: nowrap;
+}
+
+.av-records-responsive .sales-table .sales-small-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 42px;
+  max-width: 100%;
+  padding: 9px 12px;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.av-records-responsive .sales-table .sales-small-action svg {
+  flex: 0 0 auto;
+}
+
+.av-records-responsive .sales-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  max-width: none;
+  padding: 6px 10px;
+  white-space: nowrap;
+  line-height: 1.3;
+  text-transform: capitalize;
+  overflow-wrap: normal;
+  word-break: keep-all;
+}
+
+.av-records-responsive .sales-pill.is-confirmed,
+.av-records-responsive .sales-pill.is-scheduled,
+.av-records-responsive .sales-pill.is-assigned {
+  background: #def0fb;
+  color: #155e86;
+}
+
+.av-records-responsive .sales-pill.is-in_progress {
+  background: #e8efff;
+  color: #3d55a1;
+}
+
+.av-records-responsive .sales-pill.is-completed,
+.av-records-responsive .sales-pill.is-paid {
+  background: #e0f6e9;
+  color: #146e45;
+}
+
+.av-records-responsive .sales-pill.is-pending {
+  background: #fff0d5;
+  color: #935b14;
+}
+
+.av-records-responsive .sales-pill.is-no_record,
+.av-records-responsive .sales-pill.is-no-record,
+.av-records-responsive .sales-pill.is-not_recorded {
+  background: #edf2f5;
+  color: #617583;
+}
+
+.av-records-responsive .sales-pill.is-cancelled,
+.av-records-responsive .sales-pill.is-declined {
+  background: #fde9eb;
+  color: #9a3f49;
+}
+
+/* Order detail panel and cancellation outcomes. */
+.av-orders-page .sales-overlay {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  overflow: hidden;
+  overscroll-behavior: contain;
+}
+
+.av-orders-page .av-orders-modal {
+  display: grid;
+  align-content: start;
+  gap: 13px;
+  width: min(100%, 760px);
+  min-width: 0;
+  max-width: 100%;
+  max-height: calc(100dvh - 24px);
+  box-sizing: border-box;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.av-orders-page .av-orders-modal > .sales-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: nowrap;
+  gap: 10px;
+  min-width: 0;
+  margin-bottom: 3px;
+}
+
+.av-orders-page .av-orders-modal h2 {
+  min-width: 0;
+  font-size: clamp(0.95rem, 2.5vw, 1.15rem);
+  overflow-wrap: anywhere;
+}
+
+.av-orders-page .av-orders-modal > p {
+  overflow-wrap: break-word;
+}
+
+.av-orders-page .av-orders-modal .sales-totals {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 14px;
+  min-width: 0;
+}
+
+.av-orders-page .av-orders-modal .sales-totals > * {
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
+.av-orders-page .av-orders-modal .sales-totals strong {
+  font-variant-numeric: tabular-nums;
+}
+
+.av-orders-page .av-order-confirm {
+  display: grid;
+  gap: 13px;
+  margin-top: 10px;
+  padding: 18px;
+  border: 1px solid #c9e4ef;
+  border-radius: 14px;
+  background: #f2f9fd;
+}
+
+.av-orders-page .av-order-confirm h3 {
+  margin: 0;
+  font-size: 1.04rem;
+  color: #174761;
+}
+
+.av-orders-page .av-order-confirm .sales-note {
+  margin: 0;
+  line-height: 1.55;
+}
+
+.av-orders-page .av-order-confirm__schedule {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #d6e7ef;
+  border-radius: 11px;
+  background: #fff;
+}
+
+.av-orders-page .av-order-confirm__schedule > svg {
+  flex: 0 0 18px;
+  color: #0e6f90;
+}
+
+.av-orders-page .av-order-confirm__schedule > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.av-orders-page .av-order-confirm__schedule small {
+  font-weight: 750;
+  color: #607f91;
+}
+
+.av-orders-page .av-order-confirm__schedule strong {
+  overflow-wrap: break-word;
+  color: #144e6a;
+}
+
+.av-orders-page .av-order-confirm > .sales-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 47px;
+  font-weight: 850;
+}
+
+.av-orders-page .av-order-cancellation-notice {
+  padding: 15px 17px;
+  border: 1px solid #efccaf;
+  border-radius: 12px;
+  background: #fff8ed;
+  color: #72441a;
+}
+
+.av-orders-page .av-order-cancellation-notice strong {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 0.88rem;
+}
+
+.av-orders-page .av-order-cancellation-notice p {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.av-orders-page .av-order-inline-error {
+  margin: 0;
+}
+
+.av-orders-page .sales-danger-zone textarea {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Service request detail retains a fixed, usable action footer. */
+.av-services-page .service-request-dialog {
+  max-width: min(100%, 760px);
+  min-width: 0;
+}
+
+.av-services-page .service-request-scroll {
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+.av-services-page .service-request-scroll > * {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: break-word;
+}
+
+.av-services-page .service-request-footer {
+  align-items: center;
+}
+
+.av-services-page .service-request-footer button {
+  min-height: 44px;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+
+.av-records-responsive :is(button, input, select, textarea, a):focus-visible {
+  outline: 3px solid #75c4dc;
+  outline-offset: 2px;
+}
+
+/* 15-inch laptops + tablets: real two-column records, not squeezed cells. */
+@media (max-width: 1650px) {
+  .av-records-responsive .sales-table-scroll {
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .av-records-responsive .sales-table {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    border-collapse: separate;
+    background: transparent;
+  }
+
+  .av-records-responsive .sales-table thead {
+    display: none;
+  }
+
+  .av-records-responsive .sales-table tbody {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
+    gap: 14px;
+    width: 100%;
+  }
+
+  .av-records-responsive .sales-table tbody tr {
+    display: grid;
+    align-content: start;
+    width: auto;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 1px solid #d9e7ee;
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: 0 7px 21px rgba(12, 50, 73, 0.055);
+    overflow: hidden;
+  }
+
+  .av-records-responsive .sales-table tbody td {
+    display: grid;
+    grid-template-columns: minmax(99px, 37%) minmax(0, 1fr);
+    align-items: start;
+    gap: 12px;
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 10px 14px;
+    border-bottom: 1px solid #edf2f5;
+    font-size: 0.81rem;
+    line-height: 1.5;
+    text-align: right;
+    white-space: normal;
+    overflow-wrap: break-word;
+    word-break: normal;
+  }
+
+  .av-records-responsive .sales-table tbody td::before {
+    content: attr(data-label);
+    display: block;
+    min-width: 0;
+    padding-top: 2px;
+    color: #617d90;
+    font-size: 0.72rem;
+    font-weight: 850;
+    text-align: left;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+    white-space: normal;
+  }
+
+  .av-records-responsive .sales-table tbody td > :is(a, strong, span, button) {
+    min-width: 0;
+    justify-self: end;
+    max-width: 100%;
+  }
+
+  .av-records-responsive
+    .sales-table
+    tbody
+    td[data-label="Status"]
+    > .sales-pill,
+  .av-records-responsive
+    .sales-table
+    tbody
+    td[data-label="Payment"]
+    > .sales-pill {
+    white-space: nowrap;
+    overflow-wrap: normal;
+    width: max-content;
+  }
+
+  .av-records-responsive .sales-table tbody td[data-label="Contact"] a,
+  .av-records-responsive .sales-table tbody td[data-label="Total"] strong {
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .av-records-responsive .sales-table tbody td:first-child {
+    background: #f1f8fb;
+    font-weight: 850;
+  }
+
+  .av-records-responsive .sales-table tbody td:first-child strong {
+    overflow-wrap: anywhere;
+    text-align: right;
+  }
+
+  .av-records-responsive .sales-table tbody td:last-child {
+    border-bottom: 0;
+    background: #fbfdfe;
+  }
+
+  .av-records-responsive
+    .sales-table
+    tbody
+    td[data-label="Action"]
+    .sales-small-action {
+    width: auto;
+    padding-inline: 14px;
+  }
+}
+
+/* Portrait tablets, larger phones and smaller laptop windows. */
+@media (max-width: 890px) {
+  .av-records-responsive .sales-table tbody {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .av-records-responsive .sales-hero,
+  .av-records-responsive .wsm-head {
+    align-items: stretch;
+  }
+
+  .av-records-responsive .sales-filters {
+    align-items: stretch;
+  }
+
+  .av-records-responsive .sales-filters > select {
+    flex: 1 1 165px;
+  }
+}
+
+@media (max-width: 600px) {
+  .av-records-responsive .sales-table tbody {
+    gap: 11px;
+  }
+
+  .av-records-responsive .sales-table tbody td {
+    grid-template-columns: minmax(92px, 36%) minmax(0, 1fr);
+    gap: 8px;
+    padding: 10px 12px;
+    font-size: 0.8rem;
+  }
+
+  .av-records-responsive .sales-filters > .sales-search,
+  .av-records-responsive .sales-filters > select {
+    flex-basis: 100%;
+    width: 100%;
+  }
+
+  .av-records-responsive
+    .sales-table
+    tbody
+    td[data-label="Action"]
+    .sales-small-action {
+    width: 100%;
+  }
+
+  .av-orders-page .sales-overlay {
+    padding: 6px;
+  }
+
+  .av-orders-page .av-orders-modal {
+    max-height: calc(100dvh - 12px);
+    padding: 15px;
+    gap: 11px;
+    border-radius: 13px;
+  }
+
+  .av-orders-page .av-order-confirm {
+    padding: 13px;
+  }
+
+  .av-orders-page .av-orders-modal .sales-totals {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+  }
+
+  .av-orders-page .av-orders-modal .sales-totals > strong {
+    overflow-wrap: anywhere;
+  }
+
+  .av-services-page .service-request-footer {
+    gap: 9px;
+  }
+
+  .av-services-page .service-request-footer > button {
+    flex: 1 1 150px;
+  }
+}
+
+@media (max-width: 365px) {
+  .av-records-responsive .sales-table tbody td {
+    grid-template-columns: minmax(76px, 33%) minmax(0, 1fr);
+    gap: 7px;
+    padding: 9px;
+    font-size: 0.76rem;
+  }
+
+  .av-records-responsive .sales-table tbody td::before {
+    font-size: 0.67rem;
+  }
+
+  .av-records-responsive .sales-pill {
+    padding: 5px 7px;
+    font-size: 0.67rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .av-records-responsive * {
+    scroll-behavior: auto;
+    transition: none !important;
+  }
+}

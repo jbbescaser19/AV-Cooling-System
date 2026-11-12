@@ -29,7 +29,8 @@ const base = z.object({
     .max(30)
     .regex(/^[+0-9 ()-]+$/),
   fulfillment: z.literal("DELIVERY"),
-  paymentCode: z.literal("CASH"),
+  deliveryArea: z.string().regex(/^[A-Z_]{3,40}$/),
+  paymentCode: z.enum(["CASH", "GCASH", "BANK_TRANSFER"]),
   expectedTotal: z.number().finite().min(0).max(9999999999),
   deliveryAddress: z.string().trim().max(2000).nullable(),
   customerNotes: z.string().trim().max(1000),

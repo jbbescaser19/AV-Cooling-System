@@ -2,9 +2,11 @@ import { useEffect, useState } from "react";
 import api from "../../../api/api.js";
 import { getStaff } from "../../utils/authMock.js";
 import TechnicianTeamPicker from "./TechnicianTeamPicker.jsx";
+import "../../styles/management/service-operations-panels.css";
 
-/** Team assignment stays on the originating order/service/Facebook screen.
- * Delivery and installation may each have their own team leader. */
+/** One crew for an order's delivery and installation.
+ * Work orders remain separate to track distinct delivery/installation stages.
+ */
 export default function SourceTeamPanel({
   kind,
   sourceId,
@@ -13,12 +15,37 @@ export default function SourceTeamPanel({
 }) {
   const [jobs, setJobs] = useState([]);
   const [members, setMembers] = useState([]);
-  const [editingType, setEditingType] = useState(null);
+  const [editing, setEditing] = useState(false);
+  const [selectedType, setSelectedType] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+
   const canManage = ["OWNER", "MANAGER"].includes(getStaff()?.role);
+  const combined =
+    kind === "ORDER" &&
+    jobs.some((job) => job.type === "DELIVERY") &&
+    jobs.some((job) => job.type === "INSTALLATION");
+  const combinedJobs = combined
+    ? jobs.filter((job) => ["DELIVERY", "INSTALLATION"].includes(job.type))
+    : [];
+  const hasStarted = combinedJobs.some((job) =>
+    ["IN_PROGRESS", "COMPLETED"].includes(job.status),
+  );
+  const leadJob =
+    combinedJobs.find((job) => job.members?.length) || combinedJobs[0];
+  const mismatched =
+    combined &&
+    combinedJobs.some(
+      (job) =>
+        JSON.stringify(
+          (job.members || []).map((member) => Number(member.id)),
+        ) !==
+        JSON.stringify(
+          (leadJob?.members || []).map((member) => Number(member.id)),
+        ),
+    );
 
   useEffect(() => {
     if (!sourceId || !canManage) return undefined;
@@ -31,15 +58,17 @@ export default function SourceTeamPanel({
       })
       .then(({ data }) => {
         if (controller.signal.aborted) return;
-        const next = data.jobs || [];
+        const next = Array.isArray(data.jobs) ? data.jobs : [];
         setJobs(next);
         onJobsChange?.(next);
       })
-      .catch((err) => {
-        if (!controller.signal.aborted)
+      .catch((requestError) => {
+        if (!controller.signal.aborted) {
           setError(
-            err.response?.data?.message || "Unable to load assigned team.",
+            requestError.response?.data?.message ||
+              "Could not load assigned team.",
           );
+        }
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false);
@@ -47,17 +76,18 @@ export default function SourceTeamPanel({
     return () => controller.abort();
   }, [kind, sourceId, refreshKey, canManage, onJobsChange]);
 
-  if (!canManage)
+  if (!canManage) {
     return (
       <p className="wsm-info">
-        A manager or owner assigns the technician team for this job before work
-        starts.
+        An Owner or Manager assigns the technician team before work starts.
       </p>
     );
+  }
 
-  function beginEdit(type, job = null) {
-    setEditingType(type);
-    setMembers((job?.members || []).map((person) => Number(person.id)));
+  function beginEdit(type = null, job = null) {
+    setSelectedType(type);
+    setMembers((job?.members || []).map((member) => Number(member.id)));
+    setEditing(true);
     setError("");
     setNotice("");
   }
@@ -71,23 +101,29 @@ export default function SourceTeamPanel({
     setError("");
     setNotice("");
     try {
+      // Combined delivery + installation: one team update changes BOTH jobs.
       const body = { technicianIds: members };
-      if (editingType !== "ALL") body.workType = editingType;
+      if (!combined && selectedType) body.workType = selectedType;
       const { data } = await api.patch(
         `/api/management/field-work/${kind}/${sourceId}`,
         body,
       );
-      const updated = data.jobs || [];
+      if (!data.success) throw new Error("Assignment was not saved.");
+      const updated = Array.isArray(data.jobs) ? data.jobs : [];
       setJobs(updated);
       onJobsChange?.(updated);
-      setEditingType(null);
+      setEditing(false);
       setNotice(
-        "Technician team saved. The assigned workers can start their job when scheduled.",
+        combined
+          ? "One crew saved for both delivery and installation."
+          : "Technician team saved.",
       );
       window.dispatchEvent(new Event("av-management-updated"));
-    } catch (err) {
+    } catch (requestError) {
       setError(
-        err.response?.data?.message || "Could not save the technician team.",
+        requestError.response?.data?.message ||
+          requestError.message ||
+          "Could not save team.",
       );
     } finally {
       setSaving(false);
@@ -95,111 +131,157 @@ export default function SourceTeamPanel({
   }
 
   return (
-    <section
-      className="wsm-info"
-      aria-label="Assigned technician teams"
-      style={{ display: "grid", gap: 10 }}
-    >
-      <strong>Technician assignment</strong>
-      {loading && <p role="status">Checking assigned teams…</p>}
-      {!loading && jobs.length === 0 && (
-        <div style={{ display: "grid", gap: 8 }}>
+    <section className="av-shared-team" aria-label="Technician assignment">
+      <div className="av-shared-team__heading">
+        <div>
+          <h3>
+            {combined
+              ? "Delivery & installation team"
+              : "Technician assignment"}
+          </h3>
           <p>
-            No field work assigned yet. Assign the workers here to create the
-            needed job(s) automatically.
+            {combined
+              ? "The same crew delivers the aircon and completes its installation. Assign only once."
+              : "Assign the team responsible for this job."}
           </p>
-          {editingType === null && (
+        </div>
+      </div>
+
+      {loading && <p role="status">Loading technician assignment…</p>}
+      {!loading && jobs.length === 0 && (
+        <div className="av-shared-team__job">
+          <p>No field jobs have been created yet.</p>
+          {!editing && (
             <button
               type="button"
               className="wsm-secondary"
-              onClick={() => beginEdit("ALL")}
+              onClick={() => beginEdit()}
             >
-              Assign technician team here
+              Assign technician team
             </button>
           )}
         </div>
       )}
+
+      {!loading && combined && (
+        <div className="av-shared-team__job">
+          <strong>
+            {leadJob?.leader
+              ? `Team ${leadJob.leader.name} (Team Leader)`
+              : "No team assigned yet"}
+          </strong>
+          {leadJob?.members?.length > 1 && (
+            <small>
+              Team members:{" "}
+              {leadJob.members
+                .slice(1)
+                .map((member) => member.name)
+                .join(", ")}
+            </small>
+          )}
+          {combinedJobs.map((job) => (
+            <small key={job.id}>
+              {job.type === "DELIVERY" ? "Delivery" : "Installation"}:{" "}
+              {job.status.replaceAll("_", " ")}
+            </small>
+          ))}
+          {mismatched && (
+            <p className="wsm-error" role="alert">
+              Older records have different teams assigned.{" "}
+              {hasStarted
+                ? "The job has started; ask Management to reconcile these records before further work."
+                : "Save the shared team once to synchronize both assignments."}
+            </p>
+          )}
+          {!editing && !hasStarted && (
+            <button
+              type="button"
+              className="wsm-secondary"
+              onClick={() => beginEdit(null, leadJob)}
+            >
+              {leadJob?.members?.length
+                ? "Change shared team"
+                : "Assign shared team"}
+            </button>
+          )}
+          {hasStarted && (
+            <small>
+              The team cannot be changed after delivery or installation starts.
+            </small>
+          )}
+        </div>
+      )}
+
       {!loading &&
+        !combined &&
         jobs.map((job) => {
           const locked = ["IN_PROGRESS", "COMPLETED"].includes(job.status);
           return (
-            <div
-              key={job.id}
-              style={{
-                display: "grid",
-                gap: 6,
-                borderTop: "1px solid rgba(128,128,128,.2)",
-                paddingTop: 10,
-              }}
-            >
+            <div className="av-shared-team__job" key={job.id}>
               <strong>
-                {job.type} ·{" "}
-                {job.status === "PENDING"
-                  ? "Pending assignment"
-                  : job.status.replaceAll("_", " ")}
+                {job.type} · {job.status.replaceAll("_", " ")}
               </strong>
               <span>
                 {job.leader
-                  ? `Team ${job.leader.name} (TL)`
-                  : "No technician team assigned"}
+                  ? `Team ${job.leader.name} (Team Leader)`
+                  : "No team assigned yet"}
               </span>
               {job.members?.length > 1 && (
                 <small>
                   Members:{" "}
                   {job.members
                     .slice(1)
-                    .map((member) => member.name)
+                    .map((person) => person.name)
                     .join(", ")}
                 </small>
               )}
-              {!locked && editingType === null && (
+              {!locked && !editing && (
                 <button
                   type="button"
                   className="wsm-secondary"
                   onClick={() => beginEdit(job.type, job)}
                 >
-                  {job.members?.length
-                    ? "Change team here"
-                    : "Assign team here"}
+                  {job.members?.length ? "Change team" : "Assign team"}
                 </button>
               )}
               {locked && (
                 <small>
-                  Started/completed jobs cannot have their teams changed here.
+                  A started or completed job's team cannot be changed.
                 </small>
               )}
             </div>
           );
         })}
-      {editingType !== null && (
-        <div style={{ display: "grid", gap: 8 }}>
+
+      {editing && (
+        <div className="av-shared-team__edit">
           <strong>
-            {editingType === "ALL"
-              ? "Assign to all field jobs"
-              : `Assign ${editingType.toLowerCase()} team`}
+            {combined
+              ? "Select one delivery & installation crew"
+              : "Select a technician team"}
           </strong>
           <TechnicianTeamPicker
             value={members}
             onChange={setMembers}
             disabled={saving}
           />
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <div className="av-shared-team__actions">
             <button
               type="button"
               className="wsm-primary"
-              onClick={save}
               disabled={saving || !members.length}
+              onClick={save}
             >
-              {saving ? "Saving…" : "Save technician team"}
+              {saving ? "Saving…" : combined ? "Save shared team" : "Save team"}
             </button>
             <button
               type="button"
               className="wsm-secondary"
+              disabled={saving}
               onClick={() => {
-                setEditingType(null);
+                setEditing(false);
                 setError("");
               }}
-              disabled={saving}
             >
               Cancel
             </button>
@@ -207,12 +289,12 @@ export default function SourceTeamPanel({
         </div>
       )}
       {error && (
-        <p role="alert" className="wsm-error">
+        <p className="wsm-error" role="alert">
           {error}
         </p>
       )}
       {notice && (
-        <p role="status" className="wsm-success">
+        <p className="wsm-success" role="status">
           {notice}
         </p>
       )}

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import api from "../../../api/api.js";
 import SavedAddressSelector from "../../components/common/SavedAddressSelector";
+import ActionGuidance from "../../components/common/ActionGuidance.jsx";
 import AvailabilityPicker from "../../components/scheduling/AvailabilityPicker";
 import useStorefrontCatalog from "../../hooks/useStorefrontCatalog";
 import { getCart } from "../../utils/cartStore";
@@ -12,6 +13,10 @@ import {
 } from "../../utils/purchaseFlow";
 import "../../styles/ecommerce/pages.css";
 import "../../styles/ecommerce/checkout.css";
+import {
+  DELIVERY_AREAS,
+  displayedDeliveryFee,
+} from "../../utils/deliveryPricing.js";
 
 const money = (value) =>
   `₱${Number(value || 0).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -27,6 +32,7 @@ export default function CheckoutPage() {
   const [placing, setPlacing] = useState(false);
   const [recipientName, setRecipientName] = useState("");
   const [contactNumber, setContactNumber] = useState("");
+  const [deliveryArea, setDeliveryArea] = useState("");
   const [address, setAddress] = useState(
     () => getDefaultCustomerAddress()?.address || "",
   );
@@ -99,6 +105,8 @@ export default function CheckoutPage() {
     (sum, item) => sum + Number(item.price) * Number(item.qty),
     0,
   );
+  const deliveryFee = displayedDeliveryFee(deliveryArea);
+  const grandTotal = subtotal + (deliveryFee ?? 0);
   const count = items.reduce((sum, item) => sum + Number(item.qty), 0);
   const ready =
     !loading &&
@@ -106,11 +114,43 @@ export default function CheckoutPage() {
     items.length > 0 &&
     !insufficient &&
     count <= 99 &&
+    recipientName.trim().length >= 2 &&
+    (contactNumber.match(/\d/g) || []).length >= 7 &&
+    /^[+0-9()\s-]+$/.test(contactNumber.trim()) &&
+    address.trim().length >= 10 &&
+    deliveryFee !== null &&
     Boolean(schedule);
+
+  const orderReasons = [
+    loading ? "Your cart is still loading." : null,
+    loadError ? "Resolve the cart error above first." : null,
+    items.length === 0 ? "Add a product before checkout." : null,
+    insufficient
+      ? "Confirm product availability or change the quantity."
+      : null,
+    recipientName.trim().length < 2 ? "Enter the recipient's full name." : null,
+    (contactNumber.match(/\d/g) || []).length < 7 ||
+    !/^[+0-9()\s-]+$/.test(contactNumber.trim())
+      ? "Enter a reachable contact number."
+      : null,
+    deliveryArea === "OTHER"
+      ? "Other locations need a delivery quotation from the store; online checkout cannot set custom fees."
+      : !deliveryArea
+        ? "Choose a delivery area."
+        : null,
+    address.trim().length < 10 ? "Enter the full delivery address." : null,
+    !schedule ? "Select an available delivery appointment." : null,
+  ].filter(Boolean);
 
   async function place(event) {
     event.preventDefault();
     if (placing || !ready) return;
+    if (deliveryFee === null) {
+      setError(
+        "Choose a delivery area. Other locations need a confirmed quotation.",
+      );
+      return;
+    }
     if (address.trim().length < 10) {
       setError("Enter your complete delivery address.");
       return;
@@ -124,7 +164,8 @@ export default function CheckoutPage() {
         contactNumber: contactNumber.trim(),
         fulfillment: "DELIVERY",
         paymentCode: "CASH",
-        expectedTotal: Math.round(subtotal * 100) / 100,
+        expectedTotal: Math.round(grandTotal * 100) / 100,
+        deliveryArea,
         deliveryAddress: address.trim(),
         customerNotes: notes.trim(),
         preferredSchedule: schedule || null,
@@ -253,6 +294,34 @@ export default function CheckoutPage() {
                 Delivery with installation, subject to staff confirmation.
                 Payment: Cash (pending until collected).
               </p>
+              <label className="form-group" style={{ marginBottom: 15 }}>
+                Delivery city / municipality (required)
+                <select
+                  className="form-control"
+                  required
+                  value={deliveryArea}
+                  onChange={(event) => setDeliveryArea(event.target.value)}
+                  disabled={placing}
+                >
+                  <option value="">Choose delivery area</option>
+                  {DELIVERY_AREAS.map(([code, label, fee]) => (
+                    <option key={code} value={code}>
+                      {label} · {fee === 0 ? "FREE" : money(fee)}
+                    </option>
+                  ))}
+                  <option value="OTHER">Other area — request quotation</option>
+                </select>
+                <small>
+                  Include the municipality and province in your complete
+                  delivery address.
+                </small>
+              </label>
+              {deliveryArea === "OTHER" && (
+                <p role="status">
+                  This location needs a confirmed quotation. Contact the store
+                  before checkout.
+                </p>
+              )}
               <SavedAddressSelector
                 title="Delivery address"
                 value={address}
@@ -304,14 +373,36 @@ export default function CheckoutPage() {
               <span>Subtotal</span>
               <strong>{money(subtotal)}</strong>
             </div>
+            <div className="checkout-summary-row">
+              <span>Delivery fee</span>
+              <strong>
+                {deliveryFee === null
+                  ? "Choose area"
+                  : deliveryFee === 0
+                    ? "FREE"
+                    : money(deliveryFee)}
+              </strong>
+            </div>
+            <div
+              className="checkout-summary-row"
+              style={{ borderTop: "1px solid #d8e6ec", paddingTop: 12 }}
+            >
+              <strong>Grand total</strong>
+              <strong>{deliveryFee === null ? "—" : money(grandTotal)}</strong>
+            </div>
             <p style={{ fontSize: ".79rem" }}>
               Availability and total are rechecked on the server before the
               order is saved.
             </p>
+            <ActionGuidance
+              title="Complete these before placing your order"
+              reasons={orderReasons}
+              readyText="All required checkout details are complete."
+            />
             <button
               className="btn btn-dark"
               type="submit"
-              disabled={!ready || placing}
+              disabled={!ready || placing || deliveryFee === null}
             >
               {placing ? "Placing order…" : "Place Order"}
             </button>

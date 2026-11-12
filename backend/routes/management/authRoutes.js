@@ -6,6 +6,11 @@ import { staffAuthController } from "../../controllers/management/staffAuthContr
 const router = Router();
 
 router.post("/login", requireCustomerWriteOrigin, staffAuthController.login);
+router.post(
+  "/refresh",
+  requireCustomerWriteOrigin,
+  staffAuthController.refresh,
+);
 router.get("/session", requireStaffAuth, staffAuthController.session);
 router.post(
   "/activity",

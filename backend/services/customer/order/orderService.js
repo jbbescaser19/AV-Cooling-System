@@ -1,3 +1,5 @@
+import { paymentInstructions } from "./manualPaymentService.js";
+import { getDeliveryFee } from "../../shared/deliveryPricingService.js";
 import connectDB from "../../../utils/dbConn.js";
 import { createCustomerNotification } from "../notification/notificationService.js";
 import {
@@ -109,8 +111,12 @@ export async function placeCustomerOrder(userId, rawInput) {
       return { ...replayed, replayed: true };
     }
 
-    const methodId = await model.paymentMethod();
-    if (!methodId) fail("Cash payment is not enabled. Contact the store.", 503);
+    if (!paymentInstructions(input.paymentCode).available) {
+      fail("This payment method is not configured by the store yet.", 503);
+    }
+    const methodId = await model.paymentMethod(input.paymentCode);
+    if (!methodId)
+      fail("Payment method is not enabled. Contact the store.", 503);
 
     let cartId = null;
     const lines = [];
@@ -133,7 +139,13 @@ export async function placeCustomerOrder(userId, rawInput) {
       lines.push(checkedItem(row, input.quantity));
     }
 
-    const totalCents = lines.reduce((sum, item) => sum + item.cents, 0);
+    const subtotalCents = lines.reduce((sum, item) => sum + item.cents, 0);
+    // Never trust the browser's delivery price. Validate the selected area
+    // against the customer's complete city/province address on the server.
+    const deliveryFeeCents = Math.round(
+      getDeliveryFee(input.deliveryArea, input.deliveryAddress) * 100,
+    );
+    const totalCents = subtotalCents + deliveryFeeCents;
     if (
       !Number.isSafeInteger(totalCents) ||
       totalCents <= 0 ||
@@ -143,7 +155,7 @@ export async function placeCustomerOrder(userId, rawInput) {
     }
     if (Math.round(input.expectedTotal * 100) !== totalCents) {
       fail(
-        "A product price changed. Please review your cart before placing the order.",
+        "Order subtotal or delivery fee changed. Review the total before placing your order.",
         409,
       );
     }
@@ -153,6 +165,8 @@ export async function placeCustomerOrder(userId, rawInput) {
       customerId: customer.customerId,
       paymentMethodId: methodId,
       fulfillment: input.fulfillment,
+      subtotal: (subtotalCents / 100).toFixed(2),
+      deliveryFee: (deliveryFeeCents / 100).toFixed(2),
       total,
       recipientName: input.recipientName,
       contactNumber: input.contactNumber,
@@ -170,7 +184,14 @@ export async function placeCustomerOrder(userId, rawInput) {
     for (const item of lines) {
       await model.insertItem(orderId, item);
     }
-    await model.insertPayment(orderId, methodId, total);
+    await model.insertPayment(
+      orderId,
+      methodId,
+      total,
+      input.paymentCode === "CASH"
+        ? "Cash collection pending."
+        : `${input.paymentCode} manual transfer; unverified until bank/GCash reconciliation.`,
+    );
     await model.insertStatus(orderId, userId);
     await createCustomerNotification(
       db,

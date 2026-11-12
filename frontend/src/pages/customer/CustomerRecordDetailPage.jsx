@@ -120,7 +120,9 @@ export default function CustomerRecordDetailPage({ kind }) {
               <>
                 <div className="notification-record-row">
                   <span>Payment</span>
-                  <strong>{record.paymentStatus}</strong>
+                  <CustomerStatusBadge>
+                    {record.paymentStatus}
+                  </CustomerStatusBadge>
                 </div>
                 <div className="notification-record-row">
                   <span>Total</span>
@@ -144,7 +146,7 @@ export default function CustomerRecordDetailPage({ kind }) {
               <ol className="notification-activity-list">
                 {events.map((event, index) => (
                   <li key={index}>
-                    <strong>{event.code.replaceAll("_", " ")}</strong>
+                    <CustomerStatusBadge>{event.code}</CustomerStatusBadge>
                     {event.note && <p>{event.note}</p>}
                     {event.schedule && (
                       <p>Scheduled: {scheduleLabel(event.schedule)}</p>

@@ -4,6 +4,7 @@ import { UserRound } from "lucide-react";
 
 import api from "../../../api/api.js";
 import CustomerPageHeader from "../../components/customer/CustomerPageHeader";
+import CustomerStatusBadge from "../../components/customer/CustomerStatusBadge";
 
 export default function ProfilePage() {
   const navigate = useNavigate();
@@ -129,7 +130,7 @@ export default function ProfilePage() {
 
           <label>
             Account status
-            <input className="form-control" value={profile.status} readOnly />
+            <CustomerStatusBadge>{profile.status}</CustomerStatusBadge>
           </label>
         </section>
       )}

@@ -7,6 +7,7 @@ import App from "./App";
 import "./styles/variables.css";
 import "./styles/global.css";
 import "./styles/ecommerce/pages.css";
+import "./styles/management/compact-management-cards.css";
 
 const routerBase = import.meta.env.BASE_URL.replace(/\/$/, "") || "/";
 

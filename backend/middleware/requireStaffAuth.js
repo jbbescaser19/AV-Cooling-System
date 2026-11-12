@@ -1,5 +1,6 @@
 import { verifyStaffSession } from "../services/management/staffAuthService.js";
 
+/** Validates both the 15-minute access JWT and its revocable 7-day DB session. */
 export async function requireStaffAuth(req, res, next) {
   try {
     const { staff, session } = await verifyStaffSession(
@@ -30,7 +31,7 @@ export function requireStaffRole(...allowedRoles) {
   };
 }
 
-/** Backend-enforced second password check before changing staff accounts. */
+/** Sensitive staff-account changes still require a recent password check. */
 export function requireStaffRecentAuth(req, res, next) {
   if (
     !req.staffSession?.reauthenticatedUntil ||

@@ -7,9 +7,15 @@ export function serviceRequestModel(db) {
                sr.service_request_id AS reference,
                sr.facebook_request_id AS facebookRequestId,
                sr.status,
-               COALESCE(u.name,fb.customer_name,sr.walk_in_customer_name,'Service customer') AS customer,
+               COALESCE(sp.status, 'NO_RECORD') AS paymentStatus,
+               sp.method_code AS paymentMethod,
+               CAST(sp.amount AS DOUBLE) AS paymentAmount,
+               COALESCE(u.name,sr.walk_in_customer_name,fb.customer_name,'Service customer') AS customer,
                sr.contact_number AS contact,
                sr.service_address AS address,
+               sr.destination_address AS destinationAddress,
+               sr.customer_concern AS concern,
+               sr.customer_notes AS customerNotes,
                CASE
                  WHEN sr.aircon_brand IS NOT NULL
                  THEN CONCAT(
@@ -30,6 +36,8 @@ export function serviceRequestModel(db) {
     
                sr.created_at AS createdAt,
                CAST(sr.service_price AS DOUBLE) AS total,
+               CAST(sr.additional_fee_amount AS DOUBLE) AS additionalFee,
+               sr.additional_fee_reason AS additionalFeeReason,
     
                EXISTS (
                  SELECT 1
@@ -55,6 +63,11 @@ export function serviceRequestModel(db) {
              LEFT JOIN facebook_order_requests fb ON fb.facebook_request_id=sr.facebook_request_id
              JOIN service_types st
                ON st.service_type_id = sr.service_type_id
+             LEFT JOIN service_payments sp ON sp.service_payment_id = (
+               SELECT MAX(p2.service_payment_id)
+               FROM service_payments p2
+               WHERE p2.service_request_id = sr.service_request_id
+             )
     
              ORDER BY sr.service_request_id DESC
              LIMIT 100`);

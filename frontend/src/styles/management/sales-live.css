@@ -602,3 +602,31 @@
     box-shadow: none;
   }
 }
+
+.sales-pill.is-confirmed,
+.sales-pill.is-assigned {
+  background: #eaf2ff;
+  color: #1e40af;
+}
+.sales-pill.is-scheduled {
+  background: #e0f8fd;
+  color: #0e7490;
+}
+.sales-pill.is-in_progress {
+  background: #f2eaff;
+  color: #6d28d9;
+}
+.sales-primary[data-action="INSTALLATION_COMPLETED"],
+.sales-primary[data-action="ORDER_DELIVERED"] {
+  background: #147d46;
+  border-color: #147d46;
+}
+.sales-primary[data-action="INSTALLATION_STARTED"],
+.sales-primary[data-action="ORDER_OUT_FOR_DELIVERY"] {
+  background: #6d28d9;
+  border-color: #6d28d9;
+}
+.sales-primary[data-action="INSTALLATION_SCHEDULED"] {
+  background: #0e7490;
+  border-color: #0e7490;
+}

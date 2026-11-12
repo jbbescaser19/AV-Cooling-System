@@ -51,12 +51,24 @@ export async function saveSourceTeam(
     );
     if (!createdOrFound.length)
       fail("This order does not require field technicians.");
-    const chosenJobs = workType
-      ? createdOrFound.filter((job) => job.type === workType)
-      : createdOrFound;
+    // AV Cooling uses the SAME people for delivery and installation.
+    // Both work orders remain for separate delivery/installation milestones.
+    const combinedOrder =
+      kind === "ORDER" &&
+      createdOrFound.some((job) => job.type === "DELIVERY") &&
+      createdOrFound.some((job) => job.type === "INSTALLATION");
+    const chosenJobs = combinedOrder
+      ? createdOrFound
+      : workType
+        ? createdOrFound.filter((job) => job.type === workType)
+        : createdOrFound;
     if (!chosenJobs.length)
       fail("This order or service has no matching field job.");
-    for (const job of chosenJobs) {
+
+    // A single call is enough for a combined order: the shared reassign helper
+    // synchronizes the crew to BOTH work orders in this transaction.
+    const jobsToUpdate = combinedOrder ? chosenJobs.slice(0, 1) : chosenJobs;
+    for (const job of jobsToUpdate) {
       const lockedWork = await model.lockWorkForTeamUpdate(job.id);
       if (!lockedWork) fail("Work order changed. Refresh and retry.");
       await reassignWorkOrderTeam(connection, lockedWork, staff, technicianIds);

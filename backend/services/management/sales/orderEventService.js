@@ -23,20 +23,27 @@ export async function transitionOrder(
   let next = status;
   if (code === "ORDER_ACCEPTED") {
     requireStatus(status, code, "PENDING");
-    next = "CONFIRMED";
+    // Acceptance also confirms the appointment already reserved at checkout.
+    next = order.schedule ? "SCHEDULED" : "CONFIRMED";
   } else if (code === "INSTALLATION_SCHEDULED") {
     requireStatus(status, code, "CONFIRMED");
     await forbidRepeatedEvent(model, "ORDER", id, code);
     next = "SCHEDULED";
   } else if (code === "SCHEDULE_CHANGED") {
-    requireStatus(status, code, "SCHEDULED");
-    await requirePreviousEvent(model, "ORDER", id, "INSTALLATION_SCHEDULED");
+    requireStatus(status, code, "PENDING", "CONFIRMED", "SCHEDULED");
+    if (!order.schedule) {
+      fail("This order has no saved appointment to reschedule.");
+    }
     if (order.schedule === data.schedule) {
       fail("Choose a different appointment time.");
     }
+    // Pre-confirmation reschedule leaves the order pending approval.
+    if (status === "CONFIRMED") next = "SCHEDULED";
   } else if (code === "ORDER_OUT_FOR_DELIVERY") {
     requireStatus(status, code, "SCHEDULED");
-    await requirePreviousEvent(model, "ORDER", id, "INSTALLATION_SCHEDULED");
+    await requirePreviousEvent(model, "ORDER", id, "ORDER_ACCEPTED");
+    if (!order.schedule)
+      fail("Confirm an appointment before dispatching delivery.");
     next = "IN_PROGRESS";
   } else if (code === "ORDER_DELIVERED") {
     requireStatus(status, code, "IN_PROGRESS");
@@ -69,7 +76,11 @@ export async function transitionOrder(
       );
     }
     const payments = await model.lockPayments(id);
-    if (payments.length !== 1 || payments[0].status !== "PENDING") {
+    if (
+      payments.length !== 1 ||
+      payments[0].status !== "PENDING" ||
+      payments[0].method !== "CASH"
+    ) {
       fail("Payment records are not eligible for confirmation.");
     }
     const paymentUpdated = await model.markPaymentPaid(

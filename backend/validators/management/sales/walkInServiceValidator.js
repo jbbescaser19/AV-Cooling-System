@@ -7,9 +7,19 @@ const schema = z.strictObject({
 
   customerName: z.string().trim().min(2).max(150),
 
-  customerPhone: z.string().trim().min(7).max(30),
+  customerPhone: z
+    .string()
+    .trim()
+    .min(7)
+    .max(30)
+    .refine(
+      (phone) =>
+        (phone.match(/\d/g) || []).length >= 7 && /^[+0-9()\s-]+$/.test(phone),
+      "Enter a valid contact number with at least 7 digits.",
+    ),
 
   serviceAddress: z.string().trim().min(5).max(2000),
+  destinationAddress: z.string().trim().max(2000).default(""),
 
   serviceTypeId: z.coerce.number().int().positive(),
 
@@ -32,7 +42,31 @@ const schema = z.strictObject({
     .union([z.number().min(0.5).max(10), z.null()])
     .default(null),
 
+  copperFeet: z.number().int().min(1).max(100).default(10),
+  includeDismantling: z.boolean().default(false),
+  additionalFee: z.number().finite().min(0).max(99999.99).default(0),
+  additionalFeeReason: z.string().trim().max(255).default(""),
+
   technicianIds: z.array(z.number().int().positive()).max(6).default([]),
 });
 
-export const validateWalkInService = (raw) => parseManagementInput(schema, raw);
+export const validateWalkInService = (raw) =>
+  parseManagementInput(
+    schema.superRefine((data, context) => {
+      if (data.additionalFee > 0 && data.additionalFeeReason.length < 5) {
+        context.addIssue({
+          code: "custom",
+          path: ["additionalFeeReason"],
+          message: "Explain the additional fee (at least 5 characters).",
+        });
+      }
+      if (data.additionalFee === 0 && data.additionalFeeReason.length) {
+        context.addIssue({
+          code: "custom",
+          path: ["additionalFeeReason"],
+          message: "Remove the fee reason or enter an additional fee.",
+        });
+      }
+    }),
+    raw,
+  );

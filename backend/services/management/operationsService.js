@@ -302,7 +302,11 @@ async function transitionOrder(
 
     const payments = await model.lockPayments(id);
 
-    if (payments.length !== 1 || payments[0].status !== "PENDING") {
+    if (
+      payments.length !== 1 ||
+      payments[0].status !== "PENDING" ||
+      payments[0].method !== "CASH"
+    ) {
       fail("Payment records are not eligible for confirmation.");
     }
 

@@ -1,0 +1,42 @@
+/* Explains disabled actions, never relies on a tooltip alone. */
+.av-action-guidance {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  margin: 12px 0 7px;
+  padding: 11px 13px;
+  border: 1px solid #d5e6ee;
+  border-radius: 11px;
+  background: #f5fafc;
+  color: #27566f;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+.av-action-guidance.is-blocked {
+  border-color: #e8d8b9;
+  background: #fffaf2;
+  color: #765323;
+}
+.av-action-guidance.is-ready {
+  border-color: #cae7db;
+  background: #f1fbf6;
+  color: #255e49;
+}
+.av-action-guidance__heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.av-action-guidance__heading svg {
+  flex: 0 0 17px;
+  margin-top: 2px;
+}
+.av-action-guidance ul {
+  margin: 0;
+  padding-left: 25px;
+  display: grid;
+  gap: 3px;
+}
+.av-action-guidance li {
+  overflow-wrap: anywhere;
+}

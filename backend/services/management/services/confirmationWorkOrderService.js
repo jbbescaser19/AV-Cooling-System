@@ -28,8 +28,11 @@ export async function ensureConfirmedWorkOrders(
     kind === "SERVICE"
       ? ["SERVICE"]
       : source.channel === "POS"
-        ? source.installationIncluded
-          ? ["INSTALLATION"]
+        ? source.fulfillment === "DELIVERY"
+          ? [
+              "DELIVERY",
+              ...(source.installationIncluded ? ["INSTALLATION"] : []),
+            ]
           : []
         : [
             ...(source.fulfillment === "DELIVERY" ? ["DELIVERY"] : []),
@@ -123,15 +126,31 @@ export async function cancelConfirmedWork(db, kind, sourceId) {
 export async function reassignWorkOrderTeam(db, work, staff, technicianIds) {
   if (!["OWNER", "MANAGER"].includes(staff.role))
     fail("Only management can assign jobs.", 403);
-  if (!["PENDING", "ASSIGNED"].includes(work.status))
-    fail("A started job cannot be reassigned.");
   if (!technicianIds.length) fail("Select at least one technician.", 400);
+  if (new Set(technicianIds).size !== technicianIds.length)
+    fail("Select each technician only once.", 400);
+
   const kind = work.order_id ? "ORDER" : "SERVICE";
   const sourceId = work.order_id || work.service_request_id;
-  const day = work.scheduledStartLocal?.slice(0, 10);
-  if (!sourceId || !day)
+  if (!sourceId || !work.scheduledStartLocal)
     fail("This work order is missing its linked appointment.");
   const model = confirmationWorkOrderModel(db);
+
+  // Delivery + installation are two status milestones, NOT two crews.
+  // Lock both before editing either. Any in-progress/completed milestone
+  // freezes reassignment to avoid changing the team halfway through the job.
+  const sourceJobs =
+    kind === "ORDER" ? await model.workForSource(kind, sourceId) : [];
+  const isCombined =
+    sourceJobs.some((j) => j.type === "DELIVERY") &&
+    sourceJobs.some((j) => j.type === "INSTALLATION");
+  const jobs = isCombined
+    ? sourceJobs.filter((j) => ["DELIVERY", "INSTALLATION"].includes(j.type))
+    : [{ id: work.work_order_id, status: work.status }];
+
+  if (jobs.some((job) => !["PENDING", "ASSIGNED"].includes(job.status)))
+    fail("A started or completed job's team cannot be changed.");
+
   for (const id of [...technicianIds].sort((a, b) => a - b)) {
     if (!(await model.lockActiveTechnician(id)))
       fail("An assigned technician is no longer active.");
@@ -144,21 +163,25 @@ export async function reassignWorkOrderTeam(db, work, staff, technicianIds) {
         kind,
         sourceId,
       )
-    ) {
+    )
       fail("A selected technician has work booked that day.");
-    }
   }
-  await model.cancelAssignments(work.work_order_id);
-  for (const id of technicianIds)
-    await model.assign(work.work_order_id, id, staff.id);
-  if (work.status === "PENDING") await model.markAssigned(work.work_order_id);
-  await model.history(
-    work.work_order_id,
-    work.status,
-    "ASSIGNED",
-    staff.id,
-    "Technician assignment updated",
-  );
+
+  for (const job of jobs) {
+    await model.cancelAssignments(job.id);
+    // Preserve the chosen first member as the Team Leader.
+    for (const id of technicianIds) await model.assign(job.id, id, staff.id);
+    if (job.status === "PENDING") await model.markAssigned(job.id);
+    await model.history(
+      job.id,
+      job.status,
+      "ASSIGNED",
+      staff.id,
+      isCombined
+        ? "Shared delivery and installation crew updated"
+        : "Technician team updated",
+    );
+  }
 }
 
 /** Validate every assigned worker when rescheduling a shared appointment. */

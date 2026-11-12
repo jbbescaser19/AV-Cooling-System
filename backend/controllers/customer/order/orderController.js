@@ -1,4 +1,8 @@
 import {
+  getPaymentOptions,
+  reportManualTransfer,
+} from "../../../services/customer/order/manualPaymentService.js";
+import {
   placeCustomerOrder,
   listCustomerOrders,
   getCustomerOrder,
@@ -89,5 +93,32 @@ export async function cancelOrderController(req, res) {
     });
   } catch (error) {
     return handleError(res, error);
+  }
+}
+
+export function paymentOptionsController(req, res) {
+  return res.json({ success: true, ...getPaymentOptions() });
+}
+export async function reportManualTransferController(req, res) {
+  try {
+    return res.json({
+      success: true,
+      ...(await reportManualTransfer(
+        req.auth.userId,
+        req.params.orderNumber,
+        req.body,
+      )),
+    });
+  } catch (error) {
+    const status =
+      error.status >= 400 && error.status < 500 ? error.status : 500;
+    if (status === 500) console.error("Manual payment reference:", error);
+    return res
+      .status(status)
+      .json({
+        success: false,
+        message:
+          status === 500 ? "Could not save payment reference." : error.message,
+      });
   }
 }

@@ -13,7 +13,6 @@ import CustomerDialog from "../../components/customer/CustomerDialog";
 import CustomerPageHeader from "../../components/customer/CustomerPageHeader";
 import CustomerStatusBadge from "../../components/customer/CustomerStatusBadge";
 import SavedAddressSelector from "../../components/common/SavedAddressSelector";
-import AvailabilityPicker from "../../components/scheduling/AvailabilityPicker";
 import { formatCustomerMoney } from "../../utils/customerAccountUtils";
 import "../../styles/customer/order-management.css";
 
@@ -344,10 +343,14 @@ export default function OrdersPage() {
                     <strong>{formatDate(selected.orderedAt)}</strong>
                   </div>
                   <div>
-                    <span>Payment</span>
-                    <strong>
-                      {selected.paymentMethod} · {selected.paymentStatus}
-                    </strong>
+                    <span>Payment method</span>
+                    <strong>{selected.paymentMethod || "Not specified"}</strong>
+                  </div>
+                  <div className="order-payment-status-row">
+                    <span>Payment status</span>
+                    <CustomerStatusBadge>
+                      {selected.paymentStatus || "Not recorded"}
+                    </CustomerStatusBadge>
                   </div>
                   <div>
                     <span>Method</span>
@@ -417,7 +420,14 @@ export default function OrdersPage() {
                     <ol className="order-timeline">
                       {selected.history.map((entry, index) => (
                         <li key={`${entry.changedAt}-${index}`}>
-                          <span>{entry.notes || entry.newStatus}</span>
+                          <div>
+                            {entry.newStatus && (
+                              <CustomerStatusBadge>
+                                {entry.newStatus}
+                              </CustomerStatusBadge>
+                            )}
+                            {entry.notes && <span>{entry.notes}</span>}
+                          </div>
                           <small>{formatDate(entry.changedAt)}</small>
                         </li>
                       ))}
@@ -495,15 +505,18 @@ export default function OrdersPage() {
                       Delivery + free standard installation (up to 10ft)
                     </strong>
                   </div>
-                  <div className="order-field">
-                    <AvailabilityPicker
+                  <label className="order-field">
+                    Preferred schedule (optional)
+                    <input
+                      className="form-control"
+                      type="datetime-local"
                       value={draft.preferredSchedule}
-                      onChange={(v) => setField("preferredSchedule", v)}
+                      onChange={(e) =>
+                        setField("preferredSchedule", e.target.value)
+                      }
                       disabled={saving}
-                      allowExistingValue
-                      label="Change installation appointment"
                     />
-                  </div>
+                  </label>
                 </div>
                 {draft.fulfillment === "DELIVERY" && (
                   <div className="order-edit-address">

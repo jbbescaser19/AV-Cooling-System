@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
+import { ArrowRight } from "lucide-react";
+import { createPortal } from "react-dom";
 import {
   CalendarDays,
   CheckCircle2,
@@ -10,15 +12,20 @@ import {
   Search,
   X,
 } from "lucide-react";
-
 import api from "../../../api/api.js";
+import { getStaff } from "../../utils/authMock.js";
 import AvailabilityPicker from "../../components/scheduling/AvailabilityPicker";
 import TechnicianTeamPicker from "../../components/management/TechnicianTeamPicker";
 import SourceTeamPanel from "../../components/management/SourceTeamPanel";
+import ServiceActivityHistory from "../../components/management/ServiceActivityHistory.jsx";
+import ServicePaymentPanel from "../../components/management/ServicePaymentPanel.jsx";
 import "../../styles/management/workspace.css";
+import "../../styles/management/sales-live.css";
+import "../../styles/management/av-records.css";
+import "../../styles/management/service-request-dialog.css";
 
 const labels = {
-  SERVICE_ACCEPTED: "Accept request",
+  SERVICE_ACCEPTED: "Accept & confirm appointment",
   SERVICE_DECLINED: "Decline request",
   SERVICE_SCHEDULED: "Confirm schedule",
   SERVICE_RESCHEDULED: "Reschedule",
@@ -27,14 +34,21 @@ const labels = {
   SERVICE_CANCELLED: "Cancel request",
 };
 
-function availableActions(record) {
+function availableActions(record, role) {
+  if (role === "SALES_CASHIER") {
+    if (record.status === "PENDING") return ["SERVICE_ACCEPTED"];
+    if (record.status === "CONFIRMED" && !record.serviceStarted) {
+      return record.schedule ? ["SERVICE_RESCHEDULED"] : ["SERVICE_SCHEDULED"];
+    }
+    return [];
+  }
   if (record.status === "PENDING")
     return ["SERVICE_ACCEPTED", "SERVICE_DECLINED"];
   if (record.status === "CONFIRMED") {
     if (record.serviceStarted) return ["SERVICE_COMPLETED"];
-    if (record.serviceScheduled)
-      return ["SERVICE_RESCHEDULED", "SERVICE_STARTED", "SERVICE_CANCELLED"];
-    return ["SERVICE_SCHEDULED", "SERVICE_CANCELLED"];
+    return record.schedule
+      ? ["SERVICE_RESCHEDULED", "SERVICE_STARTED", "SERVICE_CANCELLED"]
+      : ["SERVICE_SCHEDULED", "SERVICE_CANCELLED"];
   }
   return [];
 }
@@ -46,33 +60,42 @@ function phoneHref(raw) {
 }
 
 export default function ManagementOperationsPage({ kind = "SERVICE" }) {
+  const staff = getStaff();
+  const canAssign = ["OWNER", "MANAGER"].includes(staff?.role);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [actionError, setActionError] = useState("");
   const [notice, setNotice] = useState("");
   const [search, setSearch] = useState("");
   const [revision, setRevision] = useState(0);
   const [event, setEvent] = useState("");
   const [schedule, setSchedule] = useState("");
-  const [note, setNote] = useState("");
+  const [originalSchedule, setOriginalSchedule] = useState("");
+  const [customerReason, setCustomerReason] = useState("");
+  const [internalNote, setInternalNote] = useState("");
   const [technicianIds, setTechnicianIds] = useState([]);
   const [sourceJobs, setSourceJobs] = useState([]);
   const [searchParams, setSearchParams] = useSearchParams();
-
-  // Facebook conversions link directly to this service request ID.
   const selectedId = searchParams.get("requestId");
   const selected = items.find((row) => String(row.id) === selectedId) || null;
+  const actions = selected ? availableActions(selected, staff?.role) : [];
+  const hasAssignedTeam = sourceJobs.some(
+    (job) =>
+      job.type === "SERVICE" &&
+      ["ASSIGNED", "IN_PROGRESS"].includes(job.status) &&
+      job.members?.length > 0,
+  );
 
-  function close() {
-    if (busy) return;
+  function close(force = false) {
+    if (busy && !force) return;
     setSearchParams((previous) => {
       const next = new URLSearchParams(previous);
       next.delete("requestId");
       return next;
     });
   }
-
   function open(record) {
     setSearchParams((previous) => {
       const next = new URLSearchParams(previous);
@@ -82,21 +105,28 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
   }
 
   useEffect(() => {
+    const refreshList = () => setRevision((value) => value + 1);
+    window.addEventListener("av-management-updated", refreshList);
+    return () =>
+      window.removeEventListener("av-management-updated", refreshList);
+  }, []);
+
+  useEffect(() => {
     const controller = new AbortController();
     setLoading(true);
     setError("");
     api
       .get("/api/management/services", { signal: controller.signal })
       .then(({ data }) => {
-        if (!controller.signal.aborted) setItems(data.records || []);
+        if (!controller.signal.aborted)
+          setItems(Array.isArray(data.records) ? data.records : []);
       })
       .catch((requestError) => {
-        if (!controller.signal.aborted) {
+        if (!controller.signal.aborted)
           setError(
             requestError.response?.data?.message ||
               "Unable to load service requests.",
           );
-        }
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false);
@@ -106,98 +136,100 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
 
   useEffect(() => {
     if (!selected) return;
-    setEvent(availableActions(selected)[0] || "");
-    setNote("");
+    setEvent(availableActions(selected, staff?.role)[0] || "");
+    setSchedule(selected.schedule || "");
+    setOriginalSchedule(selected.schedule || "");
+    setCustomerReason("");
+    setInternalNote("");
     setTechnicianIds([]);
     setSourceJobs([]);
-    setSchedule(selected.schedule || "");
-  }, [selected?.id]);
+    setActionError("");
+  }, [selected?.id, staff?.role]);
 
   useEffect(() => {
     if (!selectedId) return undefined;
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    function keyDown(eventValue) {
-      if (eventValue.key === "Escape" && !busy) close();
-    }
-    document.addEventListener("keydown", keyDown);
+    const escape = (ev) => {
+      if (ev.key === "Escape" && !busy) close();
+    };
+    document.addEventListener("keydown", escape);
     return () => {
       document.body.style.overflow = previous;
-      document.removeEventListener("keydown", keyDown);
+      document.removeEventListener("keydown", escape);
     };
-    // The close function depends on the current query state.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId, busy]);
 
   const filtered = useMemo(
     () =>
       items.filter((row) =>
-        `${row.reference} ${row.customer} ${row.products} ${row.contact} ${row.status}`
+        `${row.reference} ${row.customer} ${row.products} ${row.contact} ${row.status} ${row.paymentStatus || ""}`
           .toLowerCase()
           .includes(search.trim().toLowerCase()),
       ),
     [items, search],
   );
 
-  async function save(eventSubmit) {
-    eventSubmit.preventDefault();
-    if (!selected || !event || busy) return;
-    const requiresSchedule = [
+  async function save(submitEvent) {
+    submitEvent.preventDefault();
+    if (!selected || !event || busy || !actions.includes(event)) return;
+    const needsSchedule = [
+      "SERVICE_ACCEPTED",
       "SERVICE_SCHEDULED",
       "SERVICE_RESCHEDULED",
-      "SERVICE_ACCEPTED",
     ].includes(event);
-    if (requiresSchedule && !schedule) {
-      setError("Choose a future appointment date and time.");
+    const needsReason = [
+      "SERVICE_DECLINED",
+      "SERVICE_CANCELLED",
+      "SERVICE_RESCHEDULED",
+    ].includes(event);
+    if (needsSchedule && !schedule) {
+      setActionError("Choose a future appointment date and time.");
+      return;
+    }
+    if (needsReason && customerReason.trim().length < 5) {
+      setActionError(
+        "Enter a customer-visible reason (at least 5 characters).",
+      );
+      return;
+    }
+    if (event === "SERVICE_STARTED" && !hasAssignedTeam) {
+      setActionError("Assign a technician team before starting this service.");
       return;
     }
     if (
-      ["SERVICE_DECLINED", "SERVICE_CANCELLED", "SERVICE_RESCHEDULED"].includes(
+      ["SERVICE_DECLINED", "SERVICE_CANCELLED", "SERVICE_COMPLETED"].includes(
         event,
       ) &&
-      note.trim().length < 5
-    ) {
-      setError("Please enter a reason of at least 5 characters.");
+      !window.confirm(`${labels[event]} for service #${selected.id}?`)
+    )
       return;
-    }
-    if (
-      event === "SERVICE_STARTED" &&
-      !sourceJobs.some(
-        (job) =>
-          job.type === "SERVICE" &&
-          ["ASSIGNED", "IN_PROGRESS"].includes(job.status) &&
-          job.members?.length > 0,
-      )
-    ) {
-      setError("Assign a technician team below before starting this service.");
-      return;
-    }
-    if (!window.confirm(`${labels[event]} for service #${selected.id}?`))
-      return;
+
     setBusy(true);
-    setError("");
+    setActionError("");
     try {
       const { data } = await api.post(
         `/api/management/services/${selected.id}/events`,
         {
           requestKey: crypto.randomUUID(),
           eventCode: event,
-          note: note.trim(),
-          schedule: requiresSchedule ? schedule : null,
-          technicianIds: event === "SERVICE_ACCEPTED" ? technicianIds : [],
+          note: customerReason.trim(), // visible to customer; existing API field
+          internalNote: internalNote.trim(), // never sent to customer
+          schedule: needsSchedule ? schedule : null,
+          technicianIds:
+            event === "SERVICE_ACCEPTED" && canAssign ? technicianIds : [],
         },
       );
       if (!data.success) throw new Error("Update not confirmed.");
       setNotice(
-        event === "SERVICE_ACCEPTED"
-          ? `Service #${selected.id} confirmed. Work order created; ${technicianIds.length ? "workers assigned" : "pending technician assignment"}.`
-          : `Service #${selected.id}: ${labels[event]} saved.`,
+        `Service #${selected.id}: ${labels[event]} recorded by ${staff?.name || "staff"}.`,
       );
-      close();
+      close(true);
       setRevision((value) => value + 1);
       window.dispatchEvent(new Event("av-management-updated"));
     } catch (requestError) {
-      setError(
+      setActionError(
         requestError.response?.data?.message ||
           "Could not update the service request.",
       );
@@ -207,93 +239,142 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
   }
 
   const callLink = phoneHref(selected?.contact);
-
   return (
-    <div className="wsm-page">
+    <div className="wsm-page av-records-responsive av-services-page">
       <header className="wsm-head">
         <div>
           <span className="wsm-kicker">
             <ClipboardList size={16} /> SERVICES
           </span>
           <h1>Service requests</h1>
-          <p>
-            Manage online bookings and service agreements recorded by staff from
-            Facebook Messenger.
-          </p>
+          <p>Manage online, POS walk-in and Facebook service requests.</p>
         </div>
         <button
           type="button"
           className="wsm-secondary"
-          onClick={() => setRevision((value) => value + 1)}
+          onClick={() => setRevision((n) => n + 1)}
           disabled={loading}
         >
           <RefreshCw size={16} /> Refresh
         </button>
       </header>
       {error && (
-        <p role="alert" className="wsm-error">
+        <p className="wsm-error" role="alert">
           {error}
         </p>
       )}
       {notice && (
-        <p role="status" className="wsm-success">
-          <CheckCircle2 size={16} />
-          {notice}
-        </p>
+        <div role="status" className="wsm-success service-action-toast">
+          <CheckCircle2 size={17} />
+          <span>{notice}</span>
+          <button
+            type="button"
+            onClick={() => setNotice("")}
+            aria-label="Dismiss confirmation"
+          >
+            <X size={16} />
+          </button>
+        </div>
       )}
-      <section className="wsm-panel">
-        <div className="wsm-table-head">
-          <h2>{filtered.length} service requests</h2>
-          <label className="wsm-search">
+      <section className="sales-panel" aria-label="Service request records">
+        <div className="sales-section-head">
+          <h2>Service request records</h2>
+          <span>{filtered.length} shown</span>
+        </div>
+        <div className="sales-filters">
+          <label className="sales-search">
             <Search size={17} />
             <input
               aria-label="Search service requests"
-              placeholder="Search customer, phone or service"
+              placeholder="Search requests, contacts, or payments"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(ev) => setSearch(ev.target.value)}
             />
           </label>
         </div>
         {loading ? (
-          <p className="wsm-empty" role="status">
+          <p role="status" className="sales-empty">
             Loading services…
           </p>
         ) : filtered.length === 0 ? (
-          <p className="wsm-empty">No matching service requests.</p>
+          <p className="sales-empty">No matching service requests.</p>
         ) : (
-          <div className="wsm-overflow">
-            <table className="wsm-table">
+          <div className="sales-table-scroll">
+            <table className="sales-table">
               <thead>
                 <tr>
                   <th>Request</th>
                   <th>Customer</th>
                   <th>Source</th>
                   <th>Contact</th>
-                  <th>Service</th>
-                  <th>Schedule</th>
                   <th>Status</th>
-                  <th>Actions</th>
+                  <th>Payment</th>
+                  <th>Service</th>
+                  <th>Total</th>
+                  <th>Schedule</th>
+                  <th>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((row) => (
                   <tr key={row.id}>
-                    <td>{row.id}</td>
-                    <td>{row.customer}</td>
-                    <td>{row.facebookRequestId ? "Facebook" : "Online"}</td>
-                    <td>{row.contact || "Not provided"}</td>
-                    <td>{row.products}</td>
-                    <td>{row.schedule || "Pending confirmation"}</td>
-                    <td>
-                      <span className="wsm-status">{row.status}</span>
+                    <td data-label="Request">
+                      <strong>#{row.reference || row.id}</strong>
                     </td>
-                    <td>
+                    <td data-label="Customer">{row.customer}</td>
+                    <td data-label="Source">
+                      {row.facebookRequestId
+                        ? "Facebook"
+                        : String(row.customerNotes || "").includes(
+                              "Walk-in service booked at POS",
+                            )
+                          ? "Walk-in POS"
+                          : "Online"}
+                    </td>
+                    <td data-label="Contact">
+                      {phoneHref(row.contact) ? (
+                        <a href={phoneHref(row.contact)}>{row.contact}</a>
+                      ) : (
+                        row.contact || "Not provided"
+                      )}
+                    </td>
+                    <td data-label="Status">
+                      <span
+                        className={`sales-pill is-${String(row.status || "unknown").toLowerCase()}`}
+                      >
+                        {String(row.status || "Unknown").replaceAll("_", " ")}
+                      </span>
+                    </td>
+                    <td data-label="Payment">
+                      <span
+                        className={`sales-pill is-${String(row.paymentStatus || "no-record").toLowerCase()}`}
+                      >
+                        {row.paymentStatus === "NO_RECORD" || !row.paymentStatus
+                          ? "Not recorded"
+                          : String(row.paymentStatus).replaceAll("_", " ")}
+                      </span>
+                    </td>
+                    <td data-label="Service">{row.products || "—"}</td>
+                    <td data-label="Total">
+                      <strong>
+                        {new Intl.NumberFormat("en-PH", {
+                          style: "currency",
+                          currency: "PHP",
+                        }).format(Number(row.total) || 0)}
+                      </strong>
+                    </td>
+                    <td data-label="Schedule">
+                      {row.schedule
+                        ? String(row.schedule).replace("T", " at ")
+                        : "Not scheduled"}
+                    </td>
+                    <td data-label="Action">
                       <button
                         type="button"
-                        className="wsm-secondary wsm-row-action"
+                        className="sales-small-action"
                         onClick={() => open(row)}
                       >
-                        View / Manage
+                        View / Manage <ArrowRight size={15} />
                       </button>
                     </td>
                   </tr>
@@ -303,183 +384,269 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
           </div>
         )}
       </section>
+
       {selectedId && !loading && !selected && (
         <p role="alert" className="wsm-error">
-          Service request #{selectedId} isn't in the current results. Refresh or
-          check the original request.
+          Service request #{selectedId} was not found in the current list.
         </p>
       )}
-      {selected && (
-        <div
-          className="wsm-backdrop"
-          onMouseDown={(mouseEvent) => {
-            if (mouseEvent.target === mouseEvent.currentTarget) close();
-          }}
-        >
-          <section
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="service-detail-heading"
-            className="wsm-dialog"
+      {selected &&
+        createPortal(
+          <div
+            className="wsm-backdrop service-request-backdrop"
+            onMouseDown={(e) => {
+              if (e.target === e.currentTarget) close();
+            }}
           >
-            <div className="wsm-dialog-head">
-              <h2 id="service-detail-heading">Service #{selected.id}</h2>
-              <button
-                type="button"
-                className="wsm-close"
-                aria-label="Close service request"
-                onClick={close}
-                disabled={busy}
-              >
-                <X size={18} />
-              </button>
-            </div>
-            <div className="wsm-form">
-              <p>
-                <strong>Customer:</strong> {selected.customer}
-              </p>
-              <p>
-                <strong>Source:</strong>{" "}
-                {selected.facebookRequestId
-                  ? "Manually entered Facebook Messenger agreement"
-                  : "Online booking"}
-              </p>
-              <p>
-                <Phone size={16} aria-hidden="true" />{" "}
-                <strong>Contact number:</strong>{" "}
-                {callLink ? (
-                  <a href={callLink}>{selected.contact}</a>
-                ) : (
-                  selected.contact || "Not provided"
-                )}
-              </p>
-              <p>
-                <MapPin size={16} aria-hidden="true" />{" "}
-                <strong>Service address:</strong>{" "}
-                {selected.address || "Not provided"}
-              </p>
-              <p>
-                <strong>Requested service:</strong> {selected.products}
-              </p>
-              <p>
-                <CalendarDays size={16} aria-hidden="true" />{" "}
-                <strong>Schedule:</strong>{" "}
-                {selected.schedule || "Pending confirmation"}
-              </p>
-              <p>
-                <strong>Status:</strong> {selected.status}
-              </p>
-              {selected.status !== "PENDING" &&
-                selected.status !== "CANCELLED" && (
-                  <SourceTeamPanel
-                    key={`SERVICE-${selected.id}`}
-                    kind="SERVICE"
-                    sourceId={selected.id}
-                    onJobsChange={setSourceJobs}
-                  />
-                )}
-              {availableActions(selected).length ? (
-                <form className="wsm-form" onSubmit={save}>
-                  <label className="wsm-field">
-                    Next action
-                    <select
-                      value={event}
-                      onChange={(changeEvent) =>
-                        setEvent(changeEvent.target.value)
-                      }
-                      required
+            <section
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="service-detail-heading"
+              className="wsm-dialog service-request-dialog"
+            >
+              <div className="wsm-dialog-head">
+                <h2 id="service-detail-heading">Service #{selected.id}</h2>
+                <button
+                  type="button"
+                  className="wsm-close"
+                  aria-label="Close service request"
+                  onClick={() => close()}
+                  disabled={busy}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="wsm-form service-request-scroll">
+                <p>
+                  <strong>Customer:</strong> {selected.customer}
+                </p>
+                <p>
+                  <strong>Source:</strong>{" "}
+                  {selected.facebookRequestId
+                    ? "Facebook Messenger"
+                    : selected.customerNotes?.includes(
+                          "Walk-in service booked at POS",
+                        )
+                      ? "POS walk-in"
+                      : "Online booking"}
+                </p>
+                <p>
+                  <Phone size={16} aria-hidden="true" />{" "}
+                  <strong>Contact:</strong>{" "}
+                  {callLink ? (
+                    <a href={callLink}>{selected.contact}</a>
+                  ) : (
+                    selected.contact || "Not provided"
+                  )}
+                </p>
+                <p>
+                  <MapPin size={16} aria-hidden="true" />{" "}
+                  <strong>Address:</strong> {selected.address || "Not provided"}
+                </p>
+                <p>
+                  <strong>Requested service:</strong> {selected.products}
+                </p>
+                <div className="service-request-context">
+                  <div>
+                    <strong>Customer concern</strong>
+                    <p>{selected.concern?.trim() || "No concern provided."}</p>
+                  </div>
+                  <div>
+                    <strong>Customer notes</strong>
+                    <p>
+                      {selected.customerNotes?.trim() || "No additional notes."}
+                    </p>
+                  </div>
+                  {Number(selected.additionalFee) > 0 && (
+                    <div>
+                      <strong>
+                        Additional fee:{" "}
+                        {new Intl.NumberFormat("en-PH", {
+                          style: "currency",
+                          currency: "PHP",
+                        }).format(Number(selected.additionalFee))}
+                      </strong>
+                      <p>
+                        {selected.additionalFeeReason || "No reason recorded."}
+                      </p>
+                    </div>
+                  )}
+                  {selected.destinationAddress && (
+                    <div>
+                      <strong>Relocation destination</strong>
+                      <p>{selected.destinationAddress}</p>
+                    </div>
+                  )}
+                </div>
+                <p>
+                  <CalendarDays size={16} aria-hidden="true" />{" "}
+                  <strong>Schedule:</strong>{" "}
+                  {selected.schedule || "Pending confirmation"}
+                </p>
+                <div className="av-service-status-pair">
+                  <p>
+                    <strong>Status:</strong>{" "}
+                    <span
+                      className={`sales-pill is-${String(selected.status).toLowerCase()}`}
                     >
-                      {availableActions(selected).map((code) => (
-                        <option value={code} key={code}>
-                          {labels[code]}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  {[
-                    "SERVICE_ACCEPTED",
-                    "SERVICE_SCHEDULED",
-                    "SERVICE_RESCHEDULED",
-                  ].includes(event) && (
-                    <AvailabilityPicker
-                      value={schedule}
-                      onChange={setSchedule}
-                      disabled={busy}
-                      allowExistingValue
-                      label="Select available service date and time"
+                      {selected.status}
+                    </span>
+                  </p>
+                  <p>
+                    <strong>Payment:</strong>{" "}
+                    <span
+                      className={`sales-pill is-${String(selected.paymentStatus || "no-record").toLowerCase()}`}
+                    >
+                      {!selected.paymentStatus ||
+                      selected.paymentStatus === "NO_RECORD"
+                        ? "Not recorded"
+                        : selected.paymentStatus}
+                    </span>
+                  </p>
+                </div>
+                <ServicePaymentPanel
+                  requestId={selected.id}
+                  refreshKey={revision}
+                />
+                {canAssign &&
+                  selected.status !== "PENDING" &&
+                  selected.status !== "CANCELLED" && (
+                    <SourceTeamPanel
+                      key={`SERVICE-${selected.id}`}
+                      kind="SERVICE"
+                      sourceId={selected.id}
+                      onJobsChange={setSourceJobs}
                     />
                   )}
-                  {event === "SERVICE_ACCEPTED" && (
-                    <TechnicianTeamPicker
-                      value={technicianIds}
-                      onChange={setTechnicianIds}
-                      disabled={busy}
-                    />
-                  )}
-                  {event === "SERVICE_STARTED" &&
-                    !sourceJobs.some(
-                      (job) =>
-                        job.type === "SERVICE" &&
-                        ["ASSIGNED", "IN_PROGRESS"].includes(job.status) &&
-                        job.members?.length > 0,
-                    ) && (
+                {actions.length > 0 ? (
+                  <form
+                    id="service-request-action-form"
+                    className="wsm-form service-request-action-form"
+                    onSubmit={save}
+                  >
+                    <label className="wsm-field">
+                      Next action
+                      <select
+                        value={event}
+                        onChange={(e) => {
+                          setEvent(e.target.value);
+                          setActionError("");
+                        }}
+                        required
+                      >
+                        {actions.map((code) => (
+                          <option value={code} key={code}>
+                            {labels[code]}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    {[
+                      "SERVICE_ACCEPTED",
+                      "SERVICE_SCHEDULED",
+                      "SERVICE_RESCHEDULED",
+                    ].includes(event) && (
+                      <AvailabilityPicker
+                        value={schedule}
+                        onChange={setSchedule}
+                        disabled={busy}
+                        allowExistingValue
+                        existingValue={originalSchedule}
+                        label="Select available service date and time"
+                      />
+                    )}
+                    {event === "SERVICE_ACCEPTED" && canAssign && (
+                      <TechnicianTeamPicker
+                        value={technicianIds}
+                        onChange={setTechnicianIds}
+                        disabled={busy}
+                      />
+                    )}
+                    {event === "SERVICE_STARTED" && !hasAssignedTeam && (
                       <p className="wsm-info">
-                        Assign the service team above before starting the job.
+                        Assign the service team before starting the job.
                       </p>
                     )}
-                  <label className="wsm-field">
-                    Note / reason
-                    <textarea
-                      value={note}
-                      maxLength={1000}
-                      rows={3}
-                      onChange={(changeEvent) =>
-                        setNote(changeEvent.target.value)
-                      }
-                    />
-                  </label>
-                  <div className="wsm-form-actions">
-                    <button
-                      className="wsm-secondary"
-                      type="button"
-                      onClick={close}
-                      disabled={busy}
-                    >
-                      Close
-                    </button>
-                    <button
-                      className="wsm-primary"
-                      type="submit"
-                      disabled={
-                        busy ||
-                        (event === "SERVICE_STARTED" &&
-                          !sourceJobs.some(
-                            (job) =>
-                              job.type === "SERVICE" &&
-                              ["ASSIGNED", "IN_PROGRESS"].includes(
-                                job.status,
-                              ) &&
-                              job.members?.length > 0,
-                          ))
-                      }
-                    >
-                      {busy
-                        ? "Saving…"
-                        : event === "SERVICE_ACCEPTED"
-                          ? "Confirm & create work order"
-                          : "Confirm update"}
-                    </button>
-                  </div>
-                </form>
-              ) : (
-                <p className="wsm-footnote">
-                  No further status actions available for this request.
-                </p>
-              )}
-            </div>
-          </section>
-        </div>
-      )}
+                    <div style={{ display: "grid", gap: 14, minWidth: 0 }}>
+                      <label className="wsm-field">
+                        Customer-visible reason{" "}
+                        {[
+                          "SERVICE_DECLINED",
+                          "SERVICE_CANCELLED",
+                          "SERVICE_RESCHEDULED",
+                        ].includes(event)
+                          ? "(required)"
+                          : "(optional)"}
+                        <textarea
+                          maxLength={1000}
+                          rows={2}
+                          value={customerReason}
+                          onChange={(e) => setCustomerReason(e.target.value)}
+                          placeholder="Reason the customer can see in notifications and service history"
+                        />
+                        <small>
+                          This reason is shared with the customer. Do not write
+                          private staff information here.
+                        </small>
+                      </label>
+                      <label className="wsm-field">
+                        Internal staff note (optional)
+                        <textarea
+                          maxLength={1000}
+                          rows={3}
+                          value={internalNote}
+                          onChange={(e) => setInternalNote(e.target.value)}
+                          placeholder="For store staff and assigned technicians only"
+                        />
+                        <small>
+                          Private. Not included in customer notifications or
+                          customer history.
+                        </small>
+                      </label>
+                    </div>
+                    {actionError && (
+                      <p className="wsm-error" role="alert">
+                        {actionError}
+                      </p>
+                    )}
+                  </form>
+                ) : (
+                  <p className="wsm-footnote">
+                    No further status actions available for your staff role.
+                  </p>
+                )}
+                <ServiceActivityHistory requestId={selected.id} />
+              </div>
+              <footer className="service-request-footer">
+                <button
+                  className="wsm-secondary"
+                  type="button"
+                  onClick={() => close()}
+                  disabled={busy}
+                >
+                  Close
+                </button>
+                {actions.length > 0 && (
+                  <button
+                    className="wsm-primary"
+                    type="submit"
+                    form="service-request-action-form"
+                    disabled={
+                      busy || (event === "SERVICE_STARTED" && !hasAssignedTeam)
+                    }
+                  >
+                    {busy
+                      ? "Saving…"
+                      : event === "SERVICE_ACCEPTED"
+                        ? "Accept request & confirm schedule"
+                        : "Confirm update"}
+                  </button>
+                )}
+              </footer>
+            </section>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

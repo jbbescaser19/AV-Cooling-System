@@ -4,10 +4,11 @@ export function paymentModel(db) {
     async lockPayments(orderId) {
       const [rows] = await db.execute(
         `SELECT
-               payment_id AS id,
-               payment_status AS status
-             FROM payments
-             WHERE order_id = ?
+               p.payment_id AS id,
+               p.payment_status AS status,
+               pm.code AS method
+             FROM payments p JOIN payment_methods pm ON pm.payment_method_id=p.payment_method_id
+             WHERE p.order_id = ?
              FOR UPDATE`,
         [orderId],
       );

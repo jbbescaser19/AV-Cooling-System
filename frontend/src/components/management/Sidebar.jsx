@@ -1,10 +1,10 @@
 import { NavLink } from "react-router-dom";
-
 import {
-  BarChart3,
   Archive,
+  BarChart3,
   Bell,
   Boxes,
+  Calculator,
   CalendarDays,
   ClipboardList,
   ContactRound,
@@ -24,7 +24,6 @@ import {
 } from "lucide-react";
 
 import { readStaff } from "../../utils/authMock";
-
 import "../../styles/management/sidebar.css";
 
 const nav = [
@@ -35,12 +34,11 @@ const nav = [
         "Dashboard",
         "/management/dashboard",
         LayoutDashboard,
-        ["OWNER", "MANAGER", "SALES_CASHIER", "TECHNICIAN"],
+        ["OWNER", "MANAGER", "TECHNICIAN"],
       ],
       ["Archive", "/management/archive", Archive, ["OWNER", "MANAGER"]],
     ],
   },
-
   {
     label: "Sales",
     items: [
@@ -50,33 +48,20 @@ const nav = [
         ShoppingCart,
         ["OWNER", "MANAGER", "SALES_CASHIER"],
       ],
-
+      ["Orders", "/management/orders", ClipboardList, ["OWNER", "MANAGER"]],
       [
-        "Orders",
-        "/management/orders",
-        ClipboardList,
-        ["OWNER", "MANAGER", "SALES_CASHIER"],
+        "Completed Jobs History",
+        "/management/installation-history",
+        History,
+        ["OWNER", "MANAGER"],
       ],
-
-      [
-        "Payments",
-        "/management/payments",
-        CreditCard,
-        ["OWNER", "MANAGER", "SALES_CASHIER"],
-      ],
+      ["Payments", "/management/payments", CreditCard, ["OWNER", "MANAGER"]],
     ],
   },
-
   {
     label: "Catalog",
     items: [
-      [
-        "Products",
-        "/management/products",
-        Package,
-        ["OWNER", "MANAGER", "SALES_CASHIER"],
-      ],
-
+      ["Products", "/management/products", Package, ["OWNER", "MANAGER"]],
       [
         "Product Categories",
         "/management/categories",
@@ -87,10 +72,9 @@ const nav = [
         "Product Variants",
         "/management/variants",
         Package,
-        ["OWNER", "MANAGER", "SALES_CASHIER"],
+        ["OWNER", "MANAGER"],
       ],
       ["Inventory", "/management/inventory", Boxes, ["OWNER", "MANAGER"]],
-
       [
         "Stock Movements",
         "/management/stock-movements",
@@ -99,7 +83,17 @@ const nav = [
       ],
     ],
   },
-
+  {
+    label: "Tools",
+    items: [
+      [
+        "Capacity Calculator",
+        "/management/capacity-calculator",
+        Calculator,
+        ["OWNER", "MANAGER", "TECHNICIAN"],
+      ],
+    ],
+  },
   {
     label: "Services",
     items: [
@@ -109,32 +103,27 @@ const nav = [
         Wrench,
         ["OWNER", "MANAGER"],
       ],
-
       [
         "Service Requests",
         "/management/service-requests",
         ReceiptText,
         ["OWNER", "MANAGER"],
       ],
-
       ["Technicians", "/management/technicians", Users, ["OWNER", "MANAGER"]],
-
       [
         "Booking Calendar",
         "/management/booking-calendar",
         CalendarDays,
-        ["OWNER", "MANAGER", "SALES_CASHIER", "TECHNICIAN"],
+        ["OWNER", "MANAGER", "TECHNICIAN"],
       ],
-
       [
         "Schedules",
         "/management/schedules",
         CalendarDays,
-        ["OWNER", "MANAGER", "SALES_CASHIER", "TECHNICIAN"],
+        ["OWNER", "MANAGER", "TECHNICIAN"],
       ],
     ],
   },
-
   {
     label: "Customers",
     items: [
@@ -142,7 +131,7 @@ const nav = [
         "Customers",
         "/management/customers",
         ContactRound,
-        ["OWNER", "MANAGER", "SALES_CASHIER"],
+        ["OWNER", "MANAGER"],
       ],
       [
         "Feedback & Sentiment",
@@ -152,7 +141,6 @@ const nav = [
       ],
     ],
   },
-
   {
     label: "Operations",
     items: [
@@ -160,11 +148,9 @@ const nav = [
         "Facebook Requests",
         "/management/facebook-requests",
         MessageCircle,
-        ["OWNER", "MANAGER", "SALES_CASHIER"],
+        ["OWNER", "MANAGER"],
       ],
-
       ["Reports", "/management/reports", BarChart3, ["OWNER", "MANAGER"]],
-
       [
         "Notifications",
         "/management/notifications",
@@ -173,12 +159,10 @@ const nav = [
       ],
     ],
   },
-
   {
     label: "Administration",
     items: [
       ["Staff Accounts", "/management/staff", UserCog, ["OWNER"]],
-
       ["Audit Logs", "/management/audit-logs", ShieldCheck, ["OWNER"]],
     ],
   },
@@ -189,15 +173,11 @@ export default function Sidebar({ open, onClose }) {
 
   return (
     <aside className={`mgmt-sidebar ${open ? "open" : ""}`}>
-      {/* BRAND */}
-
       <div className="mgmt-brand">
         <div className="mgmt-brand-info">
           <span className="mgmt-brand-logo">AV</span>
-
           <div>
             <strong>AV Cooling</strong>
-
             <small>Management</small>
           </div>
         </div>
@@ -212,17 +192,14 @@ export default function Sidebar({ open, onClose }) {
         </button>
       </div>
 
-      {/* NAVIGATION */}
-
       <nav className="side-scroll">
         {nav.map((group) => {
-          const items = group.items.filter((item) =>
-            item[3].includes(staff?.role),
+          const items = group.items.filter(
+            ([, , , roles]) =>
+              Array.isArray(roles) && roles.includes(staff?.role),
           );
 
-          if (!items.length) {
-            return null;
-          }
+          if (!items.length) return null;
 
           return (
             <div className="side-group" key={group.label || "main"}>
@@ -236,7 +213,6 @@ export default function Sidebar({ open, onClose }) {
                   className={({ isActive }) => (isActive ? "active" : "")}
                 >
                   <Icon size={18} aria-hidden="true" />
-
                   <span>{label}</span>
                 </NavLink>
               ))}

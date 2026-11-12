@@ -9,6 +9,7 @@ import {
 import {
   User,
   Package,
+  Calculator,
   CalendarDays,
   CreditCard,
   Bell,
@@ -32,6 +33,7 @@ import "../styles/customer/customer-navigation.css";
 const items = [
   ["profile", User, "Profile"],
   ["orders", Package, "Orders"],
+  ["capacity-calculator", Calculator, "Aircon Capacity Calculator"],
   ["services", CalendarDays, "Services"],
   ["payments", CreditCard, "Payments"],
   ["notifications", Bell, "Notifications"],

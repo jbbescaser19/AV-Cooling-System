@@ -23,7 +23,8 @@ export function dashboardModel(db) {
       const [rows] = await db.execute(
         `SELECT COUNT(*) AS paidCount,
                 COALESCE(SUM(amount), 0) AS paidAmount
-         FROM payments
+         FROM (SELECT amount,paid_at,created_at,payment_status FROM payments
+           UNION ALL SELECT amount,paid_at,created_at,status AS payment_status FROM service_payments) paid_facts
          WHERE payment_status = 'PAID'`,
       );
       return rows[0];
@@ -34,7 +35,8 @@ export function dashboardModel(db) {
         `SELECT DATE_FORMAT(COALESCE(paid_at, created_at), '%Y-%m-%d') AS bucket,
                 COUNT(*) AS paymentCount,
                 COALESCE(SUM(amount), 0) AS amount
-         FROM payments
+         FROM (SELECT amount,paid_at,created_at,payment_status FROM payments
+           UNION ALL SELECT amount,paid_at,created_at,status AS payment_status FROM service_payments) paid_facts
          WHERE payment_status = 'PAID'
            AND COALESCE(paid_at, created_at) >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
            AND COALESCE(paid_at, created_at) < DATE_ADD(CURDATE(), INTERVAL 1 DAY)
@@ -53,7 +55,8 @@ export function dashboardModel(db) {
                 ) AS bucket,
                 COUNT(*) AS paymentCount,
                 COALESCE(SUM(amount), 0) AS amount
-         FROM payments
+         FROM (SELECT amount,paid_at,created_at,payment_status FROM payments
+           UNION ALL SELECT amount,paid_at,created_at,status AS payment_status FROM service_payments) paid_facts
          WHERE payment_status = 'PAID'
            AND COALESCE(paid_at, created_at) >= DATE_SUB(
              DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY),
@@ -75,7 +78,8 @@ export function dashboardModel(db) {
         `SELECT DATE_FORMAT(COALESCE(paid_at, created_at), '%Y-%m') AS month,
                 COUNT(*) AS paymentCount,
                 SUM(amount) AS amount
-         FROM payments
+         FROM (SELECT amount,paid_at,created_at,payment_status FROM payments
+           UNION ALL SELECT amount,paid_at,created_at,status AS payment_status FROM service_payments) paid_facts
          WHERE payment_status = 'PAID'
            AND COALESCE(paid_at, created_at) >=
              DATE_SUB(DATE_FORMAT(CURRENT_DATE(), '%Y-%m-01'), INTERVAL 5 MONTH)
@@ -91,7 +95,8 @@ export function dashboardModel(db) {
         `SELECT DATE_FORMAT(COALESCE(paid_at, created_at), '%Y') AS bucket,
                 COUNT(*) AS paymentCount,
                 COALESCE(SUM(amount), 0) AS amount
-         FROM payments
+         FROM (SELECT amount,paid_at,created_at,payment_status FROM payments
+           UNION ALL SELECT amount,paid_at,created_at,status AS payment_status FROM service_payments) paid_facts
          WHERE payment_status = 'PAID'
            AND COALESCE(paid_at, created_at) >= MAKEDATE(YEAR(CURDATE()) - 4, 1)
            AND COALESCE(paid_at, created_at) < DATE_ADD(CURDATE(), INTERVAL 1 DAY)

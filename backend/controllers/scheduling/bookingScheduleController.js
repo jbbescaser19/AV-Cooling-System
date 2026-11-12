@@ -3,6 +3,7 @@ import {
   getCalendarDay,
   updateCalendarSlot,
   updateCalendarDay,
+  getMyTechnicianCalendar,
 } from "../../services/scheduling/bookingScheduleService.js";
 
 const handle = (action) => async (req, res) => {
@@ -35,4 +36,8 @@ export const changeSlotController = handle(async (req) =>
 );
 export const changeDayController = handle(async (req) =>
   updateCalendarDay(req.staff, req.body),
+);
+
+export const myTechnicianCalendarController = handle(async (req) =>
+  getMyTechnicianCalendar(req.staff, req.query.month),
 );

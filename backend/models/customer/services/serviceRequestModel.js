@@ -63,8 +63,10 @@ export function serviceRequestModel(db) {
            aircon_brand,
            aircon_model,
            aircon_horsepower,
+           copper_pipe_feet,
+           includes_dismantling,
            status
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING')`,
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING')`,
         [
           request.customerId,
           request.serviceTypeId,
@@ -80,6 +82,8 @@ export function serviceRequestModel(db) {
           request.aircon?.brand ?? null,
           request.aircon?.model ?? null,
           request.aircon?.horsepower ?? null,
+          request.copperFeet,
+          request.includeDismantling ? 1 : 0,
         ],
       );
     },
@@ -103,6 +107,8 @@ export function serviceRequestModel(db) {
            sr.aircon_brand AS airconBrand,
            sr.aircon_model AS airconModel,
            sr.aircon_horsepower AS airconHorsepower,
+           sr.copper_pipe_feet AS copperFeet,
+           sr.includes_dismantling AS includesDismantling,
            sr.status
          FROM service_requests AS sr
          INNER JOIN service_types AS st

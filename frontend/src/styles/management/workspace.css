@@ -540,3 +540,133 @@
     gap: 4px;
   }
 }
+
+/* Clear distinction between notes supplied by customers and actions by staff. */
+.service-request-context {
+  display: grid;
+  gap: 10px;
+  margin: 8px 0 16px;
+}
+.service-request-context > div {
+  padding: 11px 14px;
+  border-radius: 11px;
+  border: 1px solid #d8e6ed;
+  border-left: 4px solid #0891b2;
+  background: #f4fafc;
+  overflow-wrap: anywhere;
+}
+.service-request-context strong {
+  display: block;
+  font-size: 0.82rem;
+  color: #17425e;
+}
+.service-request-context p {
+  margin: 5px 0 0;
+  white-space: pre-wrap;
+  color: #304c60;
+  font-size: 0.9rem;
+}
+
+.service-action-toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 200;
+  max-width: min(430px, calc(100vw - 32px));
+  box-shadow: 0 9px 25px rgba(7, 41, 64, 0.18);
+  border-left: 4px solid #15803d;
+  align-items: center;
+}
+.service-action-toast span {
+  flex: 1;
+}
+.service-action-toast button {
+  margin-left: auto;
+  display: inline-flex;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 6px;
+  border-radius: 6px;
+}
+@media (max-width: 620px) {
+  .service-action-toast {
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+  }
+}
+
+/* Consistent accessible status labels in service, inventory, staff and payment tables. */
+.wsm-status[data-status] {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 0.76rem;
+  font-weight: 850;
+  line-height: 1.4;
+}
+.wsm-status[data-status="PENDING"],
+.wsm-status[data-status="AWAITING_VERIFICATION"] {
+  color: #854d0e;
+  background: #fff4d6;
+  border-color: #f6d693;
+}
+.wsm-status[data-status="CONFIRMED"],
+.wsm-status[data-status="ACCEPTED"],
+.wsm-status[data-status="ASSIGNED"] {
+  color: #1e40af;
+  background: #eaf2ff;
+  border-color: #bcd3ff;
+}
+.wsm-status[data-status="SCHEDULED"],
+.wsm-status[data-status="AVAILABLE"] {
+  color: #0e7490;
+  background: #e0f8fd;
+  border-color: #a7dce9;
+}
+.wsm-status[data-status="IN_PROGRESS"],
+.wsm-status[data-status="PROCESSING"] {
+  color: #6d28d9;
+  background: #f2eaff;
+  border-color: #d6c1fd;
+}
+.wsm-status[data-status="COMPLETED"],
+.wsm-status[data-status="PAID"],
+.wsm-status[data-status="CONVERTED"] {
+  color: #166534;
+  background: #e9f8ef;
+  border-color: #aee2bb;
+}
+.wsm-status[data-status="CANCELLED"],
+.wsm-status[data-status="DECLINED"],
+.wsm-status[data-status="FAILED"],
+.wsm-status[data-status="OFF"],
+.wsm-status[data-status="REFUNDED"] {
+  color: #991b1b;
+  background: #fff0f0;
+  border-color: #f6bebe;
+}
+/* Action controls match their meaning, not the brand blue for every action. */
+.wsm-primary[data-action="SERVICE_COMPLETED"] {
+  background: #147d46;
+  border-color: #147d46;
+}
+.wsm-primary[data-action="SERVICE_STARTED"] {
+  background: #6d28d9;
+  border-color: #6d28d9;
+}
+.wsm-primary[data-action="SERVICE_RESCHEDULED"],
+.wsm-primary[data-action="SERVICE_SCHEDULED"] {
+  background: #0e7490;
+  border-color: #0e7490;
+}
+.wsm-primary[data-action="SERVICE_CANCELLED"],
+.wsm-primary[data-action="SERVICE_DECLINED"] {
+  background: #b91c1c;
+  border-color: #b91c1c;
+}
+.wsm-primary[data-action]:hover:not(:disabled) {
+  filter: brightness(0.94);
+}

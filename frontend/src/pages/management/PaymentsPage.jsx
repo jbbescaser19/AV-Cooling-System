@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { CreditCard, RefreshCw, Search, ShieldCheck } from "lucide-react";
 import api from "../../../api/api.js";
+import { getStaff } from "../../utils/authMock.js";
 import "../../styles/management/sales-live.css";
 
 const money = (value) =>
@@ -22,6 +23,9 @@ export default function PaymentsPage() {
   const [selected, setSelected] = useState(null);
   const [collected, setCollected] = useState(false);
   const [note, setNote] = useState("");
+  const isManual =
+    selected && ["GCASH", "BANK_TRANSFER"].includes(selected.method);
+  const canVerifyManual = ["OWNER", "MANAGER"].includes(getStaff()?.role);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -48,7 +52,7 @@ export default function PaymentsPage() {
       payments.filter(
         (p) =>
           (status === "ALL" || p.status === status) &&
-          `${p.orderNumber} ${p.customer} ${p.channel}`
+          `${p.orderNumber} ${p.customer} ${p.channel} ${p.transferReference || ""}`
             .toLowerCase()
             .includes(search.toLowerCase()),
       ),
@@ -79,7 +83,9 @@ export default function PaymentsPage() {
     if (!selected || !collected || busyId) return;
     if (
       !window.confirm(
-        `Confirm you physically collected ${money(selected.amount)} for ${selected.orderNumber}?`,
+        isManual
+          ? `Confirm actual receipt of ${money(selected.amount)} for ${selected.orderNumber}? Check the bank/GCash app first.`
+          : `Confirm you physically collected ${money(selected.amount)} for ${selected.orderNumber}?`,
       )
     )
       return;
@@ -87,12 +93,20 @@ export default function PaymentsPage() {
     setError("");
     try {
       const { data } = await api.post(
-        `/api/management/sales/payments/${selected.id}/confirm-cash`,
-        { cashCollected: true, note: note.trim() },
+        selected.channel === "SERVICE"
+          ? `/api/management/sales/service-payments/${String(selected.id).replace(/^S/, "")}/${isManual ? "confirm-transfer" : "confirm-cash"}`
+          : `/api/management/sales/payments/${selected.id}/${isManual ? "confirm-transfer" : "confirm-cash"}`,
+        isManual
+          ? {
+              verifiedExternally: true,
+              reference: selected.transferReference,
+              note: note.trim(),
+            }
+          : { cashCollected: true, note: note.trim() },
       );
       if (!data.success) throw new Error("Payment confirmation was not saved.");
       setSuccess(
-        `Cash payment for ${selected.orderNumber} confirmed in MySQL.`,
+        `${isManual ? selected.method : "Cash"} payment for ${selected.orderNumber} confirmed in MySQL.`,
       );
       setSelected(null);
       setRefresh((n) => n + 1);
@@ -116,7 +130,10 @@ export default function PaymentsPage() {
             <CreditCard size={17} /> PAYMENT RECORDS
           </span>
           <h1>Payments</h1>
-          <p>Real online and walk-in payment records from MySQL.</p>
+          <p>
+            Product orders and service appointments · real payment records from
+            MySQL.
+          </p>
         </div>
         <button
           type="button"
@@ -157,7 +174,7 @@ export default function PaymentsPage() {
             <Search size={18} />
             <input
               value={search}
-              placeholder="Search order or customer"
+              placeholder="Search order, service, or customer"
               aria-label="Search payments"
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -203,7 +220,14 @@ export default function PaymentsPage() {
                     </td>
                     <td>{p.customer}</td>
                     <td>{p.channel}</td>
-                    <td>{p.method}</td>
+                    <td>
+                      {p.method}
+                      {p.transferReference && (
+                        <small style={{ display: "block" }}>
+                          Ref: {p.transferReference}
+                        </small>
+                      )}
+                    </td>
                     <td>
                       <span
                         className={`sales-pill is-${p.status.toLowerCase()}`}
@@ -216,9 +240,13 @@ export default function PaymentsPage() {
                     </td>
                     <td>{date(p.paidAt || p.createdAt)}</td>
                     <td>
-                      {["ONLINE", "FACEBOOK"].includes(p.channel) &&
+                      {["ONLINE", "FACEBOOK", "SERVICE"].includes(p.channel) &&
                       p.status === "PENDING" &&
-                      p.method === "CASH" &&
+                      (p.method === "CASH" ||
+                        (["GCASH", "BANK_TRANSFER"].includes(p.method) &&
+                          p.transferReference &&
+                          ["ONLINE", "SERVICE"].includes(p.channel) &&
+                          canVerifyManual)) &&
                       [
                         "CONFIRMED",
                         "SCHEDULED",
@@ -230,7 +258,9 @@ export default function PaymentsPage() {
                           className="sales-small-action"
                           onClick={() => open(p)}
                         >
-                          Confirm cash
+                          {p.method === "CASH"
+                            ? "Confirm cash"
+                            : "Verify transfer"}
                         </button>
                       ) : (
                         <span className="sales-muted">—</span>
@@ -262,7 +292,10 @@ export default function PaymentsPage() {
             onSubmit={confirm}
           >
             <h2 id="sales-confirm-payment-heading">
-              <ShieldCheck size={22} /> Confirm actual cash collection
+              <ShieldCheck size={22} />{" "}
+              {isManual
+                ? "Verify external transfer"
+                : "Confirm actual cash collection"}
             </h2>
             <p>
               <strong>{selected.orderNumber}</strong> · {selected.customer}
@@ -270,8 +303,18 @@ export default function PaymentsPage() {
             <p>
               Amount to confirm: <strong>{money(selected.amount)}</strong>
             </p>
+            {isManual && (
+              <p>
+                <strong>Submitted reference:</strong>{" "}
+                {selected.transferReference}
+                <br />
+                Verify the exact amount, recipient, and reference in the
+                official bank/GCash merchant account before continuing.
+              </p>
+            )}
             <label>
-              Staff note (optional)
+              Staff note{" "}
+              {isManual ? "(required, min 10 characters)" : "(optional)"}
               <textarea
                 value={note}
                 maxLength={250}
@@ -286,7 +329,9 @@ export default function PaymentsPage() {
                 onChange={(e) => setCollected(e.target.checked)}
               />
               <span>
-                I personally verified that this cash payment was received.
+                {isManual
+                  ? "I verified this exact transfer and amount in the official merchant account. A reference/screenshot alone is not proof."
+                  : "I personally verified that this cash payment was received."}
               </span>
             </label>
             <div className="sales-modal-actions">
@@ -301,7 +346,11 @@ export default function PaymentsPage() {
               <button
                 className="sales-primary"
                 type="submit"
-                disabled={!collected || Boolean(busyId)}
+                disabled={
+                  !collected ||
+                  Boolean(busyId) ||
+                  (isManual && note.trim().length < 10)
+                }
               >
                 {busyId ? "Recording…" : "Record as PAID"}
               </button>

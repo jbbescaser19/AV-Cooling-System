@@ -1,0 +1,246 @@
+/* POS customer reuse and clearly disclosed optional fees. */
+.pos-returning-customer,
+.pos-fee-fields {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid #d6e7ed;
+  border-radius: 14px;
+  background: #f7fbfd;
+}
+.pos-returning-customer {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+.pos-returning-customer__heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.pos-returning-customer__heading > div {
+  min-width: 0;
+}
+.pos-returning-customer__heading strong {
+  font-size: 0.92rem;
+  color: #173f58;
+}
+.pos-returning-customer__heading p,
+.pos-returning-customer__manual {
+  margin: 3px 0 0;
+  font-size: 0.79rem;
+  color: #577487;
+  line-height: 1.45;
+}
+.pos-returning-customer__icon {
+  display: grid;
+  flex: 0 0 36px;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  background: #e1f1f8;
+  color: #126b8b;
+}
+.pos-returning-customer__search {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  padding: 0 12px;
+  border: 1px solid #bcd5e1;
+  border-radius: 10px;
+  background: #fff;
+  color: #527588;
+}
+.pos-returning-customer__search input {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  min-height: 43px;
+  padding: 9px 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  outline: none;
+  font: inherit;
+  font-size: 0.88rem;
+  color: #21465b;
+}
+.pos-returning-customer__search:focus-within {
+  outline: 3px solid #b7e7f6;
+  border-color: #328eb1;
+}
+.pos-returning-customer__results {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 4px;
+  max-height: 260px;
+  overflow-y: auto;
+  border: 1px solid #dce9ef;
+  border-radius: 11px;
+  background: #fff;
+  list-style: none;
+}
+.pos-returning-customer__results li {
+  min-width: 0;
+}
+.pos-returning-customer__results button {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 10px;
+  border: 0;
+  border-radius: 8px;
+  background: #fff;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+.pos-returning-customer__results button:hover {
+  background: #eaf6fa;
+}
+.pos-returning-customer__results button > span:first-child {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.pos-returning-customer__results strong {
+  color: #173b50;
+  overflow-wrap: anywhere;
+  font-size: 0.85rem;
+}
+.pos-returning-customer__results small {
+  color: #607c8d;
+  font-size: 0.76rem;
+  overflow-wrap: anywhere;
+}
+.pos-returning-customer__choose {
+  color: #0e6d91;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+.pos-returning-customer__selected {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid #b8e0d6;
+  border-radius: 9px;
+  background: #ebf8f3;
+  color: #235d4c;
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+.pos-returning-customer__selected > svg {
+  flex: 0 0 16px;
+  margin-top: 2px;
+}
+.pos-returning-customer__selected > span {
+  flex: 1;
+  min-width: 0;
+}
+.pos-returning-customer__selected button {
+  display: grid;
+  place-items: center;
+  padding: 2px;
+  border: 0;
+  background: none;
+  color: #345d54;
+  cursor: pointer;
+}
+.pos-returning-customer__hint,
+.pos-returning-customer__error {
+  margin: 0;
+  font-size: 0.79rem;
+  line-height: 1.4;
+}
+.pos-returning-customer__error {
+  color: #a53939;
+}
+.pos-returning-customer__hint {
+  color: #617b8d;
+}
+.pos-fee-fields {
+  display: grid;
+  gap: 10px;
+  margin: 12px 0;
+}
+.pos-fee-fields__heading {
+  display: grid;
+  gap: 3px;
+}
+.pos-fee-fields__heading strong {
+  font-size: 0.9rem;
+  color: #18465e;
+}
+.pos-fee-fields__heading small,
+.pos-fee-fields__hint {
+  font-size: 0.76rem;
+  color: #647e8d;
+  line-height: 1.4;
+}
+.pos-fee-fields label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+  color: #284d62;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+.pos-fee-fields input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  min-height: 42px;
+  padding: 9px 11px;
+  border: 1px solid #bfd5df;
+  border-radius: 9px;
+  background: #fff;
+  color: #24465b;
+  font: inherit;
+  font-weight: 400;
+}
+.pos-fee-fields__hint {
+  margin: 0;
+}
+.pos-fee-fields__error {
+  margin: 0;
+  color: #ab3434;
+  font-size: 0.77rem;
+}
+.pos-fee-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+}
+.pos-fee-summary > :first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.pos-fee-summary strong {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.pos-walkin-page .pos-returning-customer {
+  margin: 0 0 16px;
+}
+.pos-walkin-page .pos-fee-fields {
+  margin: 12px 0;
+}
+@media (max-width: 620px) {
+  .pos-returning-customer,
+  .pos-fee-fields {
+    padding: 11px;
+  }
+  .pos-returning-customer__results button {
+    padding: 11px 8px;
+  }
+}

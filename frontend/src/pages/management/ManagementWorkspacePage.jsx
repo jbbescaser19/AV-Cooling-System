@@ -246,7 +246,10 @@ function InputField({
     (needsServiceAircon &&
       ["airconBrand", "airconModel", "airconHp"].includes(field.key));
 
+  // Only the Work Orders editor should conditionally hide technician selection.
+  // Schedules must always show the technician selector when creating a record.
   if (
+    module === "work-orders" &&
     field.key === "technicianId" &&
     form.status !== "ASSIGNED" &&
     field.type === "reference" &&
@@ -583,6 +586,15 @@ function Editor({
               Staff must enter only details genuinely agreed on Messenger.
             </p>
           )}
+          {module === "schedules" &&
+            isNew &&
+            (options.technicians || []).length === 0 && (
+              <p className="wsm-error" role="alert">
+                <AlertCircle size={16} />
+                No active technicians are available to select. Add or activate a
+                technician in Management first, then refresh Schedules.
+              </p>
+            )}
           {fields.map((field) => (
             <InputField
               module={module}
@@ -628,7 +640,16 @@ function Editor({
             >
               Cancel
             </button>
-            <button type="submit" className="wsm-primary" disabled={saving}>
+            <button
+              type="submit"
+              className="wsm-primary"
+              disabled={
+                saving ||
+                (module === "schedules" &&
+                  isNew &&
+                  (options.technicians || []).length === 0)
+              }
+            >
               {saving
                 ? "Saving…"
                 : isStockIn
@@ -940,6 +961,11 @@ export default function ManagementWorkspacePage({ module }) {
                               ["status", "paymentStatus"].includes(field)
                                 ? "wsm-status"
                                 : ""
+                            }
+                            data-status={
+                              ["status", "paymentStatus"].includes(field)
+                                ? String(item[field] ?? "").toUpperCase()
+                                : undefined
                             }
                           >
                             {show(item[field], field)}

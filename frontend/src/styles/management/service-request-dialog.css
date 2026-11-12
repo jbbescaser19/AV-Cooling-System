@@ -1,0 +1,150 @@
+/*
+ * Management > Service Requests > View / Manage
+ *
+ * Prevents modal scroll jumping and keeps action
+ * buttons visible at the bottom.
+ */
+
+.service-request-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2200;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 14px;
+  overflow: hidden;
+  overscroll-behavior: contain;
+}
+
+/* Fixed-height dialog with separate scrolling content. */
+
+.service-request-dialog {
+  display: flex;
+  flex-direction: column;
+
+  width: min(100%, 680px);
+  height: min(880px, calc(100dvh - 28px));
+
+  min-height: 0;
+  max-height: calc(100dvh - 28px);
+
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+/* Header remains visible. */
+
+.service-request-dialog > .wsm-dialog-head {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+/* Only the request details can scroll. */
+
+.service-request-dialog > .service-request-scroll {
+  flex: 1 1 auto;
+
+  min-height: 0;
+  min-width: 0;
+
+  overflow-x: hidden;
+  overflow-y: auto;
+
+  overflow-anchor: none;
+  overscroll-behavior: contain;
+  scroll-behavior: auto;
+
+  scrollbar-gutter: stable;
+}
+
+/* Prevent form elements from stretching the dialog. */
+
+.service-request-scroll > *,
+.service-request-scroll .service-request-action-form {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Avoid duplicate padding inside the details area. */
+
+.service-request-scroll .service-request-action-form {
+  padding: 0;
+  margin: 0;
+}
+
+/* Footer stays outside the scrolling content. */
+
+.service-request-footer {
+  flex: 0 0 auto;
+
+  display: flex;
+  flex-wrap: wrap;
+
+  align-items: center;
+  justify-content: flex-end;
+
+  gap: 10px;
+  padding: 14px 20px;
+
+  border-top: 1px solid #e3edf2;
+  background: #fff;
+
+  box-shadow: 0 -8px 18px rgba(8, 39, 58, 0.04);
+}
+
+/* Prevent hover movement from shifting buttons. */
+
+.service-request-footer > button {
+  flex: 0 0 auto;
+
+  max-width: 100%;
+  transform: none;
+
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease,
+    filter 150ms ease;
+}
+
+.service-request-footer > button:hover,
+.service-request-footer > button:focus-visible {
+  transform: none;
+}
+
+/* Responsive layout. */
+
+@media (max-width: 620px) {
+  .service-request-backdrop {
+    padding: 6px;
+  }
+
+  .service-request-dialog {
+    width: 100%;
+
+    height: calc(100dvh - 12px);
+    max-height: calc(100dvh - 12px);
+
+    border-radius: 12px;
+  }
+
+  .service-request-footer {
+    padding: 12px 14px max(12px, env(safe-area-inset-bottom));
+  }
+
+  .service-request-footer > button {
+    flex: 1 1 160px;
+    white-space: normal;
+  }
+}
+
+/* Accessibility */
+
+@media (prefers-reduced-motion: reduce) {
+  .service-request-footer > button {
+    transition: none;
+  }
+}

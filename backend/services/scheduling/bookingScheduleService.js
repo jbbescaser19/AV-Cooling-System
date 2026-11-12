@@ -1,5 +1,6 @@
 import connectDB from "../../utils/dbConn.js";
 import { bookingScheduleModel } from "../../models/scheduling/bookingScheduleModel.js";
+import { technicianCalendarModel } from "../../models/scheduling/technicianCalendarModel.js";
 import {
   BOOKING_SLOTS,
   parseBookingStart,
@@ -186,4 +187,21 @@ export async function updateCalendarDay(staff, raw) {
     }
     return { saved: true };
   });
+}
+
+/** Only the authenticated technician's own assigned work and unavailability. */
+export async function getMyTechnicianCalendar(staff, rawMonth) {
+  if (!staff?.id || staff.role !== "TECHNICIAN") {
+    throw Object.assign(new Error("Technician access required."), {
+      status: 403,
+    });
+  }
+  const month = parseCalendarMonth(rawMonth);
+  const model = technicianCalendarModel(connectDB);
+  const [jobs, blocks, upcoming] = await Promise.all([
+    model.jobsForMonth(staff.id, month),
+    model.offBlocksForMonth(staff.id, month),
+    model.nextJobs(staff.id),
+  ]);
+  return { month, jobs, blocks, upcoming };
 }

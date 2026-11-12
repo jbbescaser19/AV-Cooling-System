@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import api from "../../../api/api.js";
 import CustomerPageHeader from "../../components/customer/CustomerPageHeader";
+import CustomerStatusBadge from "../../components/customer/CustomerStatusBadge";
 import "../../styles/customer/customer-notifications.css";
 
 function target(notice) {
@@ -315,7 +316,9 @@ export default function NotificationsPage() {
                     disabled={busy}
                     onClick={() => openNotice(notice)}
                   >
-                    {notice.title}
+                    <CustomerStatusBadge status={notice.type}>
+                      {notice.title}
+                    </CustomerStatusBadge>
                   </button>
                   {!notice.isRead && (
                     <span className="notification-unread-dot" title="Unread" />

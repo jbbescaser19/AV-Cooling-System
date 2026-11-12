@@ -60,8 +60,11 @@ export default function PaymentsPage() {
       )}
       <div className="customer-record-list">
         {orders.map((order) => (
-          <article className="surface customer-record" key={order.orderId}>
-            <div>
+          <article
+            className="surface customer-record customer-payment-record"
+            key={order.orderId}
+          >
+            <div className="customer-payment-record__summary">
               <strong>
                 {formatCustomerMoney(
                   Number(order.paymentAmount ?? order.total),
@@ -71,8 +74,10 @@ export default function PaymentsPage() {
                 {order.orderNumber} · {order.paymentMethod}
               </span>
             </div>
-            <CustomerStatusBadge>
-              {order.recordedPaymentStatus || order.paymentStatus}
+            <CustomerStatusBadge className="customer-payment-record__badge">
+              {order.recordedPaymentStatus ||
+                order.paymentStatus ||
+                "Not recorded"}
             </CustomerStatusBadge>
           </article>
         ))}

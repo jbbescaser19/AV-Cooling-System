@@ -5,6 +5,7 @@
   margin: 0 auto;
   color: #153047;
 }
+
 .tech-dashboard__header {
   background: linear-gradient(115deg, #102d4c, #174f73);
   color: #fff;
@@ -15,16 +16,19 @@
   justify-content: space-between;
   gap: 18px;
 }
+
 .tech-dashboard__header h1 {
   font-size: clamp(1.5rem, 2.5vw, 2rem);
   margin: 8px 0;
 }
+
 .tech-dashboard__header p {
   margin: 0;
   max-width: 680px;
   opacity: 0.88;
   line-height: 1.55;
 }
+
 .tech-dashboard__eyebrow {
   display: inline-flex;
   align-items: center;
@@ -33,6 +37,7 @@
   letter-spacing: 0.08em;
   font-weight: 750;
 }
+
 .tech-dashboard__refresh {
   display: inline-flex;
   align-items: center;
@@ -45,15 +50,18 @@
   white-space: nowrap;
   cursor: pointer;
 }
+
 .tech-dashboard__refresh:disabled {
   opacity: 0.65;
   cursor: wait;
 }
+
 .tech-dashboard__metrics {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
 }
+
 .tech-dashboard__metric {
   background: #fff;
   border: 1px solid #d9e6ee;
@@ -63,28 +71,34 @@
   gap: 8px;
   box-shadow: 0 6px 24px rgba(15, 41, 68, 0.04);
 }
+
 .tech-dashboard__metric-icon {
   display: inline-flex;
   color: #2479a2;
 }
+
 .tech-dashboard__metric-label {
   font-weight: 700;
   font-size: 0.9rem;
 }
+
 .tech-dashboard__metric strong {
   font-size: 2rem;
   line-height: 1.1;
 }
+
 .tech-dashboard__metric small {
   color: #64748b;
   line-height: 1.45;
 }
+
 .tech-dashboard__context {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
   align-items: center;
 }
+
 .tech-dashboard__context span,
 .tech-dashboard__context a {
   display: inline-flex;
@@ -97,34 +111,42 @@
   font-weight: 650;
   font-size: 0.83rem;
 }
+
 .tech-dashboard__context a {
   text-decoration: none;
   background: #ddeefa;
 }
+
 .tech-dashboard__context a:hover {
   text-decoration: underline;
 }
+
 .tech-dashboard__footnote {
   margin: 0;
   color: #64748b;
   font-size: 0.8rem;
 }
+
 @media (max-width: 880px) {
   .tech-dashboard__metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
 @media (max-width: 580px) {
   .tech-dashboard__header {
     flex-direction: column;
     padding: 18px;
   }
+
   .tech-dashboard__metrics {
     grid-template-columns: 1fr 1fr;
   }
+
   .tech-dashboard__metric {
     padding: 13px;
   }
+
   .tech-dashboard__metric strong {
     font-size: 1.6rem;
   }

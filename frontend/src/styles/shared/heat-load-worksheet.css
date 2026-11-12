@@ -1,0 +1,51 @@
+.worksheet-estimator__result {
+  min-width: 0;
+}
+.worksheet-estimator__breakdown {
+  grid-column: 1 / -1;
+  min-width: 0;
+  padding: 12px 0;
+}
+.worksheet-estimator__breakdown h3 {
+  font-size: 0.95rem;
+  margin: 0 0 12px;
+}
+.worksheet-estimator__scroll {
+  max-width: 100%;
+  overflow-x: auto;
+}
+.worksheet-estimator__scroll table {
+  width: 100%;
+  min-width: 520px;
+  border-collapse: collapse;
+}
+.worksheet-estimator__scroll th,
+.worksheet-estimator__scroll td {
+  padding: 9px 12px;
+  border-bottom: 1px solid #dbe7ed;
+  text-align: left;
+  font-size: 0.81rem;
+  font-variant-numeric: tabular-nums;
+}
+.worksheet-estimator__scroll th {
+  color: #41647a;
+  background: #f2f8fb;
+}
+.worksheet-estimator__scroll tfoot tr:last-child {
+  color: #0c536d;
+  font-weight: 850;
+}
+.worksheet-estimator__reference {
+  margin: 16px 0;
+  border: 1px solid #d4e6ef;
+  padding: 12px;
+  border-radius: 12px;
+}
+.worksheet-estimator__reference summary {
+  cursor: pointer;
+  color: #105b7a;
+  font-weight: 750;
+}
+.worksheet-estimator__reference .worksheet-estimator__scroll {
+  margin-top: 12px;
+}

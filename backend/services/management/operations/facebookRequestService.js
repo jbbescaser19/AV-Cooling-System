@@ -1,3 +1,4 @@
+import { quoteDeliveryFromAddress } from "../../shared/deliveryPricingService.js";
 import { fail, affected, localSQL, checkFbUrl } from "../workspaceHelpers.js";
 import { assignConfirmedExistingWork } from "../services/confirmationWorkOrderService.js";
 import { randomUUID } from "node:crypto";
@@ -114,10 +115,14 @@ export async function updateFacebookRequests(
         ? variant.promo_price
         : variant.srp,
     );
-    const total = (price * fb.quantity).toFixed(2);
+    const subtotal = price * fb.quantity;
+    const { fee: deliveryFee } = quoteDeliveryFromAddress(fb.delivery_address);
+    const total = (subtotal + deliveryFee).toFixed(2);
     const order = await model.fbCreateOrder(
       fb,
       method.id,
+      subtotal.toFixed(2),
+      deliveryFee.toFixed(2),
       total,
       staff.id,
       `FBORD-${fb.facebook_request_id}`,

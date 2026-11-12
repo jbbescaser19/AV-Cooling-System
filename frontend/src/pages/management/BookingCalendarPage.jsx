@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import api from "../../../api/api.js";
 import { getStaff } from "../../utils/authMock.js";
+import TechnicianBookingCalendar from "./TechnicianBookingCalendar.jsx";
 import "../../styles/management/booking-calendar.css";
 
 const manilaToday = () =>
@@ -18,6 +19,11 @@ const changeMonth = (value, n) => {
 };
 
 export default function BookingCalendarPage() {
+  if (getStaff()?.role === "TECHNICIAN") return <TechnicianBookingCalendar />;
+  return <ManagementBookingCalendar />;
+}
+
+function ManagementBookingCalendar() {
   const [month, setMonth] = useState(currentMonth);
   const [days, setDays] = useState([]);
   const [date, setDate] = useState(manilaToday);
@@ -243,6 +249,15 @@ export default function BookingCalendarPage() {
                 0,
               );
               const allClosed = item.slots.every((slot) => slot.closed);
+              const hasBooked = item.slots.some(
+                (slot) => Number(slot.booked) > 0,
+              );
+              const state =
+                remaining === 0
+                  ? "is-full"
+                  : hasBooked
+                    ? "is-partial"
+                    : "is-available";
               return (
                 <button
                   type="button"
@@ -251,14 +266,29 @@ export default function BookingCalendarPage() {
                     setDate(item.date);
                     setMessage("");
                   }}
-                  aria-label={`${item.date}: ${item.date < today ? "Past date" : allClosed ? "Closed" : `${remaining} available appointments`}`}
+                  aria-label={`${item.date}: ${item.date < today ? "Past date" : allClosed ? "Closed" : hasBooked ? `${remaining} available, some booked` : `${remaining} available appointments`}`}
                   aria-pressed={date === item.date}
-                  className={`booking-picker__day ${date === item.date ? "is-selected" : ""} ${remaining > 0 ? "is-available" : "is-full"}`}
+                  className={`booking-picker__day ${date === item.date ? "is-selected" : ""} ${state}`}
                 >
                   {Number(item.date.slice(-2))}
                 </button>
               );
             })}
+          </div>
+          <div
+            className="booking-calendar-legend"
+            aria-label="Calendar color legend"
+          >
+            <span>
+              <i className="calendar-dot is-available" /> Green · Available
+            </span>
+            <span>
+              <i className="calendar-dot is-partial" /> Orange · Partially
+              booked
+            </span>
+            <span>
+              <i className="calendar-dot is-full" /> Red · Full or unavailable
+            </span>
           </div>
           {loading && <small role="status">Refreshing calendar…</small>}
           <div className="booking-manage__toolbar">

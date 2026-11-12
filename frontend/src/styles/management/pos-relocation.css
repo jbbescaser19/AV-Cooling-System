@@ -1,0 +1,36 @@
+/* POS: show both locations for actual aircon relocation only. */
+.pos-walkin-page .pos-walkin-location-help {
+  margin: 0;
+  padding: 11px 13px;
+  border: 1px solid #cce6f1;
+  border-radius: 10px;
+  background: #f0f9fd;
+  color: #315c72;
+  font-size: 0.79rem;
+  line-height: 1.55;
+}
+.pos-walkin-page .pos-walkin-address-row {
+  align-items: start;
+  gap: 10px;
+}
+.pos-walkin-page .pos-walkin-address-row strong {
+  min-width: 0;
+  max-width: 65%;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  text-align: right;
+  line-height: 1.5;
+}
+.pos-walkin-page .pos-walkin-fields textarea {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+@media (max-width: 540px) {
+  .pos-walkin-page .pos-walkin-address-row {
+    flex-wrap: wrap;
+  }
+  .pos-walkin-page .pos-walkin-address-row strong {
+    max-width: 100%;
+    text-align: left;
+  }
+}

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { CalendarDays, PackageCheck, ShoppingBag, X } from "lucide-react";
 
 import api from "../../../api/api.js";
+import { previewServiceQuote } from "../../utils/serviceQuotation.js";
 import AvailabilityPicker from "../scheduling/AvailabilityPicker";
 import SavedAddressSelector from "../common/SavedAddressSelector";
 
@@ -55,8 +56,15 @@ export default function ServiceRequestDialog({ service, onClose }) {
     airconBrand: "",
     airconModel: "",
     airconHp: "",
+    paymentCode: "CASH",
+    copperFeet: "10",
+    includeDismantling: false,
   });
   const [purchases, setPurchases] = useState([]);
+  const [paymentMethods, setPaymentMethods] = useState([
+    { code: "CASH", name: "Cash", available: true },
+  ]);
+  const [serviceBasePrice, setServiceBasePrice] = useState(null);
   const [loadingPurchases, setLoadingPurchases] = useState(true);
   const [purchaseError, setPurchaseError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -85,9 +93,9 @@ export default function ServiceRequestDialog({ service, onClose }) {
     }
     if (isInstallation && item.installationIncluded) {
       return {
-        label: "Installation already included",
+        label: "Installation included with your order",
         message:
-          "Installation is already included in this purchase. Check My Orders for the existing installation progress. A second installation request is not needed.",
+          "Your AV Cooling purchase already includes installation. To avoid booking and charging for a second installation, open My Orders to check or manage its existing installation appointment.",
       };
     }
     if (isInstallation && !item.installationEligible) {
@@ -146,6 +154,30 @@ export default function ServiceRequestDialog({ service, onClose }) {
     return () => controller.abort();
   }, []);
 
+  useEffect(() => {
+    const controller = new AbortController();
+    api
+      .get("/api/customer/orders/payment-options", {
+        signal: controller.signal,
+      })
+      .then(({ data }) => {
+        if (!controller.signal.aborted) setPaymentMethods(data.methods || []);
+      })
+      .catch(() => {});
+    api
+      .get("/api/customer/services/types", { signal: controller.signal })
+      .then(({ data }) => {
+        if (!controller.signal.aborted) {
+          const service = (data.services || []).find(
+            (x) => x.serviceType === serviceType,
+          );
+          setServiceBasePrice(service?.basePrice ?? null);
+        }
+      })
+      .catch(() => {});
+    return () => controller.abort();
+  }, [serviceType]);
+
   function set(key, value) {
     setForm((current) => ({ ...current, [key]: value }));
   }
@@ -185,7 +217,10 @@ export default function ServiceRequestDialog({ service, onClose }) {
       return;
     }
     if (form.airconSource === "PURCHASED" && !chosenPurchase) {
-      setError("Select one of your AV Cooling aircon purchases.");
+      setError(
+        purchaseError ||
+          "Select an AV Cooling aircon purchase before submitting.",
+      );
       return;
     }
     if (form.airconSource === "PURCHASED" && !purchaseCanBook) {
@@ -232,6 +267,11 @@ export default function ServiceRequestDialog({ service, onClose }) {
         concern: form.concern.trim(),
         notes: form.notes.trim(),
         aircon,
+        paymentCode: form.paymentCode,
+        copperFeet:
+          serviceType === "reinstallation" ? Number(form.copperFeet) : 10,
+        includeDismantling:
+          serviceType === "reinstallation" && form.includeDismantling,
       });
       if (!data?.success) {
         throw new Error(
@@ -304,6 +344,16 @@ export default function ServiceRequestDialog({ service, onClose }) {
           <div className="service-booking-grid">
             <p role="status">{success}</p>
             <div className="service-booking-actions">
+              <button
+                type="button"
+                className="btn btn-soft"
+                onClick={() => {
+                  onClose();
+                  navigate("/account/payments");
+                }}
+              >
+                View payment instructions
+              </button>
               <button type="button" className="btn btn-dark" onClick={onClose}>
                 Done
               </button>
@@ -560,6 +610,89 @@ export default function ServiceRequestDialog({ service, onClose }) {
                 </>
               )}
             </div>
+            {serviceType === "reinstallation" && (
+              <div
+                className="service-booking-grid"
+                style={{ padding: "0 20px 16px" }}
+              >
+                <label className="full">
+                  Total copper pipe length (feet) · first 10 ft included
+                  <input
+                    type="number"
+                    className="form-control"
+                    min="1"
+                    max="100"
+                    step="1"
+                    required
+                    value={form.copperFeet}
+                    disabled={submitting}
+                    onChange={(event) => set("copperFeet", event.target.value)}
+                  />
+                </label>
+                <label
+                  className="full"
+                  style={{ display: "flex", alignItems: "center", gap: 10 }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={form.includeDismantling}
+                    disabled={submitting}
+                    onChange={(event) =>
+                      set("includeDismantling", event.target.checked)
+                    }
+                  />
+                  Also include dismantling (+ ₱2,000)
+                </label>
+                <p className="full">
+                  Quoted reinstallation: ₱
+                  {Number(
+                    previewServiceQuote(
+                      "reinstallation",
+                      serviceBasePrice,
+                      Number(form.copperFeet),
+                      form.includeDismantling,
+                    ) || 0,
+                  ).toLocaleString("en-PH", { minimumFractionDigits: 2 })}
+                  . First 10 ft ₱5,000; each extra foot ₱450.
+                </p>
+              </div>
+            )}
+            <div
+              className="service-booking-grid"
+              style={{ padding: "0 20px 16px" }}
+            >
+              <label className="full" htmlFor="service-payment-method">
+                Payment method{" "}
+                {serviceBasePrice !== null
+                  ? `· Estimated base fee ₱${Number(serviceBasePrice).toLocaleString("en-PH", { minimumFractionDigits: 2 })}`
+                  : ""}
+                <select
+                  id="service-payment-method"
+                  className="form-control"
+                  value={form.paymentCode}
+                  onChange={(event) => set("paymentCode", event.target.value)}
+                  disabled={submitting}
+                >
+                  {paymentMethods
+                    .filter((method) => method.available)
+                    .map((method) => (
+                      <option key={method.code} value={method.code}>
+                        {method.name || method.code}
+                      </option>
+                    ))}
+                </select>
+              </label>
+              <p
+                className="full"
+                style={{ fontSize: ".85rem", color: "#64748b" }}
+              >
+                {form.paymentCode === "CASH"
+                  ? "Cash is marked PAID only after staff confirm collection."
+                  : "After submitting, check My Payments for the official receiving-account details and submit your transfer reference. Management must verify the actual funds before marking PAID."}{" "}
+                Final service charges may change after assessment and must be
+                confirmed by staff.
+              </p>
+            </div>
             <div className="service-booking-actions">
               <button
                 type="button"
@@ -573,13 +706,9 @@ export default function ServiceRequestDialog({ service, onClose }) {
                 <button
                   type="submit"
                   className="btn btn-dark"
-                  disabled={
-                    submitting ||
-                    !validServiceType ||
-                    (form.airconSource === "PURCHASED" &&
-                      Boolean(chosenPurchase) &&
-                      !purchaseCanBook)
-                  }
+                  // Keep this clickable for an ineligible purchase so Submit
+                  // displays the exact reason instead of silently doing nothing.
+                  disabled={submitting || !validServiceType}
                 >
                   <CalendarDays size={16} />
                   {submitting ? "Submitting..." : "Submit Request"}

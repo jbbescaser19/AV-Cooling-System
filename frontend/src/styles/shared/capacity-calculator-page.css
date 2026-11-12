@@ -1,0 +1,55 @@
+/* Shared page wrapper for Customer and Management calculators. */
+
+.capacity-page {
+  width: 100%;
+  max-width: 1050px;
+  margin: 0 auto;
+  color: #193b51;
+}
+
+.capacity-page__header {
+  margin-bottom: 18px;
+}
+
+.capacity-page__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 750;
+  color: #0b718f;
+  font-size: 0.77rem;
+}
+
+.capacity-page__header h1 {
+  margin: 10px 0 9px;
+  font-size: clamp(1.45rem, 3vw, 2rem);
+}
+
+.capacity-page__header p {
+  margin: 0;
+  max-width: 740px;
+  line-height: 1.6;
+  color: #546c7d;
+}
+
+.capacity-page__footer {
+  margin: 7px 0 20px;
+  color: #4e6474;
+  line-height: 1.5;
+}
+
+.capacity-page__footer a {
+  color: #0c729a;
+  font-weight: 750;
+  text-underline-offset: 3px;
+}
+
+.capacity-page--management {
+  padding: clamp(16px, 3vw, 28px);
+}
+
+.capacity-page--customer {
+  padding: 0;
+}

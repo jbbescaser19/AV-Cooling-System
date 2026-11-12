@@ -1,0 +1,192 @@
+.service-payment-panel,
+.av-shared-team {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  margin: 14px 0;
+  padding: clamp(15px, 2vw, 22px);
+  border: 1px solid #d5e6ef;
+  border-radius: 16px;
+  background: #f8fbfe;
+  color: #23455b;
+}
+
+.service-payment-panel__heading,
+.av-shared-team__heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.service-payment-panel__heading-text {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.service-payment-panel__heading-text > svg {
+  flex: 0 0 auto;
+  color: #0f7290;
+}
+
+.service-payment-panel h3,
+.av-shared-team h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: #153d55;
+}
+
+.service-payment-panel__heading p,
+.av-shared-team__heading p {
+  margin: 3px 0 0;
+  color: #607c8d;
+  font-size: 0.82rem;
+}
+
+.service-payment-panel__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.service-payment-panel__grid > div {
+  display: grid;
+  align-content: start;
+  min-width: 0;
+  gap: 5px;
+  padding: 12px 14px;
+  border: 1px solid #e2edf3;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.service-payment-panel__grid span {
+  color: #688294;
+  font-size: 0.76rem;
+}
+
+.service-payment-panel__grid strong {
+  overflow-wrap: anywhere;
+  font-size: 0.9rem;
+}
+
+.service-payment-panel__status.is-paid {
+  color: #19733d;
+}
+
+.service-payment-panel__status.is-pending {
+  color: #ac6814;
+}
+
+.service-payment-panel__status.is-cancelled {
+  color: #9c3f42;
+}
+
+.service-payment-panel__reference,
+.service-payment-panel__help {
+  margin: 0;
+  font-size: 0.83rem;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.service-payment-panel__help {
+  color: #59778a;
+}
+
+.service-payment-panel__action {
+  justify-self: start;
+}
+
+.service-payment-panel__form {
+  display: grid;
+  gap: 13px;
+  min-width: 0;
+}
+
+.service-payment-panel__form .wsm-field {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+}
+
+.service-payment-panel__form textarea,
+.service-payment-panel__form input:not([type="checkbox"]) {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border-radius: 9px;
+  border: 1px solid #bdcedc;
+  background: #fff;
+}
+
+.service-payment-panel__checkbox {
+  display: flex !important;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 10px;
+  font-size: 0.84rem;
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+.service-payment-panel__checkbox input[type="checkbox"] {
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+  margin: 1px 0 0;
+  accent-color: #0c7190;
+}
+
+.service-payment-panel__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.service-payment-panel__link {
+  justify-self: start;
+  font-weight: 750;
+  font-size: 0.83rem;
+  color: #0b6988;
+}
+
+.av-shared-team__job {
+  display: grid;
+  gap: 5px;
+  padding: 10px 0;
+  border-top: 1px solid #e0ebf1;
+}
+
+.av-shared-team__job strong {
+  color: #23465a;
+}
+
+.av-shared-team__job small {
+  color: #607b8d;
+}
+
+.av-shared-team__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
+.av-shared-team__edit {
+  display: grid;
+  gap: 11px;
+  min-width: 0;
+}
+
+@media (max-width: 520px) {
+  .service-payment-panel__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .service-payment-panel__buttons > button {
+    flex: 1 1 145px;
+  }
+}
