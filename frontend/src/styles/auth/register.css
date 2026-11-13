@@ -2,10 +2,10 @@
 .auth-register-page .auth-register-card {
   width: min(100%, 440px);
   gap: 12px;
-  border: 1px solid rgba(188, 216, 230, .94);
+  border: 1px solid rgba(188, 216, 230, 0.94);
   border-radius: 22px;
   background: #f9fcfe;
-  box-shadow: 0 22px 58px rgba(0, 12, 26, .25);
+  box-shadow: 0 22px 58px rgba(0, 12, 26, 0.25);
 }
 .auth-register-page .auth-register-heading {
   grid-template-columns: auto minmax(0, 1fr);
@@ -24,27 +24,111 @@
   padding: 12px;
   border-radius: 13px;
   border-color: #c5deea;
-  box-shadow: 0 4px 16px rgba(7, 55, 80, .045);
+  box-shadow: 0 4px 16px rgba(7, 55, 80, 0.045);
 }
-.auth-register-page .terms-consent__header { margin-bottom: 10px; }
-.auth-register-page .terms-consent__icon { flex-basis: 36px; width: 36px; height: 36px; }
-.auth-register-page .terms-consent__accept { padding: 11px; }
-.auth-register-page .terms-consent__read { margin-top: 4px; }
+.auth-register-page .terms-consent__header {
+  margin-bottom: 10px;
+}
+.auth-register-page .terms-consent__icon {
+  flex-basis: 36px;
+  width: 36px;
+  height: 36px;
+}
+.auth-register-page .terms-consent__accept {
+  padding: 11px;
+}
+.auth-register-page .terms-consent__read {
+  margin-top: 4px;
+}
 @media (max-width: 560px) {
-  .auth-register-page { padding: 20px 16px; }
+  .auth-register-page {
+    padding: 20px 16px;
+  }
   .auth-register-page .auth-register-card {
     width: min(100%, 410px);
     gap: 9px;
     padding: 19px 18px 21px;
     border-radius: 19px;
   }
-  .auth-register-page .terms-consent__heading p { display: none; }
-  .auth-register-page .terms-consent__icon { flex-basis: 32px; width: 32px; height: 32px; }
-  .auth-register-page .terms-consent__header { margin-bottom: 8px; }
-  .auth-register-page .auth-register-heading h1 { font-size: clamp(1.4rem, 6vw, 1.7rem); }
-  .auth-register-page .auth-register-card > .muted { line-height: 1.48; }
-  .auth-register-page .auth-register-card .auth-field { gap: 6px; }
-  .auth-register-page .auth-register-card .form-control { height: 44px; font-size: 16px; }
-  .auth-register-page .auth-register-submit { min-height: 46px; }
-  .auth-register-page .auth-register-footer { line-height: 1.6; }
+  .auth-register-page .terms-consent__heading p {
+    display: none;
+  }
+  .auth-register-page .terms-consent__icon {
+    flex-basis: 32px;
+    width: 32px;
+    height: 32px;
+  }
+  .auth-register-page .terms-consent__header {
+    margin-bottom: 8px;
+  }
+  .auth-register-page .auth-register-heading h1 {
+    font-size: clamp(1.4rem, 6vw, 1.7rem);
+  }
+  .auth-register-page .auth-register-card > .muted {
+    line-height: 1.48;
+  }
+  .auth-register-page .auth-register-card .auth-field {
+    gap: 6px;
+  }
+  .auth-register-page .auth-register-card .form-control {
+    height: 44px;
+    font-size: 16px;
+  }
+  .auth-register-page .auth-register-submit {
+    min-height: 46px;
+  }
+  .auth-register-page .auth-register-footer {
+    line-height: 1.6;
+  }
+}
+
+/* Verification stage uses the same compact customer registration card. */
+.otp-verification-card .otp-code-input {
+  text-align: center;
+  letter-spacing: 0.3em;
+  font-size: 1.45rem;
+  font-weight: 800;
+}
+.otp-notice {
+  background: #e8f7fa;
+  color: #12536a;
+  border: 1px solid #b8e2eb;
+  padding: 11px 12px;
+  border-radius: 10px;
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+.otp-verification-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+}
+.otp-verification-actions button {
+  color: #125477;
+  background: #fff;
+  border: 1px solid #b9d3e1;
+  border-radius: 9px;
+  padding: 10px 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.otp-verification-actions button:hover {
+  background: #f1f8fb;
+}
+.otp-verification-actions button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+.otp-verification-actions button:focus-visible {
+  outline: 3px solid #53bddd;
+  outline-offset: 2px;
+}
+
+.auth-register-page .auth-field-hint {
+  display: block;
+  font-size: 0.75rem;
+  color: #527185;
+  margin-top: 3px;
+  line-height: 1.5;
 }

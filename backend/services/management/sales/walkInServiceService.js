@@ -6,6 +6,8 @@ import { walkInServiceModel } from "../../../models/management/sales/walkInServi
 import { validateWalkInService } from "../../../validators/management/sales/walkInServiceValidator.js";
 import { reserveAppointment } from "../../scheduling/bookingScheduleService.js";
 import { ensureConfirmedWorkOrders } from "../services/confirmationWorkOrderService.js";
+import { paymentMethodModel } from "../../../models/customer/order/paymentMethodModel.js";
+import { paymongoConfigured } from "../../payments/paymongoService.js";
 
 function deny(message, status = 403) {
   throw Object.assign(new Error(message), { status });
@@ -14,11 +16,26 @@ const staffAllowed = (staff) =>
   ["OWNER", "MANAGER", "SALES_CASHIER"].includes(staff?.role);
 export async function listWalkInServices(staff) {
   if (!staffAllowed(staff)) deny("POS access is required.");
-  return { items: await walkInServiceModel(connectDB).activeServices() };
+  const [items, enabled] = await Promise.all([
+    walkInServiceModel(connectDB).activeServices(),
+    paymentMethodModel(connectDB).enabledMethods(),
+  ]);
+  return {
+    items,
+    paymentMethods: enabled.filter(
+      (code) => code === "CASH" || paymongoConfigured(),
+    ),
+  };
 }
 export async function bookWalkInService(staff, raw) {
   if (!staffAllowed(staff)) deny("POS access is required.");
   const data = validateWalkInService(raw);
+  if (!(await paymentMethodModel(connectDB).isEnabled(data.paymentCode))) {
+    deny("The selected payment method is disabled.", 409);
+  }
+  if (data.paymentCode !== "CASH" && !paymongoConfigured()) {
+    deny("PayMongo has not been configured for this store.", 503);
+  }
   if (data.technicianIds.length && !["OWNER", "MANAGER"].includes(staff.role)) {
     deny("Only Owner or Manager can assign technicians.");
   }
@@ -73,7 +90,11 @@ export async function bookWalkInService(staff, raw) {
     const total = peso(cents(quote.total) + fee);
     const id = await model.createWalkIn(data, total);
     await reserveAppointment(db, "SERVICE", id, data.scheduledStart);
-    await servicePaymentModel(db).createPending(id, "CASH", total);
+    const paymentId = await servicePaymentModel(db).createPending(
+      id,
+      data.paymentCode,
+      total,
+    );
     await ensureConfirmedWorkOrders(
       db,
       "SERVICE",
@@ -96,6 +117,8 @@ export async function bookWalkInService(staff, raw) {
         additionalFee: peso(fee),
         additionalFeeReason: data.additionalFeeReason,
         paymentStatus: "PENDING",
+        paymentMethod: data.paymentCode,
+        paymentId,
         assignment: data.technicianIds.length
           ? "ASSIGNED"
           : "PENDING_ASSIGNMENT",

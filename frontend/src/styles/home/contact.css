@@ -549,3 +549,87 @@
     transition: none;
   }
 }
+
+/* Contact: keep message/call/location actions visible without gigantic cards. */
+@media (max-width: 740px) {
+  .contact-container {
+    gap: 13px;
+  }
+  .contact-top {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 13px;
+  }
+  .contact-intro h2 {
+    font-size: clamp(1.35rem, 5vw, 1.9rem);
+    margin: 7px 0;
+  }
+  .contact-description {
+    font-size: 0.79rem;
+    line-height: 1.45;
+  }
+  .contact-topics {
+    margin-top: 9px;
+    gap: 5px 8px;
+  }
+  .contact-topics span {
+    font-size: 0.68rem;
+  }
+  .contact-chat-card {
+    padding: 13px;
+    border-radius: 13px;
+  }
+  .contact-chat-card h3 {
+    font-size: 1rem;
+    margin: 5px 0;
+  }
+  .contact-chat-card > p:not(.contact-chat-unavailable) {
+    font-size: 0.76rem;
+    line-height: 1.4;
+  }
+  .contact-chat-icon {
+    width: 35px;
+    height: 35px;
+    margin-bottom: 7px;
+    border-radius: 10px;
+  }
+  .contact-details {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .contact-detail-item {
+    min-width: 0;
+    padding: 10px;
+    border-radius: 12px;
+    overflow-wrap: anywhere;
+  }
+  .contact-detail-item + .contact-detail-item {
+    border-top: 0;
+  }
+  .contact-detail-icon {
+    width: 29px;
+    height: 29px;
+  }
+  .contact-detail-body {
+    min-width: 0;
+  }
+  .contact-detail-body h3 {
+    font-size: 0.78rem;
+  }
+  .contact-detail-body p,
+  .contact-detail-body a,
+  .contact-hours-note {
+    font-size: 0.69rem;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+  }
+  .contact-bottom-note {
+    font-size: 0.69rem;
+    line-height: 1.4;
+  }
+}
+@media (max-width: 380px) {
+  .contact-details {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

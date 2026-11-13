@@ -1,407 +1,314 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Archive,
   ArchiveRestore,
-  Boxes,
-  CalendarDays,
-  CheckCircle2,
-  ClipboardList,
-  Clock3,
-  Filter,
-  FolderClosed,
-  MessageSquareText,
-  Package,
-  PackageOpen,
+  Eye,
   Search,
+  X,
+  Clock3,
   ShieldCheck,
-  SlidersHorizontal,
-  UserRound,
-  Wrench,
+  RefreshCw,
 } from "lucide-react";
-import { readArchive, restoreArchivedRecord } from "../../utils/archiveStore";
-import "../../styles/management/archive.css";
+import api from "../../../api/api.js";
+import useRealtimeRefresh from "../../hooks/useRealtimeRefresh.js";
+import "../../styles/management/archive-db.css";
 
-const categoryIcons = {
-  Products: Package,
-  Inventory: Boxes,
-  "Service Types": Wrench,
-  "Service Requests": ClipboardList,
-  "Work Orders": ClipboardList,
-  Schedules: CalendarDays,
-  Technicians: UserRound,
-  Feedback: MessageSquareText,
-  "Contact Messages": MessageSquareText,
-  "Website Content": FolderClosed,
+const titles = {
+  products: "Products",
+  categories: "Product categories",
+  variants: "Product variants",
+  inventory: "Inventory",
+  "service-types": "Service types",
+  technicians: "Technicians",
+  "facebook-requests": "Facebook requests",
+};
+const formatted = (date) => {
+  if (!date) return "—";
+  const value = new Date(date);
+  return Number.isNaN(value.getTime())
+    ? "—"
+    : value.toLocaleString("en-PH", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      });
+};
+const snapshotFields = {
+  products: ["product_name", "brand", "model", "category_id", "status"],
+  categories: ["category_name", "description", "status"],
+  variants: ["product_id", "horsepower", "srp", "promo_price", "status"],
+  "service-types": [
+    "service_name",
+    "service_code",
+    "description",
+    "base_price",
+    "status",
+  ],
+  technicians: ["technician_code", "status"],
+  "facebook-requests": [
+    "customer_name",
+    "contact_number",
+    "request_kind",
+    "status",
+  ],
 };
 
-function readableDate(value) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Unknown date";
-
-  return new Intl.DateTimeFormat("en-PH", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(date);
-}
-
-function isWithinLastWeek(value) {
-  const time = new Date(value).getTime();
-  const now = Date.now();
-
-  return (
-    Number.isFinite(time) &&
-    time <= now &&
-    time >= now - 7 * 24 * 60 * 60 * 1000
-  );
-}
-
-function ArchiveRecord({ entry, onRestore, restoring }) {
-  const Icon = categoryIcons[entry.category] || Archive;
-
-  return (
-    <article className="archive-record">
-      <div className="archive-record__top">
-        <span className="archive-record__icon">
-          <Icon size={20} aria-hidden="true" />
-        </span>
-
-        <div className="archive-record__title-area">
-          <span className="archive-record__group">
-            REMOVED FROM {String(entry.category || "OTHER").toUpperCase()}
-          </span>
-
-          <h3>{entry.label || entry.recordId || "Unnamed record"}</h3>
-        </div>
-      </div>
-
-      <div className="archive-record__badges">
-        <span className="archive-category-tag">
-          {entry.category || "Other"}
-        </span>
-
-        <span className="archive-record__id">ID: {entry.recordId || "—"}</span>
-      </div>
-
-      <div className="archive-record__facts">
-        <div>
-          <span>
-            <Clock3 size={13} aria-hidden="true" />
-            Archived on
-          </span>
-
-          <strong>{readableDate(entry.deletedAt)}</strong>
-        </div>
-
-        <div>
-          <span>
-            <UserRound size={13} aria-hidden="true" />
-            Archived by
-          </span>
-
-          <strong>{entry.deletedBy || "Management staff"}</strong>
-
-          <small>
-            {String(entry.deletedByRole || "").replaceAll("_", " ")}
-          </small>
-        </div>
-      </div>
-
-      <button
-        className="archive-restore-button"
-        type="button"
-        disabled={restoring === entry.id}
-        onClick={() => onRestore(entry)}
-        aria-label={`Restore ${
-          entry.label || entry.recordId
-        } to ${entry.category}`}
-      >
-        <ArchiveRestore size={16} aria-hidden="true" />
-
-        {restoring === entry.id ? "Restoring…" : "Restore record"}
-      </button>
-    </article>
-  );
-}
-
 export default function ArchivePage() {
-  const [entries, setEntries] = useState(readArchive);
-  const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("All");
-  const [sort, setSort] = useState("newest");
-  const [notice, setNotice] = useState("");
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState("");
+  const [query, setQuery] = useState("");
+  const [category, setCategory] = useState("all");
+  const [detail, setDetail] = useState(null);
   const [error, setError] = useState("");
-  const [restoring, setRestoring] = useState(null);
+  const [message, setMessage] = useState("");
+  const [revision, setRevision] = useState(0);
+  const hasLoadedRef = useRef(false);
+
+  useRealtimeRefresh(["archive", "catalog", "inventory"], setRevision);
 
   useEffect(() => {
-    const refresh = () => setEntries(readArchive());
-
-    window.addEventListener("av-management-updated", refresh);
-
-    window.addEventListener("storage", refresh);
-
-    return () => {
-      window.removeEventListener("av-management-updated", refresh);
-
-      window.removeEventListener("storage", refresh);
-    };
-  }, []);
-
-  const categoryCounts = useMemo(() => {
-    const counts = new Map();
-
-    for (const entry of entries) {
-      const name = entry.category || "Other";
-      counts.set(name, (counts.get(name) || 0) + 1);
-    }
-
-    return [...counts.entries()].sort(
-      (a, b) => b[1] - a[1] || a[0].localeCompare(b[0]),
-    );
-  }, [entries]);
-
-  const filtered = useMemo(() => {
-    const keyword = search.trim().toLowerCase();
-
-    return entries
-      .filter(
-        (entry) =>
-          category === "All" || (entry.category || "Other") === category,
-      )
-      .filter(
-        (entry) =>
-          !keyword ||
-          `${entry.label || ""} ${entry.category || ""} ${
-            entry.recordId || ""
-          } ${entry.deletedBy || ""}`
-            .toLowerCase()
-            .includes(keyword),
-      )
-      .sort((a, b) => {
-        const aDate = new Date(a.deletedAt).getTime() || 0;
-
-        const bDate = new Date(b.deletedAt).getTime() || 0;
-
-        return sort === "oldest" ? aDate - bDate : bDate - aDate;
+    const controller = new AbortController();
+    if (!hasLoadedRef.current) setLoading(true);
+    api
+      .get("/api/management/workspace/archive", { signal: controller.signal })
+      .then(({ data }) => {
+        if (!controller.signal.aborted) {
+          setItems(data.items || []);
+          hasLoadedRef.current = true;
+          setError("");
+        }
+      })
+      .catch((failure) => {
+        if (!controller.signal.aborted)
+          setError(
+            failure.response?.data?.message || "Could not load the archive.",
+          );
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
       });
-  }, [entries, category, search, sort]);
+    return () => controller.abort();
+  }, [revision]);
 
-  const recentCount = entries.filter((entry) =>
-    isWithinLastWeek(entry.deletedAt),
-  ).length;
-
-  function restore(entry) {
+  const counts = useMemo(
+    () =>
+      items.reduce((out, item) => {
+        const source = item.sourceModule || item.category;
+        out[source] = (out[source] || 0) + 1;
+        return out;
+      }, {}),
+    [items],
+  );
+  const visible = items.filter(
+    (entry) =>
+      (category === "all" ||
+        (entry.sourceModule || entry.category) === category) &&
+      `${entry.label} ${entry.recordId} ${entry.deletedBy || ""}`
+        .toLowerCase()
+        .includes(query.toLowerCase().trim()),
+  );
+  async function restore(entry) {
+    if (
+      !window.confirm(
+        `Restore ${entry.label} to ${titles[entry.category] || entry.category}?`,
+      )
+    )
+      return;
+    setBusy(entry.id);
     setError("");
-    setNotice("");
-    setRestoring(entry.id);
-
+    setMessage("");
     try {
-      restoreArchivedRecord(entry.id);
-      setEntries(readArchive());
-
-      setNotice(
-        `Restored “${entry.label || entry.recordId}” to ${entry.category}.`,
+      const { data } = await api.post(
+        `/api/management/workspace/archive/${encodeURIComponent(entry.id)}/restore`,
+        {},
       );
+      if (!data.success) throw Error("Restore was not confirmed.");
+      setMessage(data.message || "Record restored.");
+      setDetail(null);
+      setRevision((n) => n + 1);
+      window.dispatchEvent(new Event("av-management-updated"));
     } catch (failure) {
-      setError(failure.message || "Unable to restore this record.");
+      setError(
+        failure.response?.data?.message ||
+          failure.message ||
+          "Could not restore record.",
+      );
     } finally {
-      setRestoring(null);
+      setBusy("");
     }
   }
 
   return (
-    <div className="archive-page">
-      <header className="archive-hero">
+    <div className="av-archive-page">
+      <header className="av-archive-head">
         <div>
-          <span className="archive-hero-eyebrow">
-            <ShieldCheck size={15} aria-hidden="true" />
-            RECORD RECOVERY
+          <span>
+            <Archive size={17} /> RECORD RECOVERY
           </span>
-
-          <h1>Archive center</h1>
-
+          <h1>Archive</h1>
           <p>
-            See exactly which management records were removed, where they came
-            from, and restore the ones you need.
+            Removed catalog records live in MySQL, organized by their original
+            module. View details or restore them here.
           </p>
         </div>
-
-        <div className="archive-hero-icon" aria-hidden="true">
-          <Archive size={30} />
-        </div>
-      </header>
-
-      <div className="archive-overview" aria-label="Archive summary">
-        <div className="archive-overview-card">
-          <span className="archive-overview-icon archive-overview-icon--blue">
-            <Archive size={18} aria-hidden="true" />
-          </span>
-
-          <span>Total archived</span>
-          <strong>{entries.length}</strong>
-        </div>
-
-        <div className="archive-overview-card">
-          <span className="archive-overview-icon archive-overview-icon--teal">
-            <Clock3 size={18} aria-hidden="true" />
-          </span>
-
-          <span>Last 7 days</span>
-          <strong>{recentCount}</strong>
-        </div>
-
-        <div className="archive-overview-card">
-          <span className="archive-overview-icon archive-overview-icon--purple">
-            <FolderClosed size={18} aria-hidden="true" />
-          </span>
-
-          <span>Categories</span>
-          <strong>{categoryCounts.length}</strong>
-        </div>
-      </div>
-
-      <div className="archive-information">
-        <ShieldCheck size={18} aria-hidden="true" />
-
-        <p>
-          <strong>Recoverable, not permanently erased.</strong> Records are
-          hidden from active modules and kept here until restored. This
-          prototype stores archive data only in this browser.
-        </p>
-      </div>
-
-      <section
-        className="archive-library"
-        aria-labelledby="archive-library-heading"
-      >
-        <div className="archive-library-head">
-          <div>
-            <span>RECORD LIBRARY</span>
-
-            <h2 id="archive-library-heading">Archived items</h2>
-          </div>
-
-          <span className="archive-count-label">
-            {filtered.length} of {entries.length} records
-          </span>
-        </div>
-
-        <div className="archive-controls">
-          <label className="archive-search">
-            <Search size={18} aria-hidden="true" />
-
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search record name, ID or staff"
-              aria-label="Search archived records"
-            />
-          </label>
-
-          <label className="archive-sort">
-            <SlidersHorizontal size={17} aria-hidden="true" />
-
-            <select
-              value={sort}
-              onChange={(event) => setSort(event.target.value)}
-              aria-label="Sort archived records"
-            >
-              <option value="newest">Newest first</option>
-
-              <option value="oldest">Oldest first</option>
-            </select>
-          </label>
-        </div>
-
-        <div
-          className="archive-filters"
-          role="group"
-          aria-label="Filter by category"
+        <button
+          type="button"
+          onClick={() => setRevision((n) => n + 1)}
+          disabled={loading}
         >
-          <Filter
-            size={16}
-            className="archive-filter-icon"
-            aria-hidden="true"
+          <RefreshCw size={16} /> Refresh
+        </button>
+      </header>
+      <div className="av-archive-note">
+        <ShieldCheck size={18} />
+        <span>
+          Records remain recoverable for three years. Expired records are
+          permanently erased only when database references allow it. Orders,
+          payments, and service history are never deleted through this page.
+        </span>
+      </div>
+      {error && (
+        <p className="wsm-error" role="alert">
+          {error}
+        </p>
+      )}
+      {message && (
+        <p className="wsm-success" role="status">
+          {message}
+        </p>
+      )}
+      <div className="av-archive-summary">
+        <strong>{items.length} archived</strong>
+        <span>{Object.keys(counts).length} categories</span>
+        <span>
+          <Clock3 size={14} /> 3-year retention
+        </span>
+      </div>
+      <div className="av-archive-controls">
+        <label>
+          <Search size={17} />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search archived records"
+            aria-label="Search archive"
           />
-
+        </label>
+        <div className="av-archive-categories" aria-label="Archive categories">
           <button
-            type="button"
-            className={category === "All" ? "active" : ""}
-            onClick={() => setCategory("All")}
-            aria-pressed={category === "All"}
+            className={category === "all" ? "active" : ""}
+            onClick={() => setCategory("all")}
           >
-            All <span>{entries.length}</span>
+            All ({items.length})
           </button>
-
-          {categoryCounts.map(([name, count]) => (
-            <button
-              type="button"
-              key={name}
-              className={category === name ? "active" : ""}
-              onClick={() => setCategory(name)}
-              aria-pressed={category === name}
-            >
-              {name} <span>{count}</span>
-            </button>
-          ))}
+          {Object.entries(counts)
+            .sort()
+            .map(([key, count]) => (
+              <button
+                key={key}
+                className={category === key ? "active" : ""}
+                onClick={() => setCategory(key)}
+              >
+                {titles[key] || key} ({count})
+              </button>
+            ))}
         </div>
-
-        {notice && (
-          <p className="archive-message archive-message--success" role="status">
-            <CheckCircle2 size={16} aria-hidden="true" />
-            {notice}
-          </p>
-        )}
-
-        {error && (
-          <p className="archive-message archive-message--error" role="alert">
-            {error}
-          </p>
-        )}
-
-        <div className="archive-list">
-          {filtered.map((entry) => (
-            <ArchiveRecord
-              entry={entry}
-              key={entry.id}
-              onRestore={restore}
-              restoring={restoring}
-            />
-          ))}
-
-          {!filtered.length && (
-            <div className="archive-empty">
-              <span className="archive-empty-icon">
-                <PackageOpen size={27} aria-hidden="true" />
-              </span>
-
-              <h3>
-                {entries.length
-                  ? "No matching records"
-                  : "Nothing in Archive yet"}
-              </h3>
-
-              <p>
-                {entries.length
-                  ? "Try a different name, ID, staff member, or category."
-                  : "When an owner or manager archives a supported record, it will appear here with its original module label and restore option."}
-              </p>
-
-              {entries.length > 0 && (search || category !== "All") && (
+      </div>
+      {loading ? (
+        <p className="av-archive-empty" role="status">
+          Loading archive…
+        </p>
+      ) : !visible.length ? (
+        <p className="av-archive-empty">
+          {items.length
+            ? "No records match your filters."
+            : "No archived records yet. Use Archive on a product, category, variant, service type, or technician record."}
+        </p>
+      ) : (
+        <div className="av-archive-grid">
+          {visible.map((entry) => (
+            <article className="av-archive-card" key={entry.id}>
+              <div className="av-archive-card-top">
+                <span>
+                  {titles[entry.sourceModule || entry.category] ||
+                    entry.category}
+                </span>
+                <span>#{entry.recordId}</span>
+              </div>
+              <h2>{entry.label}</h2>
+              <p>Archived {formatted(entry.deletedAt)}</p>
+              <p>By {entry.deletedBy || "Management staff"}</p>
+              <p>Retention ends {formatted(entry.purgeAfter)}</p>
+              <div className="av-archive-card-actions">
+                <button type="button" onClick={() => setDetail(entry)}>
+                  <Eye size={16} /> Details
+                </button>
                 <button
                   type="button"
-                  className="archive-clear-button"
-                  onClick={() => {
-                    setSearch("");
-                    setCategory("All");
-                  }}
+                  disabled={Boolean(busy)}
+                  onClick={() => restore(entry)}
                 >
-                  Clear filters
+                  <ArchiveRestore size={16} />
+                  {busy === entry.id ? "Restoring…" : "Restore"}
                 </button>
-              )}
-            </div>
-          )}
+              </div>
+            </article>
+          ))}
         </div>
-      </section>
+      )}
+      {detail && (
+        <div
+          className="av-archive-overlay"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setDetail(null);
+          }}
+        >
+          <section
+            className="av-archive-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="archive-detail-heading"
+          >
+            <header>
+              <div>
+                <span>{titles[detail.category] || detail.category}</span>
+                <h2 id="archive-detail-heading">{detail.label}</h2>
+              </div>
+              <button
+                onClick={() => setDetail(null)}
+                aria-label="Close details"
+              >
+                <X size={20} />
+              </button>
+            </header>
+            <div className="av-archive-dialog-body">
+              <p>
+                Record #{detail.recordId} · Archived{" "}
+                {formatted(detail.deletedAt)} · By{" "}
+                {detail.deletedBy || "Management"}
+              </p>
+              <dl>
+                {(snapshotFields[detail.category] || []).map((field) => (
+                  <div key={field}>
+                    <dt>{field.replaceAll("_", " ")}</dt>
+                    <dd>{String(detail.snapshot?.[field] ?? "—")}</dd>
+                  </div>
+                ))}
+              </dl>
+              <p>
+                Changes made while archived are not supported. Restore first to
+                edit the live record.
+              </p>
+            </div>
+            <footer>
+              <button onClick={() => setDetail(null)}>Close</button>
+              <button disabled={Boolean(busy)} onClick={() => restore(detail)}>
+                <ArchiveRestore size={17} /> Restore record
+              </button>
+            </footer>
+          </section>
+        </div>
+      )}
     </div>
   );
 }

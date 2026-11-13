@@ -405,3 +405,40 @@
     transition: none;
   }
 }
+
+/* Mobile account identity: recognizable AV Cooling mark even in fixed header. */
+@media (max-width: 1024px) {
+  .customer-nav-shell .customer-mobile-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    font-size: 0.9rem;
+    line-height: 1.15;
+  }
+  .customer-nav-shell .customer-mobile-brand svg {
+    flex: 0 0 24px;
+    width: 24px;
+    height: 24px;
+    padding: 4px;
+    border-radius: 7px;
+    color: #052e48;
+    background: #67e8f9;
+  }
+  .customer-nav-shell .customer-mobile-topbar {
+    height: 62px;
+    min-height: 62px;
+    padding: 8px 12px;
+    gap: 8px;
+  }
+  .customer-nav-shell .customer-nav-menu-button {
+    min-width: 82px;
+    min-height: 40px;
+    padding: 8px 10px;
+    font-size: 0.8rem;
+    gap: 6px;
+  }
+  .customer-nav-shell .customer-mobile-current {
+    font-size: 0.69rem;
+  }
+}

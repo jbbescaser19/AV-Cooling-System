@@ -662,3 +662,30 @@
     width: 100%;
   }
 }
+
+/* Shared page headers should not consume half a mobile screen. */
+@media (max-width: 650px) {
+  .page-shell > .container {
+    min-width: 0;
+  }
+  .page-shell .page-intro {
+    margin: 0 0 12px;
+    padding: 0;
+  }
+  .page-shell .page-title {
+    font-size: clamp(1.3rem, 5.6vw, 1.8rem);
+    line-height: 1.14;
+    letter-spacing: -0.02em;
+  }
+  .page-shell .section-copy {
+    font-size: 0.78rem;
+    line-height: 1.45;
+    margin-top: 5px;
+  }
+  .page-shell .eyebrow {
+    font-size: 0.69rem;
+  }
+  .page-shell .about-card {
+    padding: 16px;
+  }
+}

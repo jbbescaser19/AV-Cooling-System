@@ -6,7 +6,7 @@ export function inventoryModel(db) {
   return {
     async listInventory(staffId) {
       return select(
-        `SELECT v.variant_id AS id,CONCAT(p.brand,' ',p.model,' · ',v.horsepower,' HP') AS name,COALESCE(i.on_hand_quantity,0) AS onHand,COALESCE(i.reserved_quantity,0) AS reserved,COALESCE(i.on_hand_quantity-i.reserved_quantity,0) AS available,COALESCE(i.reorder_level,0) AS reorderLevel FROM product_variants v JOIN products p ON p.product_id=v.product_id LEFT JOIN inventory i ON i.variant_id=v.variant_id ORDER BY p.brand,p.model,v.horsepower LIMIT 300`,
+        `SELECT v.variant_id AS id,CONCAT(p.brand,' ',p.model,' · ',v.horsepower,' HP') AS name,COALESCE(i.on_hand_quantity,0) AS onHand,COALESCE(i.reserved_quantity,0) AS reserved,COALESCE(i.on_hand_quantity-i.reserved_quantity,0) AS available,COALESCE(i.reorder_level,0) AS reorderLevel FROM product_variants v JOIN products p ON p.product_id=v.product_id LEFT JOIN inventory i ON i.variant_id=v.variant_id WHERE v.status='ACTIVE' AND p.status='ACTIVE' ORDER BY p.brand,p.model,v.horsepower LIMIT 300`,
       );
     },
     ensureInventory(variantId) {

@@ -62,6 +62,7 @@ export async function getManagementDashboard(staff) {
         inventory: null,
         recentRecords: [],
         upcomingServices: [],
+        feedbackSentiment: null,
       },
       generatedAt: new Date().toISOString(),
     };
@@ -91,6 +92,7 @@ export async function getManagementDashboard(staff) {
       inventory: null,
       recentRecords: [],
       upcomingServices: [],
+      feedbackSentiment: null,
     };
 
     if (canSales) {
@@ -171,6 +173,17 @@ export async function getManagementDashboard(staff) {
           status: row.status,
           preferredStart: row.preferredStart,
         }),
+      );
+    }
+
+    // The feedback overview is limited to owners and managers. It contains
+    // aggregate counts only; no customer names or private comments.
+    if (OWNER_MANAGER.has(role)) {
+      const sentiment = await model.feedbackSentimentSummary();
+      dashboard.feedbackSentiment = Object.fromEntries(
+        ["total", "positive", "neutral", "negative", "unanalyzed"].map(
+          (key) => [key, asCount(sentiment[key])],
+        ),
       );
     }
 

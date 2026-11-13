@@ -1,4 +1,6 @@
+import { confirmAction } from "../utils/confirmAction.js";
 import { useCallback, useEffect, useState } from "react";
+
 import {
   Navigate,
   Outlet,
@@ -6,16 +8,29 @@ import {
   useLocation,
   useNavigate,
 } from "react-router-dom";
-import { Bell, LogOut, Menu, UserRound } from "lucide-react";
+
+import {
+  AlertTriangle,
+  Bell,
+  CheckCheck,
+  LogOut,
+  Menu,
+  Trash2,
+  UserRound,
+  X,
+} from "lucide-react";
 
 import Sidebar from "../components/management/Sidebar";
+import RealtimeBridge from "../components/realtime/RealtimeBridge.jsx";
 import ManagementReauthGate from "../components/management/ManagementReauthGate";
 import UpcomingAgendaAlerts from "../components/management/UpcomingAgendaAlerts";
+
 import { getStaff, loginStaff, logoutStaff } from "../utils/authMock";
+
 import api from "../../api/api.js";
 
 import "../styles/management/management.css";
-import "../styles/management/management-scroll.css";
+import "../styles/management/management-notifications-popover.css";
 
 const access = {
   OWNER: [
@@ -43,7 +58,10 @@ const access = {
     "audit-logs",
     "archive",
     "staff",
+    "change-password",
+    "staff-password-reset",
   ],
+
   MANAGER: [
     "dashboard",
     "capacity-calculator",
@@ -67,14 +85,18 @@ const access = {
     "reports",
     "notifications",
     "archive",
+    "change-password",
   ],
-  SALES_CASHIER: ["pos", "notifications"],
+
+  SALES_CASHIER: ["pos", "notifications", "change-password"],
+
   TECHNICIAN: [
     "dashboard",
     "capacity-calculator",
     "booking-calendar",
     "schedules",
     "notifications",
+    "change-password",
   ],
 };
 
@@ -83,11 +105,27 @@ export default function ManagementLayout() {
   const location = useLocation();
 
   const [open, setOpen] = useState(false);
+
   const [staff, setStaff] = useState(() => getStaff());
+
   const [session, setSession] = useState(null);
   const [checking, setChecking] = useState(true);
   const [unread, setUnread] = useState(0);
+
+  const [notificationOpen, setNotificationOpen] = useState(false);
+
+  const [recentNotifications, setRecentNotifications] = useState([]);
+
+  const [lowStockCount, setLowStockCount] = useState(0);
+
+  const [lowStockItems, setLowStockItems] = useState([]);
+
+  const [notificationBusy, setNotificationBusy] = useState(false);
+
+  const [notificationError, setNotificationError] = useState("");
+
   const [logoutError, setLogoutError] = useState("");
+
   const [loggingOut, setLoggingOut] = useState(false);
 
   useEffect(() => {
@@ -107,6 +145,7 @@ export default function ManagementLayout() {
         }
 
         loginStaff(person);
+
         setStaff(person);
         setSession(data.session);
       })
@@ -118,7 +157,9 @@ export default function ManagementLayout() {
         setSession(null);
       })
       .finally(() => {
-        if (active) setChecking(false);
+        if (active) {
+          setChecking(false);
+        }
       });
 
     return () => {
@@ -139,28 +180,38 @@ export default function ManagementLayout() {
       window.removeEventListener("av-management-session-ended", endSession);
   }, [endSession]);
 
-  useEffect(() => {
-    // Do not send protected requests from a stale cached staff profile.
-    // Wait until /auth/session has verified the active Management session.
-    if (checking || !session?.id || !staff?.id) return undefined;
-
-    let active = true;
-
-    async function refresh() {
-      try {
-        const { data } = await api.get(
-          "/api/management/workspace/notifications",
-        );
-
-        if (active) {
-          setUnread(
-            (data.items || []).filter((item) => !Number(item.isRead)).length,
-          );
-        }
-      } catch {
-        if (active) setUnread(0);
-      }
+  const refreshNotificationOverview = useCallback(async () => {
+    if (!staff?.id || !session || staff.mustChangePassword) {
+      return;
     }
+
+    const { data } = await api.get(
+      "/api/management/workspace/notifications/overview",
+    );
+
+    setRecentNotifications(Array.isArray(data.items) ? data.items : []);
+
+    setUnread(Number(data.unreadCount) || 0);
+
+    setLowStockCount(Number(data.lowStockCount) || 0);
+
+    setLowStockItems(
+      Array.isArray(data.lowStockItems) ? data.lowStockItems : [],
+    );
+
+    setNotificationError("");
+  }, [staff?.id, session]);
+
+  useEffect(() => {
+    if (!staff?.id || !session || staff.mustChangePassword) {
+      return undefined;
+    }
+
+    const refresh = () => {
+      refreshNotificationOverview().catch(() => {
+        setNotificationError("Unable to refresh notifications.");
+      });
+    };
 
     refresh();
 
@@ -169,30 +220,69 @@ export default function ManagementLayout() {
     window.addEventListener("av-management-updated", refresh);
 
     return () => {
-      active = false;
       window.clearInterval(interval);
+
       window.removeEventListener("av-management-updated", refresh);
     };
-  }, [checking, session?.id, staff?.id]);
+  }, [staff?.id, session, refreshNotificationOverview]);
+
+  async function notificationAction(path, method, confirmClear = false) {
+    if (notificationBusy) return;
+
+    if (
+      confirmClear &&
+      !(await confirmAction(
+        "Delete all your saved notifications? Low-stock alerts will remain visible until restocked.",
+      ))
+    ) {
+      return;
+    }
+
+    setNotificationBusy(true);
+    setNotificationError("");
+
+    try {
+      if (method === "delete") {
+        await api.delete(path);
+      } else {
+        await api.patch(path, method === "read-one" ? { isRead: true } : {});
+      }
+
+      await refreshNotificationOverview();
+
+      window.dispatchEvent(new Event("av-management-notifications-changed"));
+    } catch (error) {
+      setNotificationError(
+        error.response?.data?.message || "Could not update notifications.",
+      );
+    } finally {
+      setNotificationBusy(false);
+    }
+  }
 
   useEffect(() => {
     setOpen(false);
-    // Recover from an old modal/drawer scroll lock when navigating between pages.
-    document.body.style.overflow = "";
+    setNotificationOpen(false);
   }, [location.pathname]);
 
   useEffect(() => {
     if (!open) return undefined;
 
-    // The menu and its links have their own scroll area; do not lock the
-    // whole document and strand a cashier or technician on a long page.
+    const previous = document.body.style.overflow;
+
+    document.body.style.overflow = "hidden";
+
     const escape = (event) => {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key === "Escape") {
+        setOpen(false);
+      }
     };
 
     window.addEventListener("keydown", escape);
 
     return () => {
+      document.body.style.overflow = previous;
+
       window.removeEventListener("keydown", escape);
     };
   }, [open]);
@@ -236,6 +326,10 @@ export default function ManagementLayout() {
 
   const slug = location.pathname.split("/")[2] || "dashboard";
 
+  if (staff.mustChangePassword && slug !== "change-password") {
+    return <Navigate to="/management/change-password" replace />;
+  }
+
   const allowed = access[staff.role] || [];
 
   if (!allowed.includes(slug)) {
@@ -253,6 +347,8 @@ export default function ManagementLayout() {
 
   return (
     <div className="mgmt-shell">
+      {!staff.mustChangePassword && <RealtimeBridge audience="staff" />}
+
       <Sidebar open={open} onClose={() => setOpen(false)} />
 
       {open && (
@@ -274,36 +370,186 @@ export default function ManagementLayout() {
             onClick={() => setOpen(true)}
           >
             <Menu size={19} />
+
             <span className="mgmt-menu-label">Menu</span>
           </button>
 
           <div>
             <b>AV Cooling Management</b>
-            <span>
-              {staff.role === "SALES_CASHIER"
-                ? "Point of sale and walk-in bookings"
-                : "Sales, inventory, service, and operations"}
-            </span>
+
+            <span>Sales, inventory, service, and operations</span>
           </div>
 
           <div className="mgmt-top-actions">
-            <Link
-              className="mgmt-notification-link"
-              to="/management/notifications"
-              aria-label={`${unread} unread management notifications`}
-              title="Notifications"
-            >
-              <Bell size={19} />
+            <div className="av-notify-wrap">
+              <button
+                className="mgmt-notification-link"
+                type="button"
+                aria-label={`${unread} unread management notifications`}
+                aria-expanded={notificationOpen}
+                aria-controls="av-management-notification-popover"
+                title="Open notifications"
+                onClick={() => setNotificationOpen((value) => !value)}
+              >
+                <Bell size={19} />
 
-              {unread > 0 && (
-                <span className="mgmt-notification-count">
-                  {unread > 99 ? "99+" : unread}
-                </span>
+                {unread > 0 && (
+                  <span className="mgmt-notification-count">
+                    {unread > 99 ? "99+" : unread}
+                  </span>
+                )}
+              </button>
+
+              {notificationOpen && (
+                <div
+                  className="av-notify-popover"
+                  id="av-management-notification-popover"
+                  role="region"
+                  aria-label="Management notifications"
+                >
+                  <div className="av-notify-popover__head">
+                    <strong>Notifications</strong>
+
+                    <button
+                      type="button"
+                      onClick={() => setNotificationOpen(false)}
+                      aria-label="Close notifications"
+                    >
+                      <X size={18} />
+                    </button>
+                  </div>
+
+                  {notificationError && (
+                    <p className="av-notify-error" role="alert">
+                      {notificationError}
+                    </p>
+                  )}
+
+                  {lowStockCount > 0 &&
+                    ["OWNER", "MANAGER"].includes(staff.role) && (
+                      <Link
+                        className="av-stock-popover-warning"
+                        to="/management/inventory"
+                        onClick={() => setNotificationOpen(false)}
+                      >
+                        <AlertTriangle size={20} aria-hidden="true" />
+
+                        <span>
+                          <strong>{lowStockCount} need restocking</strong>
+
+                          <small>
+                            {lowStockItems
+                              .slice(0, 2)
+                              .map((item) => item.name)
+                              .join(" · ")}
+
+                            {lowStockCount > 2 ? " · View all inventory" : ""}
+                          </small>
+                        </span>
+                      </Link>
+                    )}
+
+                  <div className="av-notify-popover__tools">
+                    <button
+                      type="button"
+                      disabled={notificationBusy || unread === 0}
+                      onClick={() =>
+                        notificationAction(
+                          "/api/management/workspace/notifications/read-all",
+                          "patch",
+                        )
+                      }
+                    >
+                      <CheckCheck size={15} />
+                      Mark all read
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={notificationBusy || !recentNotifications.length}
+                      onClick={() =>
+                        notificationAction(
+                          "/api/management/workspace/notifications/clear",
+                          "delete",
+                          true,
+                        )
+                      }
+                    >
+                      <Trash2 size={15} />
+                      Clear all
+                    </button>
+                  </div>
+
+                  {recentNotifications.length === 0 ? (
+                    <p className="av-notify-popover__empty">
+                      No saved notifications.
+                    </p>
+                  ) : (
+                    recentNotifications.map((notice) => (
+                      <div
+                        className={`av-notify-popover__item ${
+                          Number(notice.isRead)
+                            ? ""
+                            : "av-notify-popover__item--unread"
+                        }`}
+                        key={notice.id}
+                      >
+                        <strong>{notice.title || "New update"}</strong>
+
+                        <span>
+                          {notice.message ||
+                            "View the notification for more information."}
+                        </span>
+
+                        <div className="av-notify-popover__item-actions">
+                          {!Number(notice.isRead) && (
+                            <button
+                              type="button"
+                              disabled={notificationBusy}
+                              onClick={() =>
+                                notificationAction(
+                                  `/api/management/workspace/notifications/${notice.id}`,
+                                  "read-one",
+                                )
+                              }
+                            >
+                              <CheckCheck size={14} />
+                              Mark read
+                            </button>
+                          )}
+
+                          <button
+                            type="button"
+                            disabled={notificationBusy}
+                            onClick={() =>
+                              notificationAction(
+                                `/api/management/workspace/notifications/${notice.id}`,
+                                "delete",
+                              )
+                            }
+                          >
+                            <Trash2 size={14} />
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+
+                  <Link
+                    className="av-notify-popover__all"
+                    to="/management/notifications"
+                    onClick={() => setNotificationOpen(false)}
+                  >
+                    View all notifications
+                  </Link>
+                </div>
               )}
-            </Link>
+            </div>
 
             <span className="staff-chip">
               <UserRound size={16} />
+
               {staff.role.replaceAll("_", " ")}
             </span>
 
@@ -320,13 +566,26 @@ export default function ManagementLayout() {
           </div>
         </header>
 
+        {lowStockCount > 0 && ["OWNER", "MANAGER"].includes(staff.role) && (
+          <Link to="/management/inventory" className="av-restock-strip">
+            <AlertTriangle size={17} aria-hidden="true" />
+
+            <span>
+              <strong>Restock needed:</strong> {lowStockCount} aircon variant(s)
+              at or below reorder level
+            </span>
+
+            <span className="av-restock-strip__action">View inventory</span>
+          </Link>
+        )}
+
         {logoutError && (
           <p role="alert" className="wsm-error">
             {logoutError}
           </p>
         )}
 
-        {staff.role !== "SALES_CASHIER" && (
+        {staff.role !== "SALES_CASHIER" && !staff.mustChangePassword && (
           <UpcomingAgendaAlerts staff={staff} />
         )}
 

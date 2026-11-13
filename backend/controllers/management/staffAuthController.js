@@ -17,8 +17,15 @@ const sharedCookieOptions = {
 
 const accessCookie = {
   ...sharedCookieOptions,
-  path: "/api/management",
+  path: "/api",
   maxAge: STAFF_ACCESS_MS,
+};
+
+// Clear older login cookies that used a narrower path, so a browser
+// cannot send two conflicting staffAccessToken values.
+const legacyAccessCookie = {
+  ...sharedCookieOptions,
+  path: "/api/management",
 };
 
 const refreshCookie = {
@@ -28,6 +35,7 @@ const refreshCookie = {
 };
 
 function setAccessCookie(res, token) {
+  res.clearCookie("staffAccessToken", legacyAccessCookie);
   res.cookie("staffAccessToken", token, accessCookie);
 }
 
@@ -38,7 +46,9 @@ function setRefreshCookie(res, token) {
 function clearAuthCookies(res) {
   const { maxAge: _accessMaxAge, ...accessClear } = accessCookie;
   const { maxAge: _refreshMaxAge, ...refreshClear } = refreshCookie;
+
   res.clearCookie("staffAccessToken", accessClear);
+  res.clearCookie("staffAccessToken", legacyAccessCookie);
   res.clearCookie("staffRefreshToken", refreshClear);
 }
 
@@ -47,7 +57,11 @@ function sendError(res, error) {
     Number(error.status) >= 400 && Number(error.status) < 500
       ? Number(error.status)
       : 500;
-  if (status === 500) console.error("Management authentication:", error);
+
+  if (status === 500) {
+    console.error("Management authentication:", error);
+  }
+
   return res.status(status).json({
     success: false,
     message:
@@ -63,9 +77,15 @@ export const staffAuthController = {
         req.body?.password,
         req.ip,
       );
+
       setAccessCookie(res, token);
       setRefreshCookie(res, refreshToken);
-      return res.json({ success: true, staff, session });
+
+      return res.json({
+        success: true,
+        staff,
+        session,
+      });
     } catch (error) {
       return sendError(res, error);
     }
@@ -76,10 +96,19 @@ export const staffAuthController = {
       const { token, staff, session } = await refreshStaffSession(
         req.cookies?.staffRefreshToken,
       );
+
       setAccessCookie(res, token);
-      return res.json({ success: true, staff, session });
+
+      return res.json({
+        success: true,
+        staff,
+        session,
+      });
     } catch (error) {
-      if (error.status === 401) clearAuthCookies(res);
+      if (error.status === 401) {
+        clearAuthCookies(res);
+      }
+
       return sendError(res, error);
     }
   },
@@ -103,7 +132,11 @@ export const staffAuthController = {
       const { session } = await recordStaffActivity(
         req.cookies?.staffAccessToken,
       );
-      return res.json({ success: true, session });
+
+      return res.json({
+        success: true,
+        session,
+      });
     } catch (error) {
       return sendError(res, error);
     }
@@ -116,7 +149,11 @@ export const staffAuthController = {
         req.body?.password,
         req.ip,
       );
-      return res.json({ success: true, session });
+
+      return res.json({
+        success: true,
+        session,
+      });
     } catch (error) {
       return sendError(res, error);
     }
@@ -128,8 +165,12 @@ export const staffAuthController = {
         req.cookies?.staffAccessToken,
         req.cookies?.staffRefreshToken,
       );
+
       clearAuthCookies(res);
-      return res.json({ success: true });
+
+      return res.json({
+        success: true,
+      });
     } catch (error) {
       return sendError(res, error);
     }

@@ -50,7 +50,19 @@ export async function reportManualTransfer(userId, number, raw) {
     if (!order) throw invalid("Order was not found.", 404);
     if (!["GCASH", "BANK_TRANSFER"].includes(order.method))
       throw invalid("This order uses a different payment method.");
-    if (order.orderStatus === "CANCELLED" || order.paymentStatus !== "PENDING")
+    if (
+      !["CONFIRMED", "SCHEDULED", "IN_PROGRESS", "COMPLETED"].includes(
+        order.orderStatus,
+      )
+    ) {
+      throw invalid(
+        "Wait until the store confirms your order before reporting a transfer.",
+      );
+    }
+    if (
+      order.paymentStatus !== "PENDING" ||
+      order.orderPaymentStatus !== "PENDING"
+    )
       throw invalid("This payment is no longer pending.");
     if (await model.existing(order.paymentId))
       throw invalid(

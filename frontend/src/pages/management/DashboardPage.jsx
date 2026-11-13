@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
@@ -14,9 +14,11 @@ import {
   TrendingUp,
   UsersRound,
   Wrench,
+  MessageSquareText,
 } from "lucide-react";
 
 import api from "../../../api/api.js";
+import useRealtimeRefresh from "../../hooks/useRealtimeRefresh.js";
 import TechnicianDashboard from "../../components/management/TechnicianDashboard";
 import "../../styles/management/dashboard-live.css";
 
@@ -480,16 +482,120 @@ function UpcomingServices({ items }) {
   );
 }
 
+function FeedbackSentiment({ summary }) {
+  if (!summary) return null;
+  const analyzed = summary.positive + summary.neutral + summary.negative;
+  const groups = [
+    { key: "positive", label: "Positive", color: "positive" },
+    { key: "neutral", label: "Neutral", color: "neutral" },
+    { key: "negative", label: "Negative", color: "negative" },
+  ];
+  return (
+    <section
+      className="live-dashboard__panel sentiment-overview"
+      aria-labelledby="sentiment-heading"
+    >
+      <div className="live-dashboard__panel-heading">
+        <div>
+          <h2 id="sentiment-heading">
+            <MessageSquareText size={20} aria-hidden="true" /> Customer feedback
+            sentiment
+          </h2>
+          <p>
+            Real submitted feedback classified as positive, neutral, or negative
+          </p>
+        </div>
+        <Link className="live-dashboard__subtle-link" to="/management/feedback">
+          Manage feedback <ArrowRight size={16} />
+        </Link>
+      </div>
+      {summary.total === 0 ? (
+        <div className="live-dashboard__simple-empty">
+          No customer feedback has been submitted yet. Sentiment figures will
+          appear here when feedback is received.
+        </div>
+      ) : (
+        <>
+          <div className="sentiment-overview__stats">
+            <div>
+              <strong>{number(summary.total)}</strong>
+              <span>Total feedback</span>
+            </div>
+            <div>
+              <strong>{number(analyzed)}</strong>
+              <span>Analyzed</span>
+            </div>
+            <div>
+              <strong>{number(summary.unanalyzed)}</strong>
+              <span>Awaiting analysis</span>
+            </div>
+          </div>
+          <div className="sentiment-overview__bars">
+            {groups.map((group) => {
+              const count = Number(summary[group.key] || 0);
+              const percent = analyzed
+                ? Math.round((count / analyzed) * 100)
+                : 0;
+              return (
+                <div className="sentiment-overview__row" key={group.key}>
+                  <div className="sentiment-overview__label">
+                    <strong>{group.label}</strong>
+                    <span>
+                      {number(count)} · {percent}%
+                    </span>
+                  </div>
+                  <div
+                    className="sentiment-overview__track"
+                    role="img"
+                    aria-label={`${group.label}: ${count} feedback items, ${percent} percent of analyzed feedback`}
+                  >
+                    <span
+                      className={`sentiment-overview__bar is-${group.color}`}
+                      style={{ width: `${percent}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <p className="sentiment-overview__note">
+            Percentages use analyzed feedback only. Unanalyzed submissions are
+            shown separately; sentiment is an automated estimate, not a review
+            of service quality.
+          </p>
+        </>
+      )}
+    </section>
+  );
+}
+
 export default function DashboardPage() {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [reload, setReload] = useState(0);
+  const hasLoadedRef = useRef(false);
+
+  // Do not fetch again simply because the user returned to this tab.
+  // A server-side business change is the refresh trigger.
+  useRealtimeRefresh(
+    [
+      "dashboard",
+      "orders",
+      "services",
+      "payments",
+      "inventory",
+      "reports",
+      "feedback",
+      "jobs",
+    ],
+    setReload,
+  );
 
   useEffect(() => {
     const controller = new AbortController();
 
-    setLoading(true);
+    if (!hasLoadedRef.current) setLoading(true);
     setError("");
 
     api
@@ -502,6 +608,7 @@ export default function DashboardPage() {
             throw new Error("Dashboard response was invalid.");
           }
 
+          hasLoadedRef.current = true;
           setResult(data);
         }
       })
@@ -531,21 +638,11 @@ export default function DashboardPage() {
   }, [reload]);
 
   useEffect(() => {
-    const interval = window.setInterval(() => {
-      if (document.visibilityState === "visible") {
-        setReload((current) => current + 1);
-      }
-    }, 60000);
-
+    // Keep refresh after a deliberate local staff action.
+    // No focus/visibility listeners or idle 60-second polling.
     const refresh = () => setReload((current) => current + 1);
-
     window.addEventListener("av-management-updated", refresh);
-
-    return () => {
-      window.clearInterval(interval);
-
-      window.removeEventListener("av-management-updated", refresh);
-    };
+    return () => window.removeEventListener("av-management-updated", refresh);
   }, []);
 
   const data = result?.dashboard;
@@ -834,6 +931,10 @@ export default function DashboardPage() {
             </section>
           )}
 
+          {data.feedbackSentiment && (
+            <FeedbackSentiment summary={data.feedbackSentiment} />
+          )}
+
           <div className="live-dashboard__columns live-dashboard__columns-bottom">
             <RecentRecords records={data.recentRecords} />
 
@@ -844,9 +945,8 @@ export default function DashboardPage() {
 
           <footer className="live-dashboard__footer">
             <TrendingUp size={16} />
-            Data updates when you refresh and automatically while this tab is
-            open (every 60 seconds). Payment totals use only records marked
-            PAID.
+            Data updates after recorded business changes or when you use
+            Refresh. Payment totals use only records marked PAID.
           </footer>
         </>
       )}

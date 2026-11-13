@@ -1,8 +1,10 @@
 import { Router } from "express";
 import { requireCustomerWriteOrigin } from "../../../middleware/requireCustomerWriteOrigin.js";
+import { getWorkHistoryController } from "../../../controllers/management/services/workHistoryController.js";
 import { workOrderControllers } from "../../../controllers/management/services/workOrderController.js";
 const router = Router();
 router.get("/", workOrderControllers.list);
+router.get("/:id/history", getWorkHistoryController);
 router.post("/", requireCustomerWriteOrigin, workOrderControllers.create);
 router.patch("/:id", requireCustomerWriteOrigin, workOrderControllers.update);
 export default router;

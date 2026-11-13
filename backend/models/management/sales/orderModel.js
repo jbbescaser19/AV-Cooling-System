@@ -1,9 +1,37 @@
 /** SQL for the order management feature. */
 export function orderModel(db) {
   return {
-    async orders() {
-      const [rows] =
-        await db.execute(`SELECT o.order_id AS id, o.order_number AS reference,
+    async orders(filters) {
+      const where = [];
+      const params = [];
+      if (filters.status !== "ALL") {
+        where.push("o.order_status = ?");
+        params.push(filters.status);
+      }
+      if (filters.channel !== "ALL") {
+        where.push("o.order_channel = ?");
+        params.push(filters.channel);
+      }
+      if (filters.search) {
+        const term = `%${filters.search.replace(/[!%_]/g, (char) => `!${char}`)}%`;
+        where.push(
+          "(o.order_number LIKE ? ESCAPE '!' OR o.recipient_name LIKE ? ESCAPE '!' OR o.contact_number LIKE ? ESCAPE '!')",
+        );
+        params.push(term, term, term);
+      }
+      const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
+      const [[totalRow]] = await db.execute(
+        `SELECT COUNT(*) AS total FROM orders o ${whereSql}`,
+        params,
+      );
+      const total = Number(totalRow?.total) || 0;
+      const offset = (filters.page - 1) * filters.pageSize;
+      const [rows] = await db.execute(
+        `SELECT o.order_id AS id, o.order_number AS orderNumber, CONCAT('AV-', YEAR(o.ordered_at), '-',
+                      CASE WHEN o.order_id < 1000000
+                        THEN LPAD(o.order_id, 6, '0')
+                        ELSE CAST(o.order_id AS CHAR)
+                      END) AS reference,
                     o.order_channel AS channel, o.recipient_name AS customer,
                     o.order_status AS status, o.payment_status AS paymentStatus,
                     o.contact_number AS contact,
@@ -36,12 +64,25 @@ export function orderModel(db) {
                       ) AS firstProduct
                  FROM order_items GROUP BY order_id
              ) itemSummary ON itemSummary.order_id = o.order_id
-             ORDER BY o.order_id DESC LIMIT 150`);
-      return rows;
+             ${whereSql}
+             ORDER BY o.order_id DESC LIMIT ? OFFSET ?`,
+        [...params, filters.pageSize, offset],
+      );
+      return {
+        rows,
+        total,
+        page: filters.page,
+        pageSize: filters.pageSize,
+        totalPages: Math.max(1, Math.ceil(total / filters.pageSize)),
+      };
     },
     async orderDetails(id) {
       const [rows] = await db.execute(
-        `SELECT order_id AS id, order_number AS reference,
+        `SELECT order_id AS id, order_number AS orderNumber, CONCAT('AV-', YEAR(ordered_at), '-',
+                      CASE WHEN order_id < 1000000
+                        THEN LPAD(order_id, 6, '0')
+                        ELSE CAST(order_id AS CHAR)
+                      END) AS reference,
                     order_channel AS channel, recipient_name AS customer,
                     contact_number AS phone, fulfillment_method AS fulfillment,
                     delivery_address AS address, order_status AS status,

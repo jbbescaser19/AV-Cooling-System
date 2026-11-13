@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import api from "../../../api/api.js";
+import useRealtimeRefresh from "../../hooks/useRealtimeRefresh.js";
 import { getStaff } from "../../utils/authMock.js";
 import TechnicianBookingCalendar from "./TechnicianBookingCalendar.jsx";
 import "../../styles/management/booking-calendar.css";
@@ -35,6 +36,10 @@ function ManagementBookingCalendar() {
   const [dayError, setDayError] = useState("");
   const [message, setMessage] = useState("");
   const [revision, setRevision] = useState(0);
+  const loadedMonthRef = useRef(null);
+  const loadedDayRef = useRef(null);
+
+  useRealtimeRefresh(["schedules", "jobs", "orders", "services"], setRevision);
 
   const canManage = ["OWNER", "MANAGER"].includes(getStaff()?.role);
   const today = manilaToday();
@@ -47,7 +52,7 @@ function ManagementBookingCalendar() {
 
   useEffect(() => {
     const controller = new AbortController();
-    setLoading(true);
+    if (loadedMonthRef.current !== month) setLoading(true);
     api
       .get("/api/schedule/availability", {
         params: { month },
@@ -56,12 +61,13 @@ function ManagementBookingCalendar() {
       .then(({ data }) => {
         if (!controller.signal.aborted) {
           setDays(Array.isArray(data.days) ? data.days : []);
+          loadedMonthRef.current = month;
           setCalendarError("");
         }
       })
       .catch((error) => {
         if (!controller.signal.aborted) {
-          setDays([]);
+          // Preserve previous calendar while a background refresh fails.
           setCalendarError(
             error.response?.data?.message || "Calendar could not load.",
           );
@@ -80,17 +86,21 @@ function ManagementBookingCalendar() {
       return undefined;
     }
     const controller = new AbortController();
-    setDayLoading(true);
+    if (loadedDayRef.current !== date) {
+      setDayLoading(true);
+      setBookings([]);
+    }
     setDayError("");
-    setBookings([]);
     api
       .get("/api/management/schedule/day", {
         params: { date },
         signal: controller.signal,
       })
       .then(({ data }) => {
-        if (!controller.signal.aborted)
+        if (!controller.signal.aborted) {
           setBookings(Array.isArray(data.bookings) ? data.bookings : []);
+          loadedDayRef.current = date;
+        }
       })
       .catch((error) => {
         if (!controller.signal.aborted) {
@@ -107,16 +117,9 @@ function ManagementBookingCalendar() {
 
   useEffect(() => {
     const refresh = () => setRevision((value) => value + 1);
-    const onVisible = () => {
-      if (document.visibilityState === "visible") refresh();
-    };
-    const timer = window.setInterval(onVisible, 60000);
     window.addEventListener("av-management-updated", refresh);
-    window.addEventListener("focus", onVisible);
     return () => {
-      window.clearInterval(timer);
       window.removeEventListener("av-management-updated", refresh);
-      window.removeEventListener("focus", onVisible);
     };
   }, []);
 

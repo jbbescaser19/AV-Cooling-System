@@ -1,12 +1,6 @@
 import { z } from "zod";
+import { personName, contactNumber } from "../../shared/personFields.js";
 import { parseBookingStart } from "../../scheduling/bookingScheduleValidator.js";
-
-const phone = z
-  .string()
-  .trim()
-  .min(7)
-  .max(30)
-  .regex(/^[+0-9 ()-]+$/);
 
 function futurePhilippineDateTime(value) {
   try {
@@ -19,8 +13,8 @@ function futurePhilippineDateTime(value) {
 
 const editSchema = z
   .object({
-    recipientName: z.string().trim().min(2).max(150),
-    contactNumber: phone,
+    recipientName: personName,
+    contactNumber,
     fulfillment: z.literal("DELIVERY"),
     deliveryAddress: z.string().trim().max(2000).nullable(),
     customerNotes: z.string().trim().max(1000),

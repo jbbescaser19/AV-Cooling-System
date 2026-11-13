@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
-  ArrowRight,
+  Eye,
   CalendarDays,
-  CalendarClock,
   MapPin,
   Package,
   Phone,
@@ -13,13 +12,12 @@ import {
 } from "lucide-react";
 
 import api from "../../../api/api.js";
+import useRealtimeRefresh from "../../hooks/useRealtimeRefresh.js";
 import SourceTeamPanel from "../../components/management/SourceTeamPanel";
-import ManagerOrderProgressPanel from "../../components/management/ManagerOrderProgressPanel.jsx";
-import OrderRescheduleModal from "../../components/management/OrderRescheduleModal.jsx";
 import { getStaff } from "../../utils/authMock";
 import "../../styles/management/sales-live.css";
 import "../../styles/management/av-records.css";
-import "../../styles/management/order-product-breakdown.css";
+import "../../styles/management/record-pagination.css";
 
 const money = (value) =>
   new Intl.NumberFormat("en-PH", {
@@ -53,29 +51,30 @@ export default function OrdersPage() {
   const [busy, setBusy] = useState(false);
   const [search, setSearch] = useState("");
   const [channel, setChannel] = useState("ALL");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [refresh, setRefresh] = useState(0);
   const [details, setDetails] = useState(null);
-  const [sourceJobs, setSourceJobs] = useState(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [detailsError, setDetailsError] = useState("");
-  const [dialogError, setDialogError] = useState("");
-  const [dialogSuccess, setDialogSuccess] = useState("");
-  const [rescheduleOpen, setRescheduleOpen] = useState(false);
-  const [rescheduleError, setRescheduleError] = useState("");
   const [note, setNote] = useState("");
   const [searchParams, setSearchParams] = useSearchParams();
   const modalRef = useRef(null);
+  const hasLoadedRef = useRef(false);
+
+  useRealtimeRefresh(["orders", "payments", "jobs", "schedules"], setRefresh);
 
   const rawOrderId = searchParams.get("orderId");
   const orderId =
     rawOrderId && /^[1-9]\d*$/.test(rawOrderId) ? Number(rawOrderId) : null;
 
   function closeDetails(force = false) {
-    if ((busy || rescheduleOpen) && !force) return;
-    setDialogError("");
-    setDialogSuccess("");
+    if (busy && !force) return;
     setSearchParams((previous) => {
       const next = new URLSearchParams(previous);
       next.delete("orderId");
@@ -84,13 +83,32 @@ export default function OrdersPage() {
   }
 
   useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedSearch(search.trim());
+      setPage(1);
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [search]);
+
+  useEffect(() => {
     const controller = new AbortController();
-    setLoading(true);
+    if (!hasLoadedRef.current) setLoading(true);
     api
-      .get("/api/management/sales/orders", { signal: controller.signal })
+      .get("/api/management/sales/orders", {
+        signal: controller.signal,
+        params: {
+          page,
+          channel,
+          status: statusFilter,
+          search: debouncedSearch,
+        },
+      })
       .then(({ data }) => {
         if (!controller.signal.aborted) {
           setOrders(Array.isArray(data.orders) ? data.orders : []);
+          hasLoadedRef.current = true;
+          setTotal(Number(data.total) || 0);
+          setTotalPages(Math.max(1, Number(data.totalPages) || 1));
           setError("");
         }
       })
@@ -105,22 +123,18 @@ export default function OrdersPage() {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [refresh]);
+  }, [refresh, page, channel, statusFilter, debouncedSearch]);
 
   useEffect(() => {
     if (!orderId || !Number.isSafeInteger(orderId)) {
       setDetails(null);
       setDetailsError("");
-      setRescheduleOpen(false);
-      setDialogError("");
       return;
     }
     const controller = new AbortController();
     setDetails(null);
-    setSourceJobs(null);
     setDetailsError("");
     setDetailsLoading(true);
-    setDialogError("");
     api
       .get(`/api/management/sales/orders/${orderId}`, {
         signal: controller.signal,
@@ -151,7 +165,7 @@ export default function OrdersPage() {
     document.body.style.overflow = "hidden";
     modalRef.current?.focus();
     function onKeyDown(event) {
-      if (event.key === "Escape" && !busy && !rescheduleOpen) closeDetails();
+      if (event.key === "Escape" && !busy) closeDetails();
     }
     document.addEventListener("keydown", onKeyDown);
     return () => {
@@ -160,25 +174,15 @@ export default function OrdersPage() {
     };
     // closeDetails is intentionally derived from the current URL and busy state.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orderId, busy, rescheduleOpen]);
+  }, [orderId, busy]);
 
-  const filtered = useMemo(
-    () =>
-      orders.filter(
-        (row) =>
-          (channel === "ALL" || row.channel === channel) &&
-          `${row.reference} ${row.customer} ${row.contact || ""} ${row.firstProduct || ""} ${row.status} ${row.channel} ${row.paymentStatus}`
-            .toLowerCase()
-            .includes(search.toLowerCase().trim()),
-      ),
-    [orders, channel, search],
-  );
+  const filtered = orders;
 
   const listRow = orders.find((item) => Number(item.id) === orderId);
   const selected = details ? { ...listRow, ...details } : listRow;
   const staffRole = getStaff()?.role;
   const canApprove = ["OWNER", "MANAGER"].includes(staffRole);
-  const canConfirm = canApprove;
+  const canConfirm = canApprove || staffRole === "SALES_CASHIER";
   const action = selected && canConfirm ? nextOnlineEvent(selected) : null;
   const cancelCode =
     selected?.status === "PENDING"
@@ -187,27 +191,22 @@ export default function OrdersPage() {
   const needsFieldWork =
     details?.fulfillment === "DELIVERY" ||
     details?.items?.some((item) => Boolean(Number(item.installationIncluded)));
-  const fieldWorkStarted = Boolean(Number(selected?.workAlreadyStarted));
   const mayCancel =
     canApprove &&
     selected?.channel === "ONLINE" &&
     selected.paymentStatus === "PENDING" &&
-    ["PENDING", "CONFIRMED", "SCHEDULED"].includes(selected.status) &&
-    !fieldWorkStarted &&
-    !Boolean(Number(selected?.outForDelivery)) &&
-    !Boolean(Number(selected?.delivered));
-  const mayReschedule =
-    canApprove &&
-    selected?.channel === "ONLINE" &&
-    Boolean(details?.schedule) &&
-    ["PENDING", "CONFIRMED", "SCHEDULED"].includes(selected.status) &&
-    !fieldWorkStarted &&
-    !Boolean(Number(selected?.outForDelivery));
+    ["PENDING", "CONFIRMED", "SCHEDULED"].includes(selected.status);
 
   async function apply(eventCode, label, reason = "") {
     if (!details || !selected || busy) return;
+    if (!selected.orderNumber) {
+      setError(
+        "This order's internal reference is missing. Refresh the record before changing its status.",
+      );
+      return;
+    }
     if (eventCode === "ORDER_ACCEPTED" && needsFieldWork && !details.schedule) {
-      setDialogError(
+      setError(
         "This order has no saved appointment. Please arrange an available slot using the Booking Calendar before confirming.",
       );
       return;
@@ -216,16 +215,16 @@ export default function OrdersPage() {
       ["ORDER_CANCELLED_BY_STAFF", "ORDER_DECLINED"].includes(eventCode) &&
       reason.trim().length < 5
     ) {
-      setDialogError("Please enter a reason with at least 5 characters.");
+      setError("Please enter a reason with at least 5 characters.");
       return;
     }
     if (!window.confirm(`${label} for ${selected.reference}?`)) return;
     setBusy(true);
-    setDialogError("");
+    setError("");
     setSuccess("");
     try {
       const { data } = await api.post(
-        `/api/management/orders/${encodeURIComponent(selected.reference)}/events`,
+        `/api/management/orders/${encodeURIComponent(selected.orderNumber)}/events`,
         {
           requestKey: crypto.randomUUID(),
           eventCode,
@@ -244,54 +243,10 @@ export default function OrdersPage() {
       setRefresh((count) => count + 1);
       window.dispatchEvent(new Event("av-management-updated"));
     } catch (requestError) {
-      setDialogError(
+      setError(
         requestError.response?.data?.message ||
           requestError.message ||
           "Could not update the order.",
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function rescheduleOrder(nextSchedule, reason) {
-    if (!selected || busy || !mayReschedule) return;
-    if (
-      !nextSchedule ||
-      nextSchedule === details.schedule ||
-      reason.trim().length < 5
-    ) {
-      setRescheduleError(
-        "Choose a new available appointment and enter a reason (5+ characters).",
-      );
-      return;
-    }
-    setBusy(true);
-    setRescheduleError("");
-    setDialogError("");
-    try {
-      const { data } = await api.post(
-        `/api/management/orders/${encodeURIComponent(selected.reference)}/events`,
-        {
-          requestKey: crypto.randomUUID(),
-          eventCode: "SCHEDULE_CHANGED",
-          schedule: nextSchedule,
-          technicianIds: [],
-          note: reason.trim(),
-        },
-      );
-      if (!data.success) throw new Error("The new appointment was not saved.");
-      setRescheduleOpen(false);
-      setDialogSuccess(
-        `Appointment moved to ${nextSchedule.replace("T", " at ")} (PH time).`,
-      );
-      setRefresh((count) => count + 1);
-      window.dispatchEvent(new Event("av-management-updated"));
-    } catch (requestError) {
-      setRescheduleError(
-        requestError.response?.data?.message ||
-          requestError.message ||
-          "Rescheduling failed. Please refresh available slots.",
       );
     } finally {
       setBusy(false);
@@ -337,7 +292,9 @@ export default function OrdersPage() {
       <section className="sales-panel" aria-label="Order records">
         <div className="sales-section-head">
           <h2>Order records</h2>
-          <span>{filtered.length} shown</span>
+          <span>
+            {total} matching orders · page {page} of {totalPages}
+          </span>
         </div>
         <div className="sales-filters">
           <label className="sales-search">
@@ -352,12 +309,37 @@ export default function OrdersPage() {
           <select
             aria-label="Filter by channel"
             value={channel}
-            onChange={(event) => setChannel(event.target.value)}
+            onChange={(event) => {
+              setChannel(event.target.value);
+              setPage(1);
+            }}
           >
             <option value="ALL">All channels</option>
             <option value="ONLINE">Online</option>
             <option value="FACEBOOK">Facebook</option>
             <option value="POS">Walk-in POS</option>
+          </select>
+          <select
+            aria-label="Filter by order status"
+            value={statusFilter}
+            onChange={(event) => {
+              setStatusFilter(event.target.value);
+              setPage(1);
+            }}
+          >
+            <option value="ALL">All statuses</option>
+            {[
+              "PENDING",
+              "CONFIRMED",
+              "SCHEDULED",
+              "IN_PROGRESS",
+              "COMPLETED",
+              "CANCELLED",
+            ].map((status) => (
+              <option key={status} value={status}>
+                {status.replaceAll("_", " ")}
+              </option>
+            ))}
           </select>
         </div>
         {loading ? (
@@ -368,43 +350,28 @@ export default function OrdersPage() {
           <p className="sales-empty">No matching orders found.</p>
         ) : (
           <div className="sales-table-scroll">
-            <table className="sales-table">
+            <table className="sales-table av-smart-table">
               <thead>
                 <tr>
-                  <th>Order</th>
-                  <th>Customer</th>
-                  <th>Products</th>
+                  <th data-mobile="primary">Order</th>
+                  <th data-mobile="secondary">Customer</th>
                   <th>Source</th>
                   <th>Contact</th>
-                  <th>Status</th>
+                  <th data-mobile="status">Status</th>
                   <th>Payment</th>
                   <th>Total</th>
                   <th>Schedule</th>
-                  <th>Action</th>
+                  <th data-mobile="action">Action</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((row) => (
                   <tr key={row.id}>
-                    <td data-label="Order">
+                    <td data-label="Order" data-mobile="primary">
                       <strong>{row.reference}</strong>
                     </td>
-                    <td data-label="Customer">{row.customer}</td>
-                    <td data-label="Products">
-                      <div className="av-order-products-preview">
-                        <strong>
-                          {row.firstProduct || "No products recorded"}
-                        </strong>
-                        {Number(row.productLines) > 1 && (
-                          <small>
-                            +{Number(row.productLines) - 1} more product{" "}
-                            {Number(row.productLines) === 2 ? "type" : "types"}
-                          </small>
-                        )}
-                        <small>
-                          {Number(row.totalUnits) || 0} total unit(s)
-                        </small>
-                      </div>
+                    <td data-label="Customer" data-mobile="secondary">
+                      {row.customer}
                     </td>
                     <td data-label="Source">{row.channel}</td>
                     <td data-label="Contact">
@@ -414,7 +381,7 @@ export default function OrdersPage() {
                         row.contact || "Not provided"
                       )}
                     </td>
-                    <td data-label="Status">
+                    <td data-label="Status" data-mobile="status">
                       <span
                         className={`sales-pill is-${String(row.status).toLowerCase()}`}
                       >
@@ -436,10 +403,11 @@ export default function OrdersPage() {
                         ? row.schedule.replace("T", " at ")
                         : "Not scheduled"}
                     </td>
-                    <td data-label="Action">
+                    <td data-label="Action" data-mobile="action">
                       <button
                         type="button"
-                        className="sales-small-action"
+                        className="sales-small-action av-smart-view"
+                        aria-label={`View and manage order ${row.reference}`}
                         onClick={() =>
                           setSearchParams((previous) => {
                             const next = new URLSearchParams(previous);
@@ -448,7 +416,8 @@ export default function OrdersPage() {
                           })
                         }
                       >
-                        View / Manage <ArrowRight size={15} />
+                        <Eye size={15} aria-hidden="true" />{" "}
+                        <span className="av-smart-view-text">View Details</span>
                       </button>
                     </td>
                   </tr>
@@ -456,6 +425,33 @@ export default function OrdersPage() {
               </tbody>
             </table>
           </div>
+        )}
+        {!loading && total > 0 && (
+          <nav className="av-management-pages" aria-label="Order pages">
+            <span>
+              Showing {(page - 1) * 20 + 1}–{Math.min(page * 20, total)} of{" "}
+              {total}
+            </span>
+            <div>
+              <button
+                type="button"
+                disabled={page <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+              >
+                Previous
+              </button>
+              <span>
+                Page {page} / {totalPages}
+              </span>
+              <button
+                type="button"
+                disabled={page >= totalPages}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                Next
+              </button>
+            </div>
+          </nav>
         )}
       </section>
 
@@ -488,16 +484,6 @@ export default function OrdersPage() {
                 <X size={18} />
               </button>
             </div>
-            {dialogError && (
-              <p role="alert" className="sales-error">
-                {dialogError}
-              </p>
-            )}
-            {dialogSuccess && (
-              <p role="status" className="sales-success">
-                {dialogSuccess}
-              </p>
-            )}
             {detailsLoading && <p role="status">Loading order details…</p>}
             {detailsError && (
               <p role="alert" className="sales-error">
@@ -548,102 +534,32 @@ export default function OrdersPage() {
                   <span>Payment status</span>
                   <strong>{details.paymentStatus}</strong>
                 </div>
-                <section
-                  className="av-order-line-items"
-                  aria-label="Products in this order"
-                >
-                  <div className="av-order-line-items__head">
-                    <h3>Products ordered</h3>
-                    <span>
-                      {(details.items || []).reduce(
-                        (count, item) => count + Number(item.quantity || 0),
-                        0,
-                      )}{" "}
-                      total unit(s)
-                    </span>
-                  </div>
-                  {!details.items?.length ? (
-                    <p>No products were recorded for this order.</p>
-                  ) : (
-                    <div className="av-order-line-items__list">
-                      {details.items.map((item, index) => (
-                        <div
-                          className="av-order-line-items__row"
-                          key={`${item.name}-${item.model}-${index}`}
-                        >
-                          <div className="av-order-line-items__product">
-                            <strong>{item.name}</strong>
-                            <small>{item.model || "Air conditioner"}</small>
-                          </div>
-                          <div className="av-order-line-items__figures">
-                            <span>
-                              <small>Quantity</small>
-                              <strong>{Number(item.quantity)}</strong>
-                            </span>
-                            <span>
-                              <small>Unit price</small>
-                              <strong>{money(item.unitPrice)}</strong>
-                            </span>
-                            <span>
-                              <small>Line total</small>
-                              <strong>{money(item.lineTotal)}</strong>
-                            </span>
-                          </div>
-                        </div>
-                      ))}
+                <div className="sales-totals sales-total">
+                  <span>Total</span>
+                  <strong>{money(details.total)}</strong>
+                </div>
+                <h3>Order items</h3>
+                {!details.items?.length ? (
+                  <p>No order items recorded.</p>
+                ) : (
+                  details.items.map((item, index) => (
+                    <div
+                      className="sales-totals"
+                      key={`${item.name}-${item.model}-${index}`}
+                    >
+                      <span>
+                        {item.quantity} × {item.name} · {item.model}
+                      </span>
+                      <strong>{money(item.lineTotal)}</strong>
                     </div>
-                  )}
-                  <div className="av-order-line-items__summary">
-                    <div>
-                      <span>Product subtotal</span>
-                      <strong>{money(details.subtotal)}</strong>
-                    </div>
-                    {Number(details.discount) > 0 && (
-                      <div>
-                        <span>Discount</span>
-                        <strong>−{money(details.discount)}</strong>
-                      </div>
-                    )}
-                    {Number(details.deliveryFee) > 0 && (
-                      <div>
-                        <span>Delivery fee</span>
-                        <strong>{money(details.deliveryFee)}</strong>
-                      </div>
-                    )}
-                    {Number(details.additionalFee) > 0 && (
-                      <div>
-                        <span>
-                          Additional fee ·{" "}
-                          {details.additionalFeeReason || "Extra charge"}
-                        </span>
-                        <strong>{money(details.additionalFee)}</strong>
-                      </div>
-                    )}
-                    <div className="av-order-line-items__grand">
-                      <span>Order total</span>
-                      <strong>{money(details.total)}</strong>
-                    </div>
-                  </div>
-                </section>
+                  ))
+                )}
                 {needsFieldWork &&
                   !["PENDING", "CANCELLED"].includes(details.status) && (
                     <SourceTeamPanel
                       key={`ORDER-${details.id}`}
                       kind="ORDER"
                       sourceId={details.id}
-                      onJobsChange={setSourceJobs}
-                    />
-                  )}
-                {canApprove &&
-                  needsFieldWork &&
-                  !["PENDING", "CANCELLED", "COMPLETED"].includes(
-                    details.status,
-                  ) && (
-                    <ManagerOrderProgressPanel
-                      order={details}
-                      jobs={sourceJobs || []}
-                      loading={sourceJobs === null}
-                      onUpdated={() => setRefresh((count) => count + 1)}
                     />
                   )}
                 {details.channel === "FACEBOOK" && (
@@ -694,43 +610,6 @@ export default function OrdersPage() {
                     </button>
                   </div>
                 )}
-                {mayReschedule && (
-                  <div className="av-order-appointment-actions">
-                    <div className="av-order-appointment-actions__intro">
-                      <CalendarClock size={19} aria-hidden="true" />
-                      <div>
-                        <strong>Need to change the appointment?</strong>
-                        <p>
-                          Agree on a new time with the customer first. The saved
-                          appointment and any unstarted jobs will move together.
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      className="av-order-reschedule-trigger"
-                      type="button"
-                      disabled={busy}
-                      onClick={() => {
-                        setRescheduleError("");
-                        setRescheduleOpen(true);
-                      }}
-                    >
-                      <CalendarClock size={17} />
-                      Reschedule appointment
-                    </button>
-                  </div>
-                )}
-                {canApprove &&
-                  selected?.channel === "ONLINE" &&
-                  fieldWorkStarted && (
-                    <div className="av-order-work-notice" role="status">
-                      <strong>Field work has already started.</strong>
-                      <p>
-                        Cancellation and rescheduling are unavailable here.
-                        Completed work and stock movements must be preserved.
-                      </p>
-                    </div>
-                  )}
                 {mayCancel && (
                   <div className="sales-step sales-danger-zone">
                     <h3>
@@ -765,21 +644,6 @@ export default function OrdersPage() {
             )}
           </section>
         </div>
-      )}
-      {rescheduleOpen && details?.schedule && (
-        <OrderRescheduleModal
-          reference={details.reference}
-          currentSchedule={details.schedule}
-          busy={busy}
-          error={rescheduleError}
-          onSave={rescheduleOrder}
-          onClose={() => {
-            if (!busy) {
-              setRescheduleOpen(false);
-              setRescheduleError("");
-            }
-          }}
-        />
       )}
     </div>
   );

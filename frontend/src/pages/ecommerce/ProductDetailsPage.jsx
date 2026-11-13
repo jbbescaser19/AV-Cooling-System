@@ -47,6 +47,7 @@ export default function ProductDetailsPage() {
   const [purchaseMode, setPurchaseMode] = useState(null);
 
   const [added, setAdded] = useState(false);
+  const [productError, setProductError] = useState("");
 
   const [failedImageSrc, setFailedImageSrc] = useState("");
 
@@ -83,11 +84,12 @@ export default function ProductDetailsPage() {
 
   const handleAddToCart = ({ variant: selectedVariant, quantity }) => {
     try {
+      setProductError("");
       addCartItem(product, selectedVariant, quantity);
       setPurchaseMode(null);
       setAdded(true);
     } catch (error) {
-      window.alert(error.message || "This horsepower is unavailable.");
+      setProductError(error.message || "This horsepower is unavailable.");
     }
   };
 
@@ -109,13 +111,21 @@ export default function ProductDetailsPage() {
         setPurchaseMode(null);
         navigate("/login");
       } else {
-        window.alert("Unable to verify your account. Please try again.");
+        setProductError(
+          error.response?.data?.message ||
+            "Unable to verify your account. Please try again.",
+        );
       }
     }
   };
 
   return (
     <>
+      {productError && (
+        <div role="alert" className="product-inline-error">
+          {productError}
+        </div>
+      )}
       <section className="page-shell">
         <div className="container">
           <div className="page-intro">

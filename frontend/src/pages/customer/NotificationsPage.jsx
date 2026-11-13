@@ -1,3 +1,4 @@
+import { confirmAction } from "../../utils/confirmAction.js";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -10,6 +11,7 @@ import {
   ArrowUpRight,
 } from "lucide-react";
 import api from "../../../api/api.js";
+import useRealtimeRefresh from "../../hooks/useRealtimeRefresh.js";
 import CustomerPageHeader from "../../components/customer/CustomerPageHeader";
 import CustomerStatusBadge from "../../components/customer/CustomerStatusBadge";
 import "../../styles/customer/customer-notifications.css";
@@ -62,6 +64,7 @@ export default function NotificationsPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [refresh, setRefresh] = useState(0);
+  useRealtimeRefresh(["notifications"], setRefresh);
   const [confirmClear, setConfirmClear] = useState(false);
   const version = useRef(0);
 
@@ -171,7 +174,7 @@ export default function NotificationsPage() {
     }
   }
   async function deleteOne(notice) {
-    if (busy || !window.confirm("Delete this notification permanently?"))
+    if (busy || !(await confirmAction("Delete this notification permanently?")))
       return;
     setBusy(true);
     setError("");

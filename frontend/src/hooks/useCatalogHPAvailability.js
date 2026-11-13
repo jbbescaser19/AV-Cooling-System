@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import api from "../../api/api.js";
+import useRealtimeRefresh from "./useRealtimeRefresh.js";
 import { catalogHPOptionsFromVariants } from "../utils/heatLoadEstimate.js";
 
 /**
@@ -12,10 +13,11 @@ export default function useCatalogHPAvailability() {
   const [status, setStatus] = useState("loading");
   const [revision, setRevision] = useState(0);
 
+  useRealtimeRefresh(["catalog", "inventory"], setRevision);
+
   useEffect(() => {
     const controller = new AbortController();
-    setStatus("loading");
-
+    // Keep existing options while silently revalidating.
     api
       .get("/api/catalog/availability", {
         signal: controller.signal,
@@ -31,7 +33,7 @@ export default function useCatalogHPAvailability() {
       })
       .catch(() => {
         if (controller.signal.aborted) return;
-        setVariants([]);
+        // Keep the last options visible, but report failed verification.
         setStatus("error");
       });
 
@@ -40,20 +42,9 @@ export default function useCatalogHPAvailability() {
 
   useEffect(() => {
     const refresh = () => setRevision((old) => old + 1);
-    const whenVisible = () => {
-      if (document.visibilityState === "visible") refresh();
-    };
-
-    window.addEventListener("focus", refresh);
-    document.addEventListener("visibilitychange", whenVisible);
     window.addEventListener("av-management-updated", refresh);
-    const interval = window.setInterval(whenVisible, 60000);
-
     return () => {
-      window.removeEventListener("focus", refresh);
-      document.removeEventListener("visibilitychange", whenVisible);
       window.removeEventListener("av-management-updated", refresh);
-      window.clearInterval(interval);
     };
   }, []);
 

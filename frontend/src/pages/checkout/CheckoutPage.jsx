@@ -1,21 +1,39 @@
+import {
+  sanitizePersonName,
+  sanitizeContactNumber,
+  isValidPersonName,
+} from "../../utils/fieldSanitizers.js";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+
 import api from "../../../api/api.js";
 import SavedAddressSelector from "../../components/common/SavedAddressSelector";
 import ActionGuidance from "../../components/common/ActionGuidance.jsx";
 import AvailabilityPicker from "../../components/scheduling/AvailabilityPicker";
 import useStorefrontCatalog from "../../hooks/useStorefrontCatalog";
 import { getCart } from "../../utils/cartStore";
+
+import {
+  cartSelectionKey,
+  getSelectedCartKeys,
+  clearSelectedCartKeys,
+} from "../../utils/cartSelection.js";
+
 import { getDefaultCustomerAddress } from "../../utils/addressStore";
 import {
   clearDirectCheckout,
   getDirectCheckout,
 } from "../../utils/purchaseFlow";
+
 import "../../styles/ecommerce/pages.css";
 import "../../styles/ecommerce/checkout.css";
+import "../../styles/ecommerce/payment-transfers.css";
+
 import {
   DELIVERY_AREAS,
   displayedDeliveryFee,
+  completeDeliveryAddress,
+  deliveryAddressConflict,
 } from "../../utils/deliveryPricing.js";
 
 const money = (value) =>
@@ -24,87 +42,19 @@ const money = (value) =>
     maximumFractionDigits: 2,
   })}`;
 
-// Customers already select the municipality from the delivery-area dropdown.
-// Build the complete address so they do not need to type the city twice.
-function normalizeLocation(value) {
-  return String(value || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
-}
-
-function includesLocation(value, location) {
-  return ` ${normalizeLocation(value)} `.includes(
-    ` ${normalizeLocation(location)} `,
-  );
-}
-
-function completeDeliveryAddress(streetAddress, area) {
-  const typed = streetAddress.trim();
-
-  if (!typed || !area) return typed;
-
-  const [city, province] = area[1].split(", ");
-  const hasCity = includesLocation(typed, city);
-  const hasProvince = includesLocation(typed, province);
-
-  if (hasCity && hasProvince) return typed;
-  if (hasCity) return `${typed}, ${province}`;
-  if (hasProvince) return `${typed}, ${city}`;
-
-  return `${typed}, ${city}, ${province}`;
-}
-
-function conflictingDeliveryLocation(streetAddress, area) {
-  if (!streetAddress.trim() || !area) return "";
-
-  const [selectedCity, selectedProvince] = area[1].split(", ");
-
-  const provinces = [
-    ...new Set(DELIVERY_AREAS.map((item) => item[1].split(", ")[1])),
-  ];
-
-  const wrongProvince = provinces.find(
-    (province) =>
-      province !== selectedProvince &&
-      includesLocation(streetAddress, province),
-  );
-
-  if (wrongProvince) {
-    return `Your address mentions ${wrongProvince}, but you selected ${area[1]}. Check the delivery area.`;
-  }
-
-  const alternate = DELIVERY_AREAS.find((item) => {
-    if (item[0] === area[0]) return false;
-
-    const [otherCity, otherProvince] = item[1].split(", ");
-
-    return (
-      includesLocation(streetAddress, otherCity) &&
-      includesLocation(streetAddress, otherProvince) &&
-      (otherCity !== selectedCity || otherProvince !== selectedProvince)
-    );
-  });
-
-  return alternate
-    ? `Your address mentions ${alternate[1]}, but you selected ${area[1]}. Please correct the delivery area.`
-    : "";
-}
-
 export default function CheckoutPage() {
   const navigate = useNavigate();
   const requestId = useRef(crypto.randomUUID());
 
   const directIntent = useMemo(() => getDirectCheckout(), []);
 
+  const selectedCartKeys = useMemo(() => new Set(getSelectedCartKeys()), []);
+
   const [cart, setCart] = useState([]);
   const [loading, setLoading] = useState(!directIntent);
   const [error, setError] = useState("");
   const [loadError, setLoadError] = useState("");
   const [placing, setPlacing] = useState(false);
-
   const [recipientName, setRecipientName] = useState("");
   const [contactNumber, setContactNumber] = useState("");
   const [deliveryArea, setDeliveryArea] = useState("");
@@ -114,6 +64,10 @@ export default function CheckoutPage() {
   );
 
   const [notes, setNotes] = useState("");
+  const [paymentCode, setPaymentCode] = useState("CASH");
+  const [paymentOptions, setPaymentOptions] = useState([]);
+  const [paymentOptionsLoading, setPaymentOptionsLoading] = useState(true);
+  const [paymentOptionsError, setPaymentOptionsError] = useState("");
   const [schedule, setSchedule] = useState("");
 
   const {
@@ -152,16 +106,57 @@ export default function CheckoutPage() {
     };
   }, [directIntent]);
 
+  useEffect(() => {
+    const controller = new AbortController();
+
+    api
+      .get("/api/customer/orders/payment-options", {
+        signal: controller.signal,
+      })
+      .then(({ data }) => {
+        if (controller.signal.aborted) return;
+
+        const methods = Array.isArray(data.methods) ? data.methods : [];
+
+        setPaymentOptions(methods);
+
+        setPaymentCode((current) =>
+          methods.some((method) => method.code === current && method.available)
+            ? current
+            : methods.find((method) => method.available)?.code || "",
+        );
+
+        setPaymentOptionsError("");
+      })
+      .catch((err) => {
+        if (controller.signal.aborted) return;
+
+        setPaymentOptionsError(
+          err.response?.data?.message ||
+            "Cannot load payment methods. Refresh checkout.",
+        );
+
+        setPaymentOptions([]);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setPaymentOptionsLoading(false);
+        }
+      });
+
+    return () => controller.abort();
+  }, []);
+
   const availability = useMemo(
     () =>
       new Map(
-        products.flatMap((p) =>
-          (p.variants || []).map((v) => [
-            `${p.id}:${v.hp}`,
+        products.flatMap((product) =>
+          (product.variants || []).map((variant) => [
+            `${product.id}:${variant.hp}`,
             {
-              ...v,
-              name: p.name,
-              productId: p.id,
+              ...variant,
+              name: product.name,
+              productId: product.id,
             },
           ]),
         ),
@@ -175,6 +170,8 @@ export default function CheckoutPage() {
 
   const directQty = Number(directIntent?.quantity);
 
+  // For CART checkout, include ONLY checked items.
+  // DIRECT Buy Now remains a separate checkout flow.
   const items = directIntent
     ? directItem &&
       Number.isInteger(directQty) &&
@@ -188,7 +185,7 @@ export default function CheckoutPage() {
           },
         ]
       : []
-    : cart;
+    : cart.filter((item) => selectedCartKeys.has(cartSelectionKey(item)));
 
   const insufficient =
     stockStatus !== "ready" ||
@@ -204,14 +201,19 @@ export default function CheckoutPage() {
   );
 
   const deliveryFee = displayedDeliveryFee(deliveryArea);
-
-  const selectedArea = DELIVERY_AREAS.find(([code]) => code === deliveryArea);
-
-  const fullDeliveryAddress = completeDeliveryAddress(address, selectedArea);
-
-  const locationError = conflictingDeliveryLocation(address, selectedArea);
-
   const grandTotal = subtotal + (deliveryFee ?? 0);
+  const fullAddress = completeDeliveryAddress(address, deliveryArea);
+
+  const addressConflict = deliveryAddressConflict(address, deliveryArea);
+
+  const selectedMethod = paymentOptions.find(
+    (method) => method.code === paymentCode,
+  );
+
+  const paymentReady =
+    !paymentOptionsLoading &&
+    !paymentOptionsError &&
+    selectedMethod?.available === true;
 
   const count = items.reduce((sum, item) => sum + Number(item.qty), 0);
 
@@ -222,11 +224,13 @@ export default function CheckoutPage() {
     !insufficient &&
     count <= 99 &&
     recipientName.trim().length >= 2 &&
+    isValidPersonName(recipientName) &&
     (contactNumber.match(/\d/g) || []).length >= 7 &&
     /^[+0-9()\s-]+$/.test(contactNumber.trim()) &&
     address.trim().length >= 10 &&
-    fullDeliveryAddress.length <= 2000 &&
-    !locationError &&
+    fullAddress.length <= 2000 &&
+    !addressConflict &&
+    paymentReady &&
     deliveryFee !== null &&
     Boolean(schedule);
 
@@ -235,13 +239,19 @@ export default function CheckoutPage() {
 
     loadError ? "Resolve the cart error above first." : null,
 
-    items.length === 0 ? "Add a product before checkout." : null,
+    items.length === 0
+      ? directIntent
+        ? "Choose an available product to order."
+        : "No selected cart products found. Return to your cart and check the ones you want."
+      : null,
 
     insufficient
       ? "Confirm product availability or change the quantity."
       : null,
 
-    recipientName.trim().length < 2 ? "Enter the recipient's full name." : null,
+    recipientName.trim().length < 2 || !isValidPersonName(recipientName)
+      ? "Enter the recipient's full name using letters only."
+      : null,
 
     (contactNumber.match(/\d/g) || []).length < 7 ||
     !/^[+0-9()\s-]+$/.test(contactNumber.trim())
@@ -254,15 +264,19 @@ export default function CheckoutPage() {
         ? "Choose a delivery area."
         : null,
 
-    address.trim().length < 10
-      ? "Enter the house, street, and barangay of the delivery address."
-      : null,
+    address.trim().length < 10 ? "Enter the full delivery address." : null,
 
-    fullDeliveryAddress.length > 2000
-      ? "Delivery address is too long (maximum 2,000 characters)."
-      : null,
+    addressConflict || null,
 
-    locationError || null,
+    fullAddress.length > 2000 ? "Delivery address is too long." : null,
+
+    paymentOptionsLoading ? "Loading accepted payment methods." : null,
+
+    paymentOptionsError || null,
+
+    !paymentReady && !paymentOptionsLoading && !paymentOptionsError
+      ? "Choose an available payment method."
+      : null,
 
     !schedule ? "Select an available delivery appointment." : null,
   ].filter(Boolean);
@@ -290,20 +304,13 @@ export default function CheckoutPage() {
     try {
       const base = {
         requestId: requestId.current,
-
         recipientName: recipientName.trim(),
         contactNumber: contactNumber.trim(),
-
         fulfillment: "DELIVERY",
-        paymentCode: "CASH",
-
+        paymentCode,
         expectedTotal: Math.round(grandTotal * 100) / 100,
-
         deliveryArea,
-
-        // Save the full address including the selected city/province.
-        deliveryAddress: fullDeliveryAddress,
-
+        deliveryAddress: fullAddress,
         customerNotes: notes.trim(),
         preferredSchedule: schedule || null,
       };
@@ -320,6 +327,7 @@ export default function CheckoutPage() {
             ...base,
             source: "CART",
 
+            // Selected lines only, never the entire cart.
             items: items.map((item) => ({
               variantId: Number(item.variantId),
               quantity: Number(item.qty),
@@ -332,7 +340,11 @@ export default function CheckoutPage() {
         throw new Error("Order was not confirmed. Please retry.");
       }
 
-      if (directIntent) clearDirectCheckout();
+      if (directIntent) {
+        clearDirectCheckout();
+      } else {
+        clearSelectedCartKeys();
+      }
 
       window.dispatchEvent(new Event("av-cart-updated"));
 
@@ -341,17 +353,16 @@ export default function CheckoutPage() {
         { replace: true },
       );
     } catch (err) {
-      const message =
+      setError(
         err.response?.data?.message ||
-        err.message ||
-        "Could not place order. Please try again.";
+          err.message ||
+          "Could not place order. Please try again.",
+      );
 
-      setError(message);
+      const message = err.response?.data?.message || err.message || "";
 
-      // Refresh stock only for stock-related errors.
-      // A delivery-address 422 is not an inventory problem.
       if (
-        /stock|inventory|insufficient units|selected cart changed/i.test(
+        /stock|inventory|selected cart changed|insufficient units/i.test(
           message,
         )
       ) {
@@ -363,7 +374,7 @@ export default function CheckoutPage() {
   }
 
   return (
-    <section className="page-shell checkout-page">
+    <section className="page-shell">
       <div className="container">
         <div className="page-intro">
           <div>
@@ -371,58 +382,53 @@ export default function CheckoutPage() {
 
             <h1 className="page-title">Delivery and payment</h1>
 
+            {!directIntent && (
+              <p style={{ margin: "7px 0 0" }}>
+                <Link to="/cart">Back to Cart · Edit selected products</Link>
+              </p>
+            )}
+
             <p className="section-copy">
-              Your order is saved to MySQL after a final inventory check. Cash
-              payment is collected when arranged with the store.
+              Choose Cash, GCash, or QR Ph. Online payments stay pending until
+              the store confirms actual funds received.
             </p>
           </div>
         </div>
 
-        {error && (
-          <div className="checkout-alert" role="alert">
-            <p>{error}</p>
+        {(error || loadError || (insufficient && !loading)) && (
+          <div
+            className="surface"
+            role="alert"
+            style={{
+              padding: 16,
+              marginBottom: 14,
+              border: "1px solid #e2bcc0",
+            }}
+          >
+            {error ||
+              loadError ||
+              (stockStatus !== "ready"
+                ? "Checking product stock. Ordering is disabled until availability is confirmed."
+                : "One of these products is out of stock or you requested more than is available.")}
 
-            <p className="checkout-alert__tip">
-              Please correct the details below and try again. Your order was not
-              saved.
-            </p>
-          </div>
-        )}
+            {insufficient && (
+              <div>
+                <button
+                  type="button"
+                  className="btn btn-soft"
+                  onClick={refreshStock}
+                >
+                  Check stock again
+                </button>
 
-        {loadError && (
-          <div className="checkout-alert" role="alert">
-            <p>{loadError}</p>
-
-            <Link to={directIntent ? "/shop" : "/cart"}>Review products</Link>
-          </div>
-        )}
-
-        {stockStatus === "loading" && (
-          <p className="checkout-stock-message" role="status">
-            Checking live product availability…
-          </p>
-        )}
-
-        {(stockStatus === "error" ||
-          (stockStatus === "ready" && insufficient)) && (
-          <div className="checkout-alert" role="alert">
-            <p>
-              {stockStatus === "error"
-                ? "Stock information is temporarily unavailable. Please try again."
-                : "A selected product is out of stock or the quantity exceeds available units."}
-            </p>
-
-            <div className="checkout-alert__actions">
-              <button
-                type="button"
-                className="btn btn-soft"
-                onClick={refreshStock}
-              >
-                Check stock again
-              </button>
-
-              <Link to={directIntent ? "/shop" : "/cart"}>Review products</Link>
-            </div>
+                <Link
+                  to={directIntent ? "/shop" : "/cart"}
+                  style={{ marginLeft: 12 }}
+                >
+                  Review products
+                </Link>
+              </div>
+            )}
           </div>
         )}
 
@@ -437,13 +443,16 @@ export default function CheckoutPage() {
                   <input
                     className="form-control"
                     value={recipientName}
-                    onChange={(e) => setRecipientName(e.target.value)}
+                    onChange={(event) =>
+                      setRecipientName(sanitizePersonName(event.target.value))
+                    }
                     required
                     minLength={2}
                     maxLength={150}
                     autoComplete="name"
                     disabled={placing}
                   />
+                  <small>Use letters only for the recipient's name.</small>
                 </label>
 
                 <label className="form-group">
@@ -452,7 +461,11 @@ export default function CheckoutPage() {
                     className="form-control"
                     type="tel"
                     value={contactNumber}
-                    onChange={(e) => setContactNumber(e.target.value)}
+                    onChange={(event) =>
+                      setContactNumber(
+                        sanitizeContactNumber(event.target.value),
+                      )
+                    }
                     required
                     minLength={7}
                     maxLength={30}
@@ -469,7 +482,8 @@ export default function CheckoutPage() {
 
               <p>
                 Delivery with installation, subject to staff confirmation.
-                Payment: Cash (pending until collected).
+                Online payments are processed securely through PayMongo after
+                the store confirms your order.
               </p>
 
               <label className="form-group" style={{ marginBottom: 15 }}>
@@ -492,8 +506,7 @@ export default function CheckoutPage() {
                   <option value="OTHER">Other area — request quotation</option>
                 </select>
                 <small>
-                  Your selected city and province will be added to the delivery
-                  address automatically.
+                  We'll add the selected city and province automatically.
                 </small>
               </label>
 
@@ -505,31 +518,66 @@ export default function CheckoutPage() {
               )}
 
               <SavedAddressSelector
-                title="House, street, and barangay"
+                title="Delivery address"
                 value={address}
                 onChange={setAddress}
                 disabled={placing}
               />
 
-              {locationError && (
-                <p className="checkout-address-error" role="alert">
-                  {locationError}
+              {addressConflict && (
+                <p role="alert" className="checkout-payment-error">
+                  {addressConflict}
                 </p>
               )}
 
-              {selectedArea &&
-                address.trim().length >= 10 &&
-                !locationError && (
+              {address.trim().length >= 10 &&
+                deliveryArea &&
+                !addressConflict && (
                   <div className="checkout-address-preview" role="status">
-                    <strong>Delivery address to be saved</strong>
+                    <strong>Complete address to save</strong>
 
-                    <span>{fullDeliveryAddress}</span>
-
-                    <small>
-                      Confirm this is the correct destination before placing
-                      your order.
-                    </small>
+                    <span>{fullAddress}</span>
                   </div>
+                )}
+
+              <label className="form-group checkout-payment-method">
+                Payment method (required)
+                <select
+                  className="form-control"
+                  value={paymentCode}
+                  disabled={placing || paymentOptionsLoading}
+                  onChange={(event) => setPaymentCode(event.target.value)}
+                  required
+                >
+                  {paymentOptions
+                    .filter((method) => method.available)
+                    .map((method) => (
+                      <option key={method.code} value={method.code}>
+                        {method.name}
+                      </option>
+                    ))}
+                </select>
+                <small>
+                  {paymentCode === "CASH"
+                    ? "Pay cash when collected by the store. The order is unpaid until verified."
+                    : "After your order is confirmed, visit My Account → Payments to open PayMongo's secure GCash / QR Ph checkout. Never share your PIN or OTP."}
+                </small>
+              </label>
+
+              {paymentOptionsError && (
+                <p role="alert" className="checkout-payment-error">
+                  {paymentOptionsError}
+                </p>
+              )}
+
+              {!paymentOptionsLoading &&
+                !paymentOptions.some(
+                  (method) => method.code !== "CASH" && method.available,
+                ) && (
+                  <small className="checkout-payment-help">
+                    GCash and QR Ph will appear after the store activates
+                    PayMongo and the relevant payment methods.
+                  </small>
                 )}
             </section>
 
@@ -545,18 +593,15 @@ export default function CheckoutPage() {
                 />
 
                 <div className="checkout-notes-field">
-                  <label htmlFor="checkout-customer-notes">
-                    Notes (optional)
-                  </label>
+                  <label htmlFor="checkout-notes">Notes (optional)</label>
 
                   <textarea
-                    id="checkout-customer-notes"
+                    id="checkout-notes"
                     className="form-control"
                     rows={3}
                     maxLength={1000}
-                    placeholder="Special instructions for delivery or installation"
                     value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
+                    onChange={(event) => setNotes(event.target.value)}
                     disabled={placing}
                   />
                 </div>
@@ -567,10 +612,22 @@ export default function CheckoutPage() {
           <aside className="surface checkout-summary">
             <h2>Order summary</h2>
 
-            {items.map((item, i) => (
+            {!directIntent && (
+              <p
+                style={{
+                  fontSize: ".83rem",
+                  marginTop: 0,
+                }}
+              >
+                Only your checked cart products are included below. Unchecked
+                products stay in your cart.
+              </p>
+            )}
+
+            {items.map((item, index) => (
               <div
                 className="checkout-summary-row"
-                key={`${item.productId}-${item.hp}-${i}`}
+                key={`${item.productId}-${item.hp}-${index}`}
               >
                 <span>
                   {item.name} · {item.hp} × {item.qty}
@@ -580,7 +637,12 @@ export default function CheckoutPage() {
               </div>
             ))}
 
-            {!items.length && <p>No products selected.</p>}
+            {!items.length && (
+              <p>
+                No products selected.{" "}
+                <Link to="/cart">Select items in your cart</Link>.
+              </p>
+            )}
 
             <div
               className="checkout-summary-row"
@@ -618,7 +680,11 @@ export default function CheckoutPage() {
               <strong>{deliveryFee === null ? "—" : money(grandTotal)}</strong>
             </div>
 
-            <p style={{ fontSize: ".79rem" }}>
+            <p
+              style={{
+                fontSize: ".79rem",
+              }}
+            >
               Availability and total are rechecked on the server before the
               order is saved.
             </p>

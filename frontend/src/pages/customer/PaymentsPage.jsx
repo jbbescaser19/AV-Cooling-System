@@ -1,84 +1,171 @@
-import { useEffect, useState } from "react";
-import { CreditCard } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { CreditCard, RefreshCw, ShieldCheck } from "lucide-react";
 import api from "../../../api/api.js";
-import CustomerPageHeader from "../../components/customer/CustomerPageHeader";
-import CustomerStatusBadge from "../../components/customer/CustomerStatusBadge";
-import { formatCustomerMoney } from "../../utils/customerAccountUtils";
+import useRealtimeRefresh from "../../hooks/useRealtimeRefresh.js";
+import CustomerPageHeader from "../../components/customer/CustomerPageHeader.jsx";
+import CustomerStatusBadge from "../../components/customer/CustomerStatusBadge.jsx";
+import PayMongoAction from "../../components/payments/PayMongoAction.jsx";
+import { formatCustomerMoney } from "../../utils/customerAccountUtils.js";
+import "../../styles/ecommerce/payment-transfers.css";
+import "../../styles/ecommerce/paymongo.css";
+
+const READY = new Set(["CONFIRMED", "SCHEDULED", "IN_PROGRESS", "COMPLETED"]);
+const label = (code) =>
+  code === "CASH"
+    ? "Cash"
+    : code === "GCASH"
+      ? "GCash · PayMongo"
+      : "QR Ph / bank app · PayMongo";
 
 export default function PaymentsPage() {
   const [orders, setOrders] = useState([]);
+  const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [retry, setRetry] = useState(0);
+  const [refresh, setRefresh] = useState(0);
+  useRealtimeRefresh(["payments", "orders", "services"], setRefresh);
 
   useEffect(() => {
     const controller = new AbortController();
     setLoading(true);
-    setError("");
-    api
-      .get("/api/customer/orders", { signal: controller.signal })
-      .then((response) => {
-        if (!controller.signal.aborted) setOrders(response.data.orders || []);
+    Promise.all([
+      api.get("/api/customer/orders", { signal: controller.signal }),
+      api.get("/api/customer/services/payments", { signal: controller.signal }),
+    ])
+      .then(([orderData, serviceData]) => {
+        if (controller.signal.aborted) return;
+        setOrders(orderData.data.orders || []);
+        setServices(serviceData.data.payments || []);
+        setError("");
       })
-      .catch((requestError) => {
+      .catch((err) => {
         if (!controller.signal.aborted)
           setError(
-            requestError.response?.data?.message ||
-              "Unable to load payment records.",
+            err.response?.data?.message || "Could not load payment records.",
           );
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [retry]);
+  }, [refresh]);
+
+  const records = useMemo(
+    () => [
+      ...orders.map((order) => ({
+        key: `order-${order.orderNumber}`,
+        kind: "ORDER",
+        identifier: order.orderNumber,
+        name: `Order ${order.orderNumber}`,
+        amount: order.paymentAmount ?? order.total,
+        method: order.paymentCode,
+        status: order.recordedPaymentStatus || order.paymentStatus,
+        sourceStatus: order.status,
+        canPay: order.channel === "ONLINE",
+      })),
+      ...services.map((payment) => ({
+        key: `service-${payment.requestId}`,
+        kind: "SERVICE",
+        identifier: payment.requestId,
+        name: `${payment.service || "Service"} · #${payment.requestId}`,
+        amount: payment.amount,
+        method: payment.method,
+        status: payment.status,
+        sourceStatus: payment.serviceStatus,
+        canPay: true,
+      })),
+    ],
+    [orders, services],
+  );
 
   return (
-    <div className="customer-module">
+    <div className="customer-module customer-transfers">
       <CustomerPageHeader
         Icon={CreditCard}
-        title="Payments"
-        copy="Payment status of your real MySQL orders."
+        title="My Payments"
+        copy="Pay cash as arranged with the store, or complete GCash / QR Ph payments securely with PayMongo."
       />
-      {loading && <p role="status">Loading payments...</p>}
+      <div className="surface customer-transfer-safety">
+        <ShieldCheck size={20} aria-hidden="true" />
+        <p>
+          <strong>Secure payment.</strong> AV Cooling never asks for your GCash
+          PIN, bank password, or OTP. Online payments open PayMongo's official
+          hosted checkout. Payment status only changes after the provider
+          confirms it.
+        </p>
+      </div>
+      <div className="customer-transfer-toolbar">
+        <span>
+          {records.length} payment record{records.length === 1 ? "" : "s"}
+        </span>
+        <button
+          type="button"
+          className="btn btn-soft"
+          disabled={loading}
+          onClick={() => setRefresh((n) => n + 1)}
+        >
+          <RefreshCw size={15} /> Refresh status
+        </button>
+      </div>
       {error && (
-        <div className="surface customer-record" role="alert">
-          <span>{error}</span>
-          <button
-            className="btn btn-soft"
-            type="button"
-            onClick={() => setRetry((value) => value + 1)}
-          >
-            Try again
-          </button>
-        </div>
+        <p role="alert" className="customer-transfer-error">
+          {error}
+        </p>
       )}
-      {!loading && !error && orders.length === 0 && (
+      {loading && <p role="status">Loading payments…</p>}
+      {!loading && !records.length && (
         <p className="surface customer-record">
           You have no payment records yet.
         </p>
       )}
       <div className="customer-record-list">
-        {orders.map((order) => (
+        {records.map((record) => (
           <article
-            className="surface customer-record customer-payment-record"
-            key={order.orderId}
+            className="surface customer-record customer-transfer-card"
+            key={record.key}
           >
-            <div className="customer-payment-record__summary">
-              <strong>
-                {formatCustomerMoney(
-                  Number(order.paymentAmount ?? order.total),
-                )}
-              </strong>
-              <span>
-                {order.orderNumber} · {order.paymentMethod}
-              </span>
+            <div className="customer-transfer-head">
+              <div>
+                <strong>{record.name}</strong>
+                <span>{label(record.method)}</span>
+              </div>
+              <CustomerStatusBadge>
+                {record.status || "PENDING"}
+              </CustomerStatusBadge>
             </div>
-            <CustomerStatusBadge className="customer-payment-record__badge">
-              {order.recordedPaymentStatus ||
-                order.paymentStatus ||
-                "Not recorded"}
-            </CustomerStatusBadge>
+            <div className="customer-transfer-total">
+              <span>Amount {record.status === "PAID" ? "paid" : "due"}</span>
+              <strong>{formatCustomerMoney(Number(record.amount || 0))}</strong>
+            </div>
+            {record.status === "PAID" ? (
+              <p className="customer-transfer-notice">
+                Payment confirmed. No more payment is needed.
+              </p>
+            ) : record.method === "CASH" ? (
+              <p className="customer-transfer-help">
+                The store will coordinate cash collection. Management records
+                the payment after actual receipt.
+              </p>
+            ) : record.status !== "PENDING" ? (
+              <p className="customer-transfer-help">
+                This payment is not available for online checkout. Contact AV
+                Cooling.
+              </p>
+            ) : !record.canPay ? (
+              <p className="customer-transfer-help">
+                Contact AV Cooling about this payment.
+              </p>
+            ) : !READY.has(record.sourceStatus) ? (
+              <p className="customer-transfer-help">
+                Waiting for AV Cooling to confirm the booking and final price
+                before payment opens.
+              </p>
+            ) : (
+              <PayMongoAction
+                kind={record.kind}
+                identifier={record.identifier}
+              />
+            )}
           </article>
         ))}
       </div>

@@ -4,6 +4,8 @@ import { Link, useLocation } from "react-router-dom";
 import { Search, ShoppingCart, User, Menu, X, Snowflake } from "lucide-react";
 
 import "../../styles/ecommerce/navbar.css";
+import "../../styles/ecommerce/navbar-auth.css";
+import api from "../../../api/api.js";
 
 const links = [
   ["Our Expertise", "/#expertise"],
@@ -17,6 +19,24 @@ const links = [
 export default function PublicNavbar() {
   const [open, setOpen] = useState(false);
   const location = useLocation();
+  const [authenticated, setAuthenticated] = useState(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    api
+      .get("/api/auth/customer/session", { signal: controller.signal })
+      .then(({ data }) => {
+        if (!controller.signal.aborted)
+          setAuthenticated(Boolean(data?.authenticated));
+      })
+      .catch((error) => {
+        if (controller.signal.aborted) return;
+        if ([401, 403].includes(error.response?.status))
+          setAuthenticated(false);
+        else setAuthenticated(null);
+      });
+    return () => controller.abort();
+  }, [location.pathname]);
 
   useEffect(() => {
     setOpen(false);
@@ -110,6 +130,16 @@ export default function PublicNavbar() {
               <span>My Account</span>
             </Link>
           </div>
+          {authenticated === false && (
+            <div className="mobile-nav-auth">
+              <Link to="/login" onClick={closeMenu}>
+                Log In
+              </Link>
+              <Link to="/register" onClick={closeMenu}>
+                Sign Up
+              </Link>
+            </div>
+          )}
         </aside>
       </div>,
       document.body,
@@ -139,6 +169,12 @@ export default function PublicNavbar() {
           </nav>
 
           <div className="nav-actions">
+            {authenticated === false && (
+              <div className="public-nav-auth">
+                <Link to="/login">Log In</Link>
+                <Link to="/register">Sign Up</Link>
+              </div>
+            )}
             <Link
               className="icon-link search-link"
               to="/shop"

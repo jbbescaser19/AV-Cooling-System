@@ -2,7 +2,6 @@ import { NavLink } from "react-router-dom";
 import {
   Archive,
   BarChart3,
-  Bell,
   Boxes,
   Calculator,
   CalendarDays,
@@ -21,6 +20,7 @@ import {
   Users,
   Wrench,
   X,
+  KeyRound,
 } from "lucide-react";
 
 import { readStaff } from "../../utils/authMock";
@@ -151,11 +151,22 @@ const nav = [
         ["OWNER", "MANAGER"],
       ],
       ["Reports", "/management/reports", BarChart3, ["OWNER", "MANAGER"]],
+    ],
+  },
+  {
+    label: "Account Security",
+    items: [
       [
-        "Notifications",
-        "/management/notifications",
-        Bell,
+        "Change Password",
+        "/management/change-password",
+        KeyRound,
         ["OWNER", "MANAGER", "SALES_CASHIER", "TECHNICIAN"],
+      ],
+      [
+        "Reset Staff Password",
+        "/management/staff-password-reset",
+        UserCog,
+        ["OWNER"],
       ],
     ],
   },
@@ -176,6 +187,7 @@ export default function Sidebar({ open, onClose }) {
       <div className="mgmt-brand">
         <div className="mgmt-brand-info">
           <span className="mgmt-brand-logo">AV</span>
+
           <div>
             <strong>AV Cooling</strong>
             <small>Management</small>
@@ -195,11 +207,16 @@ export default function Sidebar({ open, onClose }) {
       <nav className="side-scroll">
         {nav.map((group) => {
           const items = group.items.filter(
-            ([, , , roles]) =>
-              Array.isArray(roles) && roles.includes(staff?.role),
+            ([, path, , roles]) =>
+              Array.isArray(roles) &&
+              roles.includes(staff?.role) &&
+              (!staff?.mustChangePassword ||
+                path === "/management/change-password"),
           );
 
-          if (!items.length) return null;
+          if (!items.length) {
+            return null;
+          }
 
           return (
             <div className="side-group" key={group.label || "main"}>

@@ -1,22 +1,13 @@
 import { z } from "zod";
+import { personName, contactNumber } from "../../shared/personFields.js";
 import { parseBookingStart } from "../../scheduling/bookingScheduleValidator.js";
 import { technicianIdsSchema } from "../services/confirmationAssignmentValidator.js";
 import { parseManagementInput } from "../parseManagementInput.js";
 const saleSchema = z
   .strictObject({
     requestKey: z.string().uuid(),
-    customerName: z.string().trim().min(2).max(150),
-    customerPhone: z
-      .string()
-      .trim()
-      .min(7)
-      .max(30)
-      .refine(
-        (phone) =>
-          (phone.match(/\d/g) || []).length >= 7 &&
-          /^[+0-9()\s-]+$/.test(phone),
-        "Enter a valid contact number with at least 7 digits.",
-      ),
+    customerName: personName,
+    customerPhone: contactNumber,
     delivery: z.boolean().default(false),
     installationIncluded: z.boolean().default(false),
     deliveryArea: z

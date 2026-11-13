@@ -137,3 +137,55 @@
     align-items: flex-start;
   }
 }
+
+@media (max-width: 640px) {
+  .heat-estimator {
+    margin: 8px 0 13px;
+    padding: 11px;
+    border-radius: 12px;
+  }
+  .heat-estimator > summary {
+    font-size: 0.81rem;
+    line-height: 1.35;
+    gap: 8px;
+  }
+  .heat-estimator__action {
+    font-size: 0.66rem;
+    padding: 6px 8px;
+  }
+  .heat-estimator__fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px;
+  }
+  .heat-estimator__fields label {
+    min-width: 0;
+    gap: 4px;
+    font-size: 0.75rem;
+  }
+  .heat-estimator__fields select,
+  .heat-estimator__fields input:not([type="checkbox"]) {
+    padding: 7px;
+    min-width: 0;
+    font-size: 0.78rem;
+  }
+  .heat-estimator__body {
+    gap: 11px;
+  }
+  .heat-estimator__result {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding: 10px;
+  }
+  .heat-estimator__intro,
+  .heat-estimator__help,
+  .heat-estimator__disclaimer {
+    font-size: 0.72rem;
+    line-height: 1.45;
+  }
+}
+@media (max-width: 370px) {
+  .heat-estimator__fields {
+    grid-template-columns: 1fr;
+  }
+}

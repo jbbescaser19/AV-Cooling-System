@@ -7,6 +7,7 @@ import {
   Star,
 } from "lucide-react";
 import api from "../../../api/api.js";
+import useRealtimeRefresh from "../../hooks/useRealtimeRefresh.js";
 import CustomerPageHeader from "../../components/customer/CustomerPageHeader";
 import "../../styles/customer/customer-feedback.css";
 
@@ -25,6 +26,7 @@ const empty = {
   allowPublicReview: false,
 };
 const stars = (rating) => `${"★".repeat(rating)}${"☆".repeat(5 - rating)}`;
+
 export default function FeedbackPage() {
   const [form, setForm] = useState(empty),
     [history, setHistory] = useState([]),
@@ -35,6 +37,9 @@ export default function FeedbackPage() {
     [error, setError] = useState(""),
     [success, setSuccess] = useState(""),
     [revision, setRevision] = useState(0);
+
+  useRealtimeRefresh(["feedback", "orders", "services"], setRevision);
+
   useEffect(() => {
     const controller = new AbortController();
     setLoading(true);
@@ -55,6 +60,7 @@ export default function FeedbackPage() {
       });
     return () => controller.abort();
   }, [revision]);
+
   function change(key, value) {
     setForm((prev) => ({
       ...prev,
@@ -64,6 +70,7 @@ export default function FeedbackPage() {
     setError("");
     setSuccess("");
   }
+
   async function submit(event) {
     event.preventDefault();
     if (busy) return;
@@ -92,6 +99,7 @@ export default function FeedbackPage() {
       setBusy(false);
     }
   }
+
   async function visibility(item) {
     if (changing !== null) return;
     setChanging(item.id);
@@ -118,6 +126,7 @@ export default function FeedbackPage() {
       setChanging(null);
     }
   }
+
   return (
     <div className="customer-module customer-feedback-page">
       <CustomerPageHeader
@@ -269,6 +278,18 @@ export default function FeedbackPage() {
                   </span>
                 </div>
                 <p>{item.comment}</p>
+                {item.staffReply && (
+                  <div className="customer-feedback-staff-reply">
+                    <strong>
+                      <MessageSquareText size={15} /> Reply from AV Cooling
+                    </strong>
+                    <p>{item.staffReply}</p>
+                    <small>
+                      Only you and authorized staff can view this response in
+                      your account.
+                    </small>
+                  </div>
+                )}
                 <div className="customer-feedback-card-bottom">
                   <span>{item.subjectLabel}</span>
                   <time>{item.createdAt}</time>

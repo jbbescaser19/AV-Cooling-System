@@ -1,3 +1,4 @@
+import { confirmAction } from "../../utils/confirmAction.js";
 import { useMemo, useState } from "react";
 import { CheckCircle2, PhoneCall, PlayCircle } from "lucide-react";
 import api from "../../../api/api.js";
@@ -85,9 +86,9 @@ export default function ManagerOrderProgressPanel({
     event.preventDefault();
     if (!canSubmit) return;
     if (
-      !window.confirm(
+      !(await confirmAction(
         `Record ${code.replaceAll("_", " ").toLowerCase()} based on the technician's report? This updates the customer order.`,
-      )
+      ))
     )
       return;
     setBusy(true);

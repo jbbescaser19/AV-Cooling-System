@@ -2,8 +2,6 @@ import connectDB from "../../../utils/dbConn.js";
 
 import { servicePaymentModel } from "../../../models/management/sales/servicePaymentModel.js";
 
-import { validateManualTransferConfirmation } from "../../../validators/management/sales/manualTransferValidator.js";
-
 import { validateCashConfirmation } from "../../../validators/management/sales/paymentValidator.js";
 
 import { createCustomerNotification } from "../../customer/notification/notificationService.js";
@@ -20,8 +18,8 @@ export async function confirmServicePayment(staff, rawId, kind, raw) {
     fail("Management access required.", 403);
   }
 
-  if (kind === "transfer" && !["OWNER", "MANAGER"].includes(staff.role)) {
-    fail("Only Owner/Manager can verify digital transfers.", 403);
+  if (kind !== "cash") {
+    fail("Online payments are confirmed by PayMongo, not by staff.", 403);
   }
 
   const id = Number(rawId);
@@ -30,10 +28,7 @@ export async function confirmServicePayment(staff, rawId, kind, raw) {
     fail("Invalid service payment.");
   }
 
-  const input =
-    kind === "transfer"
-      ? validateManualTransferConfirmation(raw)
-      : validateCashConfirmation(raw);
+  const input = validateCashConfirmation(raw);
 
   const db = await connectDB.getConnection();
 
@@ -62,30 +57,10 @@ export async function confirmServicePayment(staff, rawId, kind, raw) {
       );
     }
 
-    let note;
-
-    if (kind === "transfer") {
-      if (!["GCASH", "BANK_TRANSFER"].includes(payment.method)) {
-        fail("This is not a digital transfer.", 409);
-      }
-
-      if (
-        !payment.transferReference ||
-        payment.transferReference !== input.reference.toUpperCase()
-      ) {
-        fail("Customer transaction reference does not match.", 409);
-      }
-
-      note =
-        `Verified externally against actual ${payment.method} statement, ` +
-        `ref ${payment.transferReference}. ${input.note}`;
-    } else {
-      if (payment.method !== "CASH" || input.cashCollected !== true) {
-        fail("Only cash collected in person can use cash confirmation.", 409);
-      }
-
-      note = input.note || "Physical cash collected and verified by staff.";
+    if (payment.method !== "CASH" || input.cashCollected !== true) {
+      fail("Only physically collected cash can use staff confirmation.", 409);
     }
+    const note = input.note || "Physical cash collected and verified by staff.";
 
     if ((await model.recordPaid(id, staff.id, note)) !== 1) {
       fail("Payment changed. Refresh and retry.", 409);

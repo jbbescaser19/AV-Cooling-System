@@ -1,9 +1,10 @@
 import { z } from "zod";
-import { str, status } from "../workspacePrimitives.js";
+import { personName } from "../../shared/personFields.js";
+import { status } from "../workspacePrimitives.js";
 export const staffManagementSchemas = {
   staff: {
     create: z.strictObject({
-      name: str(2, 150),
+      name: personName,
       email: z.email().max(255),
       role: status("MANAGER", "SALES_CASHIER", "TECHNICIAN"),
       password: z.string().min(12).max(128),

@@ -18,6 +18,9 @@ import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
 
 import ManagementLoginPage from "./pages/management/ManagementLoginPage";
 
+import ManagementChangePasswordPage from "./pages/management/ManagementChangePasswordPage.jsx";
+import StaffPasswordResetPage from "./pages/management/StaffPasswordResetPage.jsx";
+
 import CartPage from "./pages/checkout/CartPage";
 import CheckoutPage from "./pages/checkout/CheckoutPage";
 import OrderConfirmationPage from "./pages/checkout/OrderConfirmationPage";
@@ -32,6 +35,7 @@ import ManagementOperationsPage from "./pages/management/ManagementOperationsPag
 import ManagementWorkspacePage from "./pages/management/ManagementWorkspacePage";
 import TechnicianAssignedJobsPanel from "./components/management/TechnicianAssignedJobsPanel";
 import ArchivePage from "./pages/management/ArchivePage";
+import ManagementNotificationsPage from "./pages/management/ManagementNotificationsPage";
 
 import CustomerModulePage from "./pages/customer/CustomerModulePage";
 import CustomerCapacityCalculatorPage from "./pages/customer/CustomerCapacityCalculatorPage";
@@ -47,7 +51,6 @@ const mgmtModules = [
   "feedback",
   "facebook-requests",
   "reports",
-  "notifications",
   "audit-logs",
 ];
 
@@ -144,7 +147,17 @@ export default function App() {
 
         <Route path="dashboard" element={<DashboardPage />} />
 
-        {/* SEPARATE CAPACITY CALCULATOR PAGE */}
+        <Route
+          path="change-password"
+          element={<ManagementChangePasswordPage />}
+        />
+
+        <Route element={<RoleGuard roles={["OWNER"]} />}>
+          <Route
+            path="staff-password-reset"
+            element={<StaffPasswordResetPage />}
+          />
+        </Route>
 
         <Route
           path="capacity-calculator"
@@ -162,7 +175,6 @@ export default function App() {
           element={
             <>
               <TechnicianAssignedJobsPanel />
-
               <ManagementWorkspacePage module="schedules" />
             </>
           }
@@ -176,6 +188,8 @@ export default function App() {
         />
 
         <Route path="payments" element={<PaymentsPage />} />
+
+        <Route path="notifications" element={<ManagementNotificationsPage />} />
 
         {["categories", "products", "variants", "inventory", "customers"].map(
           (module) => (
@@ -207,15 +221,11 @@ export default function App() {
           />
         ))}
 
-        {/* Redirect only unknown Management paths */}
-
         <Route
           path="*"
           element={<Navigate to="/management/dashboard" replace />}
         />
       </Route>
-
-      {/* Public fallback */}
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

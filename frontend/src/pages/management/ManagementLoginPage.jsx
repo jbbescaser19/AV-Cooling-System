@@ -1,21 +1,24 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
+
 import { Building2, LogIn, ShieldCheck } from "lucide-react";
 
 import api from "../../../api/api.js";
 import { loginStaff } from "../../utils/authMock";
+
 import "../../styles/auth/auth.css";
 
 export default function ManagementLoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  async function signIn(e) {
-    e.preventDefault();
+  async function signIn(event) {
+    event.preventDefault();
 
     if (busy) return;
 
@@ -36,14 +39,18 @@ export default function ManagementLoginPage() {
       setPassword("");
 
       navigate(
-        data.staff.role === "SALES_CASHIER"
-          ? "/management/pos"
-          : "/management/dashboard",
-        { replace: true },
+        data.staff.mustChangePassword
+          ? "/management/change-password"
+          : data.staff.role === "SALES_CASHIER"
+            ? "/management/pos"
+            : "/management/dashboard",
+        {
+          replace: true,
+        },
       );
-    } catch (err) {
+    } catch (error) {
       setError(
-        err.response?.data?.message ||
+        error.response?.data?.message ||
           "Unable to sign in. Check your details and try again.",
       );
     } finally {
@@ -66,8 +73,15 @@ export default function ManagementLoginPage() {
 
         <p className="muted">
           Sign in using the email and password assigned to your staff account.
-          Your role is checked by the server.
+          Your role is checked by the server. If you forgot your password, ask
+          the Owner to reset it. You will then choose a new password.
         </p>
+
+        {location.state?.message && (
+          <p className="auth-success" role="status">
+            {location.state.message}
+          </p>
+        )}
 
         {error && (
           <p role="alert" className="auth-error">
@@ -86,7 +100,7 @@ export default function ManagementLoginPage() {
             required
             maxLength={255}
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(event) => setEmail(event.target.value)}
             disabled={busy}
           />
         </div>
@@ -101,7 +115,7 @@ export default function ManagementLoginPage() {
             autoComplete="current-password"
             required
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(event) => setPassword(event.target.value)}
             disabled={busy}
           />
         </div>

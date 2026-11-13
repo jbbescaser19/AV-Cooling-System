@@ -1,3 +1,7 @@
+import {
+  sanitizePersonName,
+  sanitizeContactNumber,
+} from "../../utils/fieldSanitizers.js";
 import { syncGuestCart } from "../../utils/cartStore";
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -16,7 +20,10 @@ import TermsCheckbox from "../../components/auth/TermsCheckbox.jsx";
 
 import "../../styles/auth/auth.css";
 import "../../styles/auth/register.css";
-import { continuePendingAction } from "../../utils/purchaseFlow";
+import {
+  continuePendingAction,
+  getPendingAction,
+} from "../../utils/purchaseFlow";
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -24,6 +31,9 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [stage, setStage] = useState("details");
+  const [otp, setOtp] = useState("");
+  const [notice, setNotice] = useState("");
 
   const [acceptTerms, setAcceptTerms] = useState(false);
 
@@ -47,9 +57,15 @@ export default function RegisterPage() {
   const handleFormData = (e) => {
     const { name, value } = e.target;
 
+    const cleaned =
+      name === "phone"
+        ? sanitizeContactNumber(value)
+        : name === "fullName"
+          ? sanitizePersonName(value)
+          : value;
     setFormData((previous) => ({
       ...previous,
-      [name]: value,
+      [name]: cleaned,
     }));
   };
 
@@ -80,22 +96,15 @@ export default function RegisterPage() {
         acceptTerms,
       });
 
-      if (response.data?.success) {
-        try {
-          await syncGuestCart();
-          continuePendingAction(navigate);
-        } catch (syncError) {
-          navigate("/cart", {
-            replace: true,
-            state: {
-              cartWarning:
-                syncError.response?.data?.message ||
-                "Account created, but your guest cart could not be synced. Remove items or retry.",
-            },
-          });
-        }
+      if (response.data?.verificationRequired) {
+        setStage("verify");
+        setNotice(
+          response.data?.message ||
+            "Check your email for the verification code.",
+        );
+        setError("");
       } else {
-        setError("Signup failed.");
+        setError("Verification could not be started. Please try again.");
       }
     } catch (requestError) {
       console.error(
@@ -105,12 +114,155 @@ export default function RegisterPage() {
 
       setError(
         requestError.response?.data?.message ||
-          "Registration failed. Please try again.",
+          "Could not send the verification email. Please try again.",
       );
     } finally {
       setLoading(false);
     }
   };
+
+  const verifyCode = async (event) => {
+    event.preventDefault();
+    if (loading) return;
+    if (!/^\d{6}$/.test(otp)) {
+      setError("Enter the six digits from your verification email.");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      const { data } = await api.post("/api/auth/customer/register/verify", {
+        email: formData.email.trim().toLowerCase(),
+        otp,
+      });
+      if (!data?.success) throw new Error("The code could not be verified.");
+      try {
+        await syncGuestCart();
+        if (getPendingAction()) continuePendingAction(navigate);
+        else navigate("/account/profile", { replace: true });
+      } catch (syncError) {
+        navigate("/cart", {
+          replace: true,
+          state: {
+            cartWarning:
+              syncError.response?.data?.message ||
+              "Your account is verified, but some cart items may be unavailable. Please check your cart.",
+          },
+        });
+      }
+    } catch (requestError) {
+      setError(
+        requestError.response?.data?.message ||
+          requestError.message ||
+          "Invalid code. Please try again.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resendCode = async () => {
+    if (loading) return;
+    setLoading(true);
+    setError("");
+    try {
+      const { data } = await api.post("/api/auth/customer/register", {
+        ...formData,
+        acceptTerms,
+      });
+      setNotice(data?.message || "A new verification code has been sent.");
+      setOtp("");
+    } catch (requestError) {
+      setError(
+        requestError.response?.data?.message ||
+          "Unable to resend code. Please try again later.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (stage === "verify") {
+    return (
+      <div className="auth-shell auth-register-page">
+        <form
+          className="auth-card auth-register-card otp-verification-card"
+          onSubmit={verifyCode}
+        >
+          <div className="auth-register-heading">
+            <Mail size={26} aria-hidden="true" />
+            <div>
+              <div className="eyebrow">Verify your email</div>
+              <h1>Check your inbox</h1>
+            </div>
+          </div>
+          <p className="muted">
+            Enter the six-digit code sent to{" "}
+            <strong>{formData.email.trim()}</strong>. The code expires in 10
+            minutes.
+          </p>
+          {notice && (
+            <p className="otp-notice" role="status">
+              {notice}
+            </p>
+          )}
+          <div className="auth-field">
+            <label className="auth-field-label" htmlFor="register-otp">
+              Verification code
+            </label>
+            <input
+              id="register-otp"
+              className="form-control otp-code-input"
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              pattern="[0-9]{6}"
+              maxLength={6}
+              value={otp}
+              onChange={(event) =>
+                setOtp(event.target.value.replace(/\D/g, "").slice(0, 6))
+              }
+              placeholder="000000"
+              required
+              disabled={loading}
+              autoFocus
+            />
+          </div>
+          {error && (
+            <div className="auth-error" role="alert">
+              {error}
+            </div>
+          )}
+          <button
+            className="btn btn-dark auth-register-submit"
+            type="submit"
+            disabled={loading || otp.length !== 6}
+          >
+            {loading ? "Verifying..." : "Verify email and create account"}
+          </button>
+          <div className="otp-verification-actions">
+            <button type="button" onClick={resendCode} disabled={loading}>
+              Resend code
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setStage("details");
+                setOtp("");
+                setError("");
+              }}
+              disabled={loading}
+            >
+              Edit details
+            </button>
+          </div>
+          <p className="auth-register-footer">
+            Already verified? <Link to="/login">Log in</Link>
+          </p>
+        </form>
+      </div>
+    );
+  }
 
   return (
     <div className="auth-shell auth-register-page">
@@ -150,6 +302,7 @@ export default function RegisterPage() {
               name="fullName"
               type="text"
               placeholder="Enter your full name"
+              maxLength={150}
               autoComplete="name"
               value={formData.fullName}
               onChange={handleFormData}
@@ -157,6 +310,9 @@ export default function RegisterPage() {
               disabled={loading}
             />
           </div>
+          <small className="auth-field-hint">
+            Letters only. Spaces, hyphens and apostrophes are allowed.
+          </small>
         </div>
 
         <div className="auth-field">
@@ -195,7 +351,10 @@ export default function RegisterPage() {
               className="form-control"
               name="phone"
               type="tel"
-              placeholder="Enter your phone number"
+              placeholder="09XXXXXXXXX"
+              inputMode="tel"
+              maxLength={17}
+              title="Enter a Philippine mobile number starting with 09 or +639"
               autoComplete="tel"
               value={formData.phone}
               onChange={handleFormData}
@@ -264,7 +423,7 @@ export default function RegisterPage() {
           type="submit"
           disabled={loading || !acceptTerms}
         >
-          {loading ? "Creating account..." : "Create account"}
+          {loading ? "Sending code..." : "Send verification code"}
         </button>
 
         <p className="auth-register-footer">

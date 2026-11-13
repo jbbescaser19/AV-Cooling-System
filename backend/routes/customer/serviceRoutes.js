@@ -6,7 +6,6 @@ import { requireCustomerAuth } from "../../middleware/requireCustomerAuth.js";
 import {
   createServiceRequestController,
   listMyServicePaymentsController,
-  submitServiceTransferController,
   getActiveServiceTypesController,
   getInstallationProductsController,
   getCustomerAirconPurchasesController,
@@ -27,11 +26,6 @@ router.get("/aircon-purchases", getCustomerAirconPurchasesController);
 router.get("/requests", getCustomerServiceRequestsController);
 
 router.get("/payments", listMyServicePaymentsController);
-router.post(
-  "/:requestId/report-transfer",
-  requireCustomerWriteOrigin,
-  submitServiceTransferController,
-);
 router.post(
   "/requests",
   requireCustomerWriteOrigin,

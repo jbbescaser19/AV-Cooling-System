@@ -2,12 +2,16 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { MessageSquareHeart, RefreshCw, Star } from "lucide-react";
 import api from "../../../api/api.js";
+import useRealtimeRefresh from "../../hooks/useRealtimeRefresh.js";
 import "../../styles/home/testimonials.css";
+
 export default function ReviewsPage() {
   const [items, setItems] = useState([]),
     [busy, setBusy] = useState(true),
     [error, setError] = useState(""),
     [refresh, setRefresh] = useState(0);
+  useRealtimeRefresh(["feedback"], setRefresh);
+
   useEffect(() => {
     const controller = new AbortController();
     setBusy(true);
@@ -28,6 +32,7 @@ export default function ReviewsPage() {
       });
     return () => controller.abort();
   }, [refresh]);
+
   return (
     <main className="public-reviews-page">
       <div className="container">

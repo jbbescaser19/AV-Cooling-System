@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { personName, contactNumber } from "../../shared/personFields.js";
 import {
   id,
   str,
@@ -11,8 +12,8 @@ export const facebookRequestSchemas = {
   "facebook-requests": {
     create: z.strictObject({
       requestKind: status("AIRCON", "SERVICE"),
-      customerName: str(2, 150),
-      contactNumber: str(7, 30),
+      customerName: personName,
+      contactNumber,
       address: str(5, 2000),
       destinationAddress: str(0, 2000).default(""),
       facebookAccount: str(2, 150),

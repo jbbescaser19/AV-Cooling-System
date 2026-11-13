@@ -7,8 +7,16 @@ export function staffSessionModel(db) {
     async create(sessionId, staffId, refreshTokenHash) {
       await db.execute(
         `INSERT INTO staff_sessions
-          (session_id, staff_user_id, refresh_token_hash, expires_at)
-         VALUES (?, ?, ?, DATE_ADD(NOW(3), INTERVAL 7 DAY))`,
+          (
+            session_id,
+            staff_user_id,
+            refresh_token_hash,
+            expires_at
+          )
+         VALUES (
+           ?, ?, ?,
+           DATE_ADD(NOW(3), INTERVAL 7 DAY)
+         )`,
         [sessionId, staffId, refreshTokenHash],
       );
     },
@@ -16,12 +24,23 @@ export function staffSessionModel(db) {
     async findActive(sessionId, staffId) {
       const [rows] = await db.execute(
         `SELECT
-           u.user_id AS id, u.name, u.email, u.role,
-           FLOOR(UNIX_TIMESTAMP(s.expires_at) * 1000) AS absoluteExpiresAt,
-           FLOOR(UNIX_TIMESTAMP(s.reauthenticated_until) * 1000) AS reauthenticatedUntil,
-           FLOOR(UNIX_TIMESTAMP(NOW(3)) * 1000) AS serverNow
+           u.user_id AS id,
+           u.name,
+           u.email,
+           u.role,
+           u.must_change_password AS mustChangePassword,
+           FLOOR(
+             UNIX_TIMESTAMP(s.expires_at) * 1000
+           ) AS absoluteExpiresAt,
+           FLOOR(
+             UNIX_TIMESTAMP(s.reauthenticated_until) * 1000
+           ) AS reauthenticatedUntil,
+           FLOOR(
+             UNIX_TIMESTAMP(NOW(3)) * 1000
+           ) AS serverNow
          FROM staff_sessions s
-         INNER JOIN users u ON u.user_id = s.staff_user_id
+         INNER JOIN users u
+           ON u.user_id = s.staff_user_id
          WHERE s.session_id = ?
            AND s.staff_user_id = ?
            AND s.revoked_at IS NULL
@@ -32,18 +51,30 @@ export function staffSessionModel(db) {
          LIMIT 1`,
         [sessionId, staffId],
       );
+
       return rows[0] || null;
     },
 
     async findActiveByRefresh(sessionId, refreshTokenHash) {
       const [rows] = await db.execute(
         `SELECT
-           u.user_id AS id, u.name, u.email, u.role,
-           FLOOR(UNIX_TIMESTAMP(s.expires_at) * 1000) AS absoluteExpiresAt,
-           FLOOR(UNIX_TIMESTAMP(s.reauthenticated_until) * 1000) AS reauthenticatedUntil,
-           FLOOR(UNIX_TIMESTAMP(NOW(3)) * 1000) AS serverNow
+           u.user_id AS id,
+           u.name,
+           u.email,
+           u.role,
+           u.must_change_password AS mustChangePassword,
+           FLOOR(
+             UNIX_TIMESTAMP(s.expires_at) * 1000
+           ) AS absoluteExpiresAt,
+           FLOOR(
+             UNIX_TIMESTAMP(s.reauthenticated_until) * 1000
+           ) AS reauthenticatedUntil,
+           FLOOR(
+             UNIX_TIMESTAMP(NOW(3)) * 1000
+           ) AS serverNow
          FROM staff_sessions s
-         INNER JOIN users u ON u.user_id = s.staff_user_id
+         INNER JOIN users u
+           ON u.user_id = s.staff_user_id
          WHERE s.session_id = ?
            AND s.refresh_token_hash = ?
            AND s.revoked_at IS NULL
@@ -54,6 +85,7 @@ export function staffSessionModel(db) {
          LIMIT 1`,
         [sessionId, refreshTokenHash],
       );
+
       return rows[0] || null;
     },
 
@@ -61,37 +93,53 @@ export function staffSessionModel(db) {
       const [result] = await db.execute(
         `UPDATE staff_sessions
          SET reauthenticated_until = LEAST(
-           DATE_ADD(NOW(3), INTERVAL 10 MINUTE), expires_at
+           DATE_ADD(
+             NOW(3),
+             INTERVAL 10 MINUTE
+           ),
+           expires_at
          )
-         WHERE session_id = ? AND staff_user_id = ?
-           AND revoked_at IS NULL AND expires_at > NOW(3)`,
+         WHERE session_id = ?
+           AND staff_user_id = ?
+           AND revoked_at IS NULL
+           AND expires_at > NOW(3)`,
         [sessionId, staffId],
       );
+
       return result.affectedRows === 1;
     },
 
     async revokeAllForStaff(staffId) {
       await db.execute(
-        `UPDATE staff_sessions SET revoked_at = NOW(3)
-         WHERE staff_user_id = ? AND revoked_at IS NULL`,
+        `UPDATE staff_sessions
+         SET revoked_at = NOW(3)
+         WHERE staff_user_id = ?
+           AND revoked_at IS NULL`,
         [staffId],
       );
     },
 
     async revoke(sessionId, staffId) {
       await db.execute(
-        `UPDATE staff_sessions SET revoked_at = NOW(3)
-         WHERE session_id = ? AND staff_user_id = ? AND revoked_at IS NULL`,
+        `UPDATE staff_sessions
+         SET revoked_at = NOW(3)
+         WHERE session_id = ?
+           AND staff_user_id = ?
+           AND revoked_at IS NULL`,
         [sessionId, staffId],
       );
     },
 
     async revokeByRefresh(sessionId, refreshTokenHash) {
       const [result] = await db.execute(
-        `UPDATE staff_sessions SET revoked_at = NOW(3)
-         WHERE session_id = ? AND refresh_token_hash = ? AND revoked_at IS NULL`,
+        `UPDATE staff_sessions
+         SET revoked_at = NOW(3)
+         WHERE session_id = ?
+           AND refresh_token_hash = ?
+           AND revoked_at IS NULL`,
         [sessionId, refreshTokenHash],
       );
+
       return result.affectedRows === 1;
     },
   };

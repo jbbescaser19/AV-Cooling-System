@@ -1,0 +1,23 @@
+/* Keep Management table status badges readable on desktop and tablet.
+   Other table content can wrap normally, and wide tables stay scrollable. */
+
+.wsm-page .wsm-table td[data-label="status"],
+.wsm-page .wsm-table td[data-label="paymentStatus"] {
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
+  min-width: 105px;
+}
+
+.wsm-page .wsm-table td .wsm-status[data-status] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: max-content;
+  min-width: max-content;
+  max-width: none;
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: none;
+}

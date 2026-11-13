@@ -6,7 +6,7 @@ export function customerModel(db) {
   return {
     async listCustomers(staffId) {
       return select(
-        `SELECT c.customer_id AS id,u.user_id AS userId,u.name,u.email,c.phone,c.status,u.status AS userStatus,(SELECT COUNT(*) FROM orders o WHERE o.customer_id=c.customer_id) AS orders,(SELECT COUNT(*) FROM service_requests sr WHERE sr.customer_id=c.customer_id) AS services FROM customers c JOIN users u ON u.user_id=c.user_id ORDER BY c.customer_id DESC LIMIT 200`,
+        `SELECT c.customer_id AS id,u.user_id AS userId,u.name,u.email,c.phone,c.status,u.status AS userStatus,(SELECT COUNT(*) FROM orders o WHERE o.customer_id=c.customer_id) AS orders,(SELECT COUNT(*) FROM service_requests sr WHERE sr.customer_id=c.customer_id) AS services FROM customers c JOIN users u ON u.user_id=c.user_id WHERE u.deleted_at IS NULL ORDER BY c.customer_id DESC LIMIT 200`,
       );
     },
     customerForUpdate(id) {

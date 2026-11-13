@@ -1,4 +1,4 @@
-/* Mobile-first order management, scoped only to My Orders. */
+/* My Orders — compact mobile summaries and full details modal. */
 
 .customer-orders .order-filters {
   display: flex;
@@ -176,6 +176,8 @@
   color: #547689;
   font-size: 0.84rem;
 }
+
+/* Existing order details modal. */
 
 .customer-orders .order-modal-content {
   display: grid;
@@ -392,8 +394,149 @@
   line-height: 1.5;
 }
 
-/* Tablet and desktop: two order columns and two form columns. */
-@media (min-width: 641px) {
+/* Mobile: organized like the compact My Services rows. */
+
+@media (max-width: 760px) {
+  .customer-orders .order-filters {
+    gap: 6px;
+    margin-bottom: 2px;
+    padding-bottom: 9px;
+  }
+
+  .customer-orders .order-filter {
+    padding: 7px 10px;
+    font-size: 0.73rem;
+    white-space: nowrap;
+  }
+
+  .customer-orders .order-list {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 7px;
+  }
+
+  .customer-orders .order-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "heading status"
+      "meta action"
+      "price action";
+    align-items: center;
+    column-gap: 10px;
+    row-gap: 3px;
+    min-width: 0;
+    padding: 10px 12px;
+    border-radius: 12px;
+  }
+
+  /* Visually flatten the two wrappers into the compact card grid. */
+  .customer-orders .order-card-top,
+  .customer-orders .order-card-bottom {
+    display: contents;
+  }
+
+  .customer-orders .order-card-title {
+    grid-area: heading;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .customer-orders .order-card-title strong {
+    order: -1;
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    color: #173e55;
+    font-size: 0.87rem;
+    line-height: 1.3;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .customer-orders .order-card-title .order-muted {
+    overflow: hidden;
+    font-size: 0.69rem;
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .customer-orders .order-card-top > .customer-status {
+    grid-area: status;
+    justify-self: end;
+    align-self: start;
+    margin: 0;
+    max-width: min(38vw, 145px);
+    padding: 4px 8px;
+    font-size: 0.69rem !important;
+    line-height: 1.2;
+    overflow-wrap: normal;
+    word-break: normal;
+    hyphens: none;
+    white-space: normal;
+  }
+
+  .customer-orders .order-card-meta {
+    grid-area: meta;
+    display: flex;
+    flex-wrap: wrap;
+    min-width: 0;
+    gap: 2px 5px;
+    font-size: 0.72rem;
+    line-height: 1.3;
+  }
+
+  .customer-orders .order-card-price {
+    grid-area: price;
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    min-width: 0;
+    gap: 3px 6px;
+    padding: 0;
+    border: 0;
+  }
+
+  .customer-orders .order-card-price .order-muted {
+    font-size: 0.7rem;
+  }
+
+  .customer-orders .order-card-price strong {
+    color: #153f58;
+    font-size: 0.91rem;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+
+  .customer-orders .order-card-bottom > .order-button {
+    grid-area: action;
+    justify-self: end;
+    align-self: center;
+    min-height: 44px;
+    padding: 8px 11px;
+    border: 1px solid #b9d8e5;
+    border-radius: 9px;
+    background: #eaf6fa;
+    color: #095d81;
+    font-size: 0.76rem;
+    white-space: nowrap;
+  }
+
+  .customer-orders .order-card-bottom > .order-button:hover:not(:disabled) {
+    border-color: #66b5d0;
+    background: #d5eef6;
+  }
+
+  .customer-orders .order-card-bottom > .order-button svg {
+    flex-shrink: 0;
+  }
+}
+
+/* Desktop and larger tablets retain a balanced two-column layout. */
+
+@media (min-width: 761px) {
   .customer-orders .order-list {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -407,10 +550,17 @@
   }
 }
 
-/* Extra-small phones: prevent horizontal overflow. */
+/* Small phones need slightly narrower action padding. */
+
 @media (max-width: 360px) {
   .customer-orders .order-card {
-    padding: 12px;
+    column-gap: 6px;
+    padding: 9px;
+  }
+
+  .customer-orders .order-card-bottom > .order-button {
+    padding-inline: 8px;
+    font-size: 0.72rem;
   }
 
   .customer-orders .order-dialog-actions .order-button {

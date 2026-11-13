@@ -1,22 +1,14 @@
 import { z } from "zod";
+import { personName, contactNumber } from "../../shared/personFields.js";
 import { parseBookingStart } from "../../scheduling/bookingScheduleValidator.js";
 import { parseManagementInput } from "../parseManagementInput.js";
 
 const schema = z.strictObject({
   requestKey: z.string().uuid(),
 
-  customerName: z.string().trim().min(2).max(150),
+  customerName: personName,
 
-  customerPhone: z
-    .string()
-    .trim()
-    .min(7)
-    .max(30)
-    .refine(
-      (phone) =>
-        (phone.match(/\d/g) || []).length >= 7 && /^[+0-9()\s-]+$/.test(phone),
-      "Enter a valid contact number with at least 7 digits.",
-    ),
+  customerPhone: contactNumber,
 
   serviceAddress: z.string().trim().min(5).max(2000),
   destinationAddress: z.string().trim().max(2000).default(""),

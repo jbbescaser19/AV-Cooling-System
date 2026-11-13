@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   AlertCircle,
+  Archive,
+  Eye,
   ArrowUpRight,
   ChevronRight,
   ClipboardList,
@@ -16,13 +18,18 @@ import {
 } from "lucide-react";
 
 import api from "../../../api/api.js";
+import useRealtimeRefresh from "../../hooks/useRealtimeRefresh.js";
 import AvailabilityPicker from "../../components/scheduling/AvailabilityPicker";
 import TechnicianTeamPicker from "../../components/management/TechnicianTeamPicker";
 import SourceTeamPanel from "../../components/management/SourceTeamPanel";
+import FacebookReturningCustomerSearch from "../../components/management/FacebookReturningCustomerSearch.jsx";
+import ArchiveRecordAction from "../../components/management/ArchiveRecordAction.jsx";
+import ManagementRecordDetailsModal from "../../components/management/ManagementRecordDetailsModal.jsx";
 import { getStaff } from "../../utils/authMock";
 import { workspaceConfig } from "../../data/managementWorkspaceConfig.js";
 import "../../styles/management/workspace.css";
 import "../../styles/management/schedule-availability.css";
+import "../../styles/management/record-pagination.css";
 
 function show(value, key) {
   if (value === null || value === undefined || value === "") return "—";
@@ -30,7 +37,15 @@ function show(value, key) {
     return Number(value) === 1 || value === true ? "Yes" : "No";
   }
   if (
-    ["startingPrice", "srp", "promoPrice", "price", "revenue"].includes(key)
+    [
+      "startingPrice",
+      "srp",
+      "promoPrice",
+      "price",
+      "revenue",
+      "orderRevenue",
+      "serviceRevenue",
+    ].includes(key)
   ) {
     return new Intl.NumberFormat("en-PH", {
       style: "currency",
@@ -234,10 +249,10 @@ function InputField({
     return null;
   if (field.key === "quantity" && form.requestKind === "SERVICE") return null;
   if (module === "facebook-requests" && field.key === "destinationAddress") {
-    const type = (options.serviceTypes || []).find(
+    const selectedType = (options.serviceTypes || []).find(
       (item) => String(item.id) === String(form.serviceTypeId),
     );
-    if (form.requestKind !== "SERVICE" || type?.code !== "relocation")
+    if (form.requestKind !== "SERVICE" || selectedType?.code !== "relocation")
       return null;
   }
 
@@ -463,18 +478,6 @@ function Editor({
     ? inventoryRows.find((item) => String(item.id) === String(form.variantId))
     : null;
   const addedQuantity = Number(form.quantity);
-  const selectedFbVariant =
-    module === "facebook-requests" && isNew && form.requestKind === "AIRCON"
-      ? (options.variants || []).find(
-          (v) => String(v.id) === String(form.variantId),
-        )
-      : null;
-  const invalidFbStock = Boolean(
-    selectedFbVariant &&
-    (Number(selectedFbVariant.available) <= 0 ||
-      Number(form.quantity) > Number(selectedFbVariant.available)),
-  );
-
   const canPreviewStock =
     selectedInventory &&
     Number.isSafeInteger(addedQuantity) &&
@@ -483,12 +486,6 @@ function Editor({
   async function submit(event) {
     event.preventDefault();
     if (saving) return;
-    if (invalidFbStock) {
-      setError(
-        "This product has insufficient available stock. Select another model or reduce the quantity.",
-      );
-      return;
-    }
 
     if (
       module === "facebook-requests" &&
@@ -551,19 +548,34 @@ function Editor({
       }
       if (module === "facebook-requests" && isNew) {
         const selectedType = (options.serviceTypes || []).find(
-          (option) => String(option.id) === String(payload.serviceTypeId),
+          (item) => String(item.id) === String(payload.serviceTypeId),
         );
         if (
           payload.requestKind === "SERVICE" &&
           selectedType?.code === "relocation"
         ) {
           if (String(payload.destinationAddress || "").trim().length < 5) {
-            setError("Enter the destination address for Aircon Relocation.");
+            setError("Enter a destination address for Aircon Relocation.");
             setSaving(false);
             return;
           }
         } else {
           payload.destinationAddress = "";
+        }
+        if (payload.requestKind === "AIRCON") {
+          const selectedVariant = (options.variants || []).find(
+            (item) => String(item.id) === String(payload.variantId),
+          );
+          if (
+            !selectedVariant ||
+            Number(selectedVariant.available) < Number(payload.quantity)
+          ) {
+            setError(
+              "The selected aircon is out of stock or does not have enough available units.",
+            );
+            setSaving(false);
+            return;
+          }
         }
         payload.variantId =
           payload.requestKind === "AIRCON" ? payload.variantId : null;
@@ -640,12 +652,24 @@ function Editor({
               Stock Movement record.
             </p>
           )}
+          {module === "facebook-requests" && isNew && (
+            <FacebookReturningCustomerSearch
+              disabled={saving}
+              onSelect={(person) => {
+                setForm((previous) => ({
+                  ...previous,
+                  customerName: person.name || previous.customerName,
+                  contactNumber: person.phone || previous.contactNumber,
+                  address: person.address || previous.address,
+                }));
+                setError("");
+              }}
+            />
+          )}
           {module === "facebook-requests" && (
             <p className="wsm-info">
               <ShieldCheck size={17} />
-              Record the Facebook account you spoke with and only the details
-              confirmed by the customer. This form does not access Messenger
-              messages.
+              Staff must enter only details genuinely agreed on Messenger.
             </p>
           )}
           {module === "schedules" &&
@@ -669,22 +693,6 @@ function Editor({
               disabled={saving}
             />
           ))}
-          {module === "facebook-requests" &&
-            isNew &&
-            form.requestKind === "AIRCON" && (
-              <p
-                className={invalidFbStock ? "wsm-error" : "wsm-info"}
-                role="status"
-              >
-                {selectedFbVariant
-                  ? Number(selectedFbVariant.available) <= 0
-                    ? "OUT OF STOCK — choose a different aircon model."
-                    : `${selectedFbVariant.available} unit(s) available for this model.`
-                  : "Choose an in-stock aircon model. Out-of-stock models cannot be selected."}
-                {invalidFbStock &&
-                  " Reduce the quantity or select another model."}
-              </p>
-            )}
           {module === "facebook-requests" &&
             !isNew &&
             form.action === "CONVERT" && (
@@ -723,7 +731,6 @@ function Editor({
               className="wsm-primary"
               disabled={
                 saving ||
-                invalidFbStock ||
                 (module === "schedules" &&
                   isNew &&
                   (options.technicians || []).length === 0)
@@ -748,20 +755,84 @@ export default function ManagementWorkspacePage({ module }) {
   const [items, setItems] = useState([]);
   const [options, setOptions] = useState({});
   const [loading, setLoading] = useState(true);
+  const lastLoadedModuleRef = useRef(null);
+
+  // The same page renders Catalog, Customers, and Administration modules.
+  // Only actual changes for the current module should invalidate its data.
+  const moduleTopic =
+    {
+      categories: ["catalog"],
+      products: ["catalog", "inventory"],
+      variants: ["catalog", "inventory"],
+      inventory: ["inventory"],
+      "stock-movements": ["inventory"],
+      "service-types": ["services"],
+      "service-requests": ["services", "schedules", "jobs"],
+      technicians: ["staff", "jobs", "schedules"],
+      schedules: ["schedules", "jobs"],
+      customers: ["customers"],
+      feedback: ["feedback"],
+      "facebook-requests": ["orders", "services"],
+      reports: ["reports", "orders", "payments", "services"],
+      notifications: ["notifications"],
+      "audit-logs": ["staff", "archive", "orders", "services", "payments"],
+      archive: ["archive"],
+      staff: ["staff"],
+    }[module] || [];
+  useRealtimeRefresh(moduleTopic, setReload);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [categoryFilter, setCategoryFilter] = useState("ALL");
+  const [page, setPage] = useState(1);
+  const [detailsRecord, setDetailsRecord] = useState(null);
+  const closeDetails = useCallback(() => setDetailsRecord(null), []);
+  const [clearBusy, setClearBusy] = useState(null);
   const [editor, setEditor] = useState(null);
   const [teamSource, setTeamSource] = useState(null);
   const [reload, setReload] = useState(0);
 
   const staff = getStaff();
+  const mobilePrimary = config.columns[0]?.[0];
+  const mobileStatus = config.columns.find(([field]) =>
+    ["status", "paymentStatus", "sentiment"].includes(field),
+  )?.[0];
+  const mobileSecondary = config.columns.find(
+    ([field]) => field !== mobilePrimary && field !== mobileStatus,
+  )?.[0];
+  const mobileThird =
+    mobileStatus ||
+    config.columns.find(
+      ([field]) => field !== mobilePrimary && field !== mobileSecondary,
+    )?.[0];
+  const mobileSlot = (field) =>
+    field === mobilePrimary
+      ? "primary"
+      : field === mobileSecondary
+        ? "secondary"
+        : field === mobileThird
+          ? "status"
+          : undefined;
   const ownerOrManager = ["OWNER", "MANAGER"].includes(staff?.role);
   const writable =
     ownerOrManager ||
     (["notifications", "facebook-requests"].includes(module) &&
       ["SALES_CASHIER", "TECHNICIAN"].includes(staff?.role) &&
       (module === "notifications" || staff.role === "SALES_CASHIER"));
+
+  const hasRowActions =
+    (config.update && writable) ||
+    module === "facebook-requests" ||
+    (ownerOrManager &&
+      [
+        "products",
+        "categories",
+        "variants",
+        "inventory",
+        "service-types",
+        "technicians",
+      ].includes(module));
 
   const writableCreate =
     writable &&
@@ -778,7 +849,12 @@ export default function ManagementWorkspacePage({ module }) {
 
   useEffect(() => {
     const controller = new AbortController();
-    setLoading(true);
+    const moduleChanged = lastLoadedModuleRef.current !== module;
+    if (moduleChanged) {
+      setLoading(true);
+      setItems([]);
+      setOptions({});
+    }
     setError("");
 
     api
@@ -789,11 +865,12 @@ export default function ManagementWorkspacePage({ module }) {
         if (!controller.signal.aborted) {
           setItems(data.items || []);
           setOptions(data.options || {});
+          lastLoadedModuleRef.current = module;
         }
       })
       .catch((requestError) => {
         if (!controller.signal.aborted) {
-          setItems([]);
+          // Do not erase the last successful records on refresh failure.
           setError(
             requestError.response?.data?.message ||
               "Could not load records from MySQL.",
@@ -806,18 +883,87 @@ export default function ManagementWorkspacePage({ module }) {
     return () => controller.abort();
   }, [module, reload]);
 
+  // Optional category filters for modules without a simple status column.
+  // This refines the displayed 16-record pages; the backend still decides
+  // which records the staff account is authorized to see.
+  const categoryOptions = useMemo(() => {
+    if (module === "inventory")
+      return [
+        { key: "ALL", label: "All stock" },
+        { key: "OUT", label: "Out of stock" },
+        { key: "LOW", label: "Low stock" },
+        { key: "AVAILABLE", label: "In stock" },
+      ];
+    if (module === "stock-movements")
+      return [
+        { key: "ALL", label: "All movements" },
+        ...[
+          ...new Set(
+            items
+              .map((item) => String(item.movementType || "").toUpperCase())
+              .filter(Boolean),
+          ),
+        ]
+          .sort()
+          .map((key) => ({ key, label: key.replaceAll("_", " ") })),
+      ];
+    if (module === "feedback")
+      return [
+        { key: "ALL", label: "All feedback" },
+        { key: "POSITIVE", label: "Positive" },
+        { key: "NEUTRAL", label: "Neutral" },
+        { key: "NEGATIVE", label: "Negative" },
+        { key: "NOT_ANALYZED", label: "Not analyzed" },
+      ];
+    return [];
+  }, [items, module]);
+  const matchesCategory = (item) => {
+    if (categoryFilter === "ALL") return true;
+    if (module === "inventory") {
+      const available = Number(item.available ?? 0);
+      const reorderLevel = Number(item.reorderLevel ?? 0);
+      if (categoryFilter === "OUT") return available <= 0;
+      if (categoryFilter === "LOW")
+        return available > 0 && available <= reorderLevel;
+      return available > reorderLevel;
+    }
+    if (module === "stock-movements")
+      return String(item.movementType || "").toUpperCase() === categoryFilter;
+    if (module === "feedback")
+      return normalizedSentiment(item.sentiment) === categoryFilter;
+    return true;
+  };
   const filtered = useMemo(
     () =>
-      items.filter((item) =>
-        Object.values(item).some(
-          (value) =>
-            value !== null &&
-            value !== undefined &&
-            String(value).toLowerCase().includes(search.trim().toLowerCase()),
-        ),
+      items.filter(
+        (item) =>
+          (statusFilter === "ALL" ||
+            String(item.status).toUpperCase() === statusFilter) &&
+          matchesCategory(item) &&
+          Object.values(item).some(
+            (value) =>
+              value !== null &&
+              value !== undefined &&
+              String(value).toLowerCase().includes(search.trim().toLowerCase()),
+          ),
       ),
-    [items, search],
+    // The module and category filters are captured from render and memoized.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [items, search, statusFilter, categoryFilter, module],
   );
+  const statusChoices = useMemo(
+    () =>
+      [
+        ...new Set(
+          items
+            .map((item) => String(item.status || "").toUpperCase())
+            .filter(Boolean),
+        ),
+      ].sort(),
+    [items],
+  );
+  const totalPages = Math.max(1, Math.ceil(filtered.length / 16));
+  const pageItems = filtered.slice((page - 1) * 16, page * 16);
 
   if (!config) return <p>Unknown management module.</p>;
 
@@ -845,6 +991,46 @@ export default function ManagementWorkspacePage({ module }) {
     }
   }
 
+  function archiveFinished(message) {
+    setError("");
+    setSuccess(message);
+    setPage(1);
+    setReload((n) => n + 1);
+    window.dispatchEvent(new Event("av-management-updated"));
+  }
+
+  async function clearOffSchedule(item) {
+    if (!ownerOrManager || item.status !== "OFF" || clearBusy) return;
+    if (
+      !window.confirm(
+        `Clear the unavailability for ${item.technician || "this technician"} on ${item.date}? This keeps a database record as AVAILABLE.`,
+      )
+    )
+      return;
+    setClearBusy(item.id);
+    setError("");
+    try {
+      await api.patch(`/api/management/workspace/schedules/${item.id}`, {
+        status: "AVAILABLE",
+        reason: "",
+        startTime: "",
+        endTime: "",
+      });
+      setSuccess(
+        "Schedule unavailability cleared. The date is now available, subject to existing bookings.",
+      );
+      setReload((n) => n + 1);
+      window.dispatchEvent(new Event("av-management-updated"));
+    } catch (requestError) {
+      setError(
+        requestError.response?.data?.message ||
+          "Could not clear schedule unavailability.",
+      );
+    } finally {
+      setClearBusy(null);
+    }
+  }
+
   function openStock(variantId = null) {
     setEditor({ mode: "create", intent: "stock-in", variantId });
   }
@@ -868,18 +1054,32 @@ export default function ManagementWorkspacePage({ module }) {
           >
             <RefreshCw size={17} aria-hidden="true" /> Refresh
           </button>
+          {ownerOrManager &&
+            [
+              "products",
+              "categories",
+              "variants",
+              "inventory",
+              "service-types",
+              "technicians",
+              "facebook-requests",
+            ].includes(module) && (
+              <Link to="/management/archive" className="wsm-secondary">
+                <Archive size={17} aria-hidden="true" /> View Archive
+              </Link>
+            )}
           {module === "inventory" && writableCreate ? (
             <>
               <button
                 type="button"
-                className="wsm-primary"
+                className="wsm-primary av-workspace-create"
                 onClick={() => openStock()}
               >
                 <Plus size={17} aria-hidden="true" /> Add Stock
               </button>
               <button
                 type="button"
-                className="wsm-secondary"
+                className="wsm-secondary av-workspace-movement"
                 onClick={() =>
                   setEditor({ mode: "create", intent: "movement" })
                 }
@@ -890,7 +1090,7 @@ export default function ManagementWorkspacePage({ module }) {
           ) : writableCreate ? (
             <button
               type="button"
-              className="wsm-primary"
+              className="wsm-primary av-workspace-create"
               onClick={() => setEditor({ mode: "create" })}
             >
               <Plus size={17} aria-hidden="true" />
@@ -956,7 +1156,11 @@ export default function ManagementWorkspacePage({ module }) {
                 ? "Customer feedback records"
                 : `${config.title} records`}
             </h2>
-            <small>{filtered.length} shown, latest records first</small>
+            <small>
+              {filtered.length} matching · showing{" "}
+              {filtered.length ? (page - 1) * 16 + 1 : 0}–
+              {Math.min(page * 16, filtered.length)}
+            </small>
           </div>
           <div className="wsm-table-tools">
             <label className="wsm-search">
@@ -965,9 +1169,47 @@ export default function ManagementWorkspacePage({ module }) {
                 aria-label="Search records"
                 placeholder="Search records…"
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                }}
               />
             </label>
+            {categoryOptions.length > 0 && (
+              <select
+                className="wsm-status-filter"
+                value={categoryFilter}
+                aria-label="Filter record category"
+                onChange={(event) => {
+                  setCategoryFilter(event.target.value);
+                  setPage(1);
+                }}
+              >
+                {categoryOptions.map(({ key, label }) => (
+                  <option key={key} value={key}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            )}
+            {statusChoices.length > 0 && (
+              <select
+                className="wsm-status-filter"
+                value={statusFilter}
+                aria-label="Filter record status"
+                onChange={(e) => {
+                  setStatusFilter(e.target.value);
+                  setPage(1);
+                }}
+              >
+                <option value="ALL">All statuses</option>
+                {statusChoices.map((status) => (
+                  <option value={status} key={status}>
+                    {status.replaceAll("_", " ")}
+                  </option>
+                ))}
+              </select>
+            )}
             <ExportButton
               items={filtered}
               columns={config.columns}
@@ -994,18 +1236,25 @@ export default function ManagementWorkspacePage({ module }) {
           </div>
         ) : (
           <div className="wsm-overflow">
-            <table className="wsm-table">
+            <table className="wsm-table av-smart-table av-smart-table--expand">
               <thead>
                 <tr>
                   {config.columns.map(([field, label]) => (
-                    <th key={field}>{label}</th>
+                    <th key={field} data-mobile={mobileSlot(field)}>
+                      {label}
+                    </th>
                   ))}
-                  {((config.update && writable) ||
-                    module === "facebook-requests") && <th>Actions</th>}
+                  {hasRowActions && <th>Actions</th>}
+                  <th
+                    data-mobile="action"
+                    className="av-mobile-only av-smart-more-head"
+                  >
+                    Details
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((item) => (
+                {pageItems.map((item) => (
                   <tr
                     key={item.id}
                     className={
@@ -1015,7 +1264,11 @@ export default function ManagementWorkspacePage({ module }) {
                     }
                   >
                     {config.columns.map(([field]) => (
-                      <td data-label={field} key={field}>
+                      <td
+                        data-label={field}
+                        data-mobile={mobileSlot(field)}
+                        key={field}
+                      >
                         {field === "conversationUrl" && item[field] ? (
                           <a
                             className="wsm-external"
@@ -1052,10 +1305,21 @@ export default function ManagementWorkspacePage({ module }) {
                         )}
                       </td>
                     ))}
-                    {((config.update && writable) ||
-                      module === "facebook-requests") && (
-                      <td>
+                    {hasRowActions && (
+                      <td className="av-desktop-actions">
                         <div className="wsm-row-actions">
+                          {module === "schedules" &&
+                            ownerOrManager &&
+                            item.status === "OFF" && (
+                              <button
+                                type="button"
+                                className="wsm-secondary wsm-row-action"
+                                disabled={clearBusy !== null}
+                                onClick={() => clearOffSchedule(item)}
+                              >
+                                Clear OFF block
+                              </button>
+                            )}
                           {module === "inventory" && (
                             <button
                               type="button"
@@ -1132,22 +1396,188 @@ export default function ManagementWorkspacePage({ module }) {
                                 <ChevronRight size={16} aria-hidden="true" />
                               </button>
                             )}
+                          <ArchiveRecordAction
+                            module={module}
+                            record={item}
+                            canArchive={ownerOrManager}
+                            onArchived={archiveFinished}
+                          />
                         </div>
                       </td>
                     )}
+                    <td
+                      className="av-mobile-only av-smart-more-cell"
+                      data-mobile="action"
+                    >
+                      <button
+                        type="button"
+                        className="av-smart-expand-btn"
+                        aria-label={`View details for record ${item.id}`}
+                        onClick={() => setDetailsRecord(item)}
+                      >
+                        <Eye size={14} aria-hidden="true" />
+                        <span>View Details</span>
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         )}
+        {!loading && filtered.length > 16 && (
+          <nav
+            className="av-management-pages"
+            aria-label={`${config.title} pages`}
+          >
+            <span>
+              Page {page} of {totalPages}
+            </span>
+            <div>
+              <button
+                type="button"
+                disabled={page <= 1}
+                onClick={() => setPage((n) => Math.max(1, n - 1))}
+              >
+                Previous
+              </button>
+              <button
+                type="button"
+                disabled={page >= totalPages}
+                onClick={() => setPage((n) => n + 1)}
+              >
+                Next
+              </button>
+            </div>
+          </nav>
+        )}
       </section>
+
+      {detailsRecord && (
+        <ManagementRecordDetailsModal
+          title={`${config.title} details`}
+          subtitle={`Record #${detailsRecord.id}`}
+          fields={config.columns.map(([field, label]) => ({
+            label,
+            value:
+              field === "conversationUrl" &&
+              /^https?:\/\//i.test(String(detailsRecord[field] || "")) ? (
+                <a
+                  href={detailsRecord[field]}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Open Messenger chat{" "}
+                  <ArrowUpRight size={14} aria-hidden="true" />
+                </a>
+              ) : (
+                show(detailsRecord[field], field)
+              ),
+          }))}
+          onClose={closeDetails}
+        >
+          {module === "schedules" &&
+            ownerOrManager &&
+            detailsRecord.status === "OFF" && (
+              <button
+                type="button"
+                className="wsm-secondary wsm-row-action"
+                disabled={clearBusy !== null}
+                onClick={() => {
+                  closeDetails();
+                  clearOffSchedule(detailsRecord);
+                }}
+              >
+                Clear OFF block
+              </button>
+            )}
+          {module === "inventory" && (
+            <button
+              type="button"
+              className="wsm-primary wsm-row-action"
+              onClick={() => {
+                closeDetails();
+                openStock(detailsRecord.id);
+              }}
+            >
+              <Plus size={15} aria-hidden="true" /> Add Stock
+            </button>
+          )}
+          {module === "facebook-requests" &&
+            detailsRecord.status === "CONVERTED" && (
+              <>
+                {detailsRecord.convertedOrderId && (
+                  <Link
+                    className="wsm-primary wsm-row-action"
+                    to={`/management/orders?orderId=${detailsRecord.convertedOrderId}`}
+                  >
+                    View Order <ArrowUpRight size={15} aria-hidden="true" />
+                  </Link>
+                )}
+                {detailsRecord.convertedServiceRequestId && (
+                  <Link
+                    className="wsm-primary wsm-row-action"
+                    to={`/management/service-requests?requestId=${detailsRecord.convertedServiceRequestId}`}
+                  >
+                    View Service <ArrowUpRight size={15} aria-hidden="true" />
+                  </Link>
+                )}
+                {ownerOrManager &&
+                  (detailsRecord.convertedOrderId ||
+                    detailsRecord.convertedServiceRequestId) && (
+                    <button
+                      type="button"
+                      className="wsm-secondary wsm-row-action"
+                      onClick={() => {
+                        setTeamSource({
+                          kind: detailsRecord.convertedOrderId
+                            ? "ORDER"
+                            : "SERVICE",
+                          id:
+                            detailsRecord.convertedOrderId ||
+                            detailsRecord.convertedServiceRequestId,
+                        });
+                        closeDetails();
+                      }}
+                    >
+                      Assign Team
+                    </button>
+                  )}
+              </>
+            )}
+          {writable &&
+            !(
+              module === "facebook-requests" &&
+              ["CONVERTED", "CANCELLED"].includes(detailsRecord.status)
+            ) && (
+              <button
+                type="button"
+                className="wsm-secondary wsm-row-action"
+                onClick={() => {
+                  setEditor({ mode: "update", row: detailsRecord });
+                  closeDetails();
+                }}
+              >
+                {module === "inventory" ? "Reorder Level" : "Manage Record"}
+                <ChevronRight size={15} aria-hidden="true" />
+              </button>
+            )}
+          <ArchiveRecordAction
+            module={module}
+            record={detailsRecord}
+            canArchive={ownerOrManager}
+            onArchived={(message) => {
+              closeDetails();
+              archiveFinished(message);
+            }}
+          />
+        </ManagementRecordDetailsModal>
+      )}
 
       {module === "facebook-requests" && (
         <p className="wsm-footnote">
-          Record the Facebook account you spoke with. Staff must independently
-          verify identity, available stock, appointment and payment. The system
-          does not access private Facebook messages.
+          Staff must verify identity, stock, schedule and cash collection
+          separately. Facebook messages are not automatically accessible.
         </p>
       )}
       {module === "feedback" && (

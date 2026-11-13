@@ -204,3 +204,30 @@
     width: 100%;
   }
 }
+
+.customer-feedback-staff-reply {
+  border-left: 3px solid #1685a3;
+  border-radius: 7px;
+  padding: 10px 12px;
+  background: #edf8fb;
+  margin: 8px 0 12px;
+}
+.customer-feedback-staff-reply > strong {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #155c79;
+  font-size: 0.81rem;
+}
+.customer-feedback-staff-reply p {
+  margin: 7px 0;
+  font-size: 0.83rem;
+  color: #2f566e;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.customer-feedback-staff-reply small {
+  font-size: 0.7rem;
+  color: #618194;
+}

@@ -1,16 +1,10 @@
 import { services } from "../../data/services";
-
 import ServiceRequestDialog from "../../components/service/ServiceRequestDialog";
-
 import useServiceRequestFlow from "../../hooks/useServiceRequestFlow";
-
 import "../../styles/ecommerce/pages.css";
 import "../../styles/ecommerce/services.css";
 
 export default function ServicesPage() {
-  {
-    /* when component renders pass this argument /#expertise to function useServiceRequestFlow on useServiceRequestFlow*/
-  }
   const { selectedService, requestService, closeServiceRequest } =
     useServiceRequestFlow("/services");
 
@@ -21,9 +15,7 @@ export default function ServicesPage() {
           <div className="page-intro">
             <div>
               <div className="eyebrow">Services</div>
-
               <h1 className="page-title">Professional aircon service</h1>
-
               <p className="section-copy">
                 Installation, maintenance, repair, troubleshooting, and urgent
                 service with a clear request and scheduling process.
@@ -31,18 +23,25 @@ export default function ServicesPage() {
             </div>
           </div>
 
-          <div className="services-list-grid">
+          <div className="services-scroll-hint" aria-hidden="true">
+            <span>Browse all six services</span>
+            <span>Swipe for more →</span>
+          </div>
+
+          <div
+            className="services-list-grid"
+            role="region"
+            aria-label="Available air conditioning services"
+            tabIndex={0}
+          >
             {services.map((service) => {
               const Icon = service.icon;
 
               return (
                 <article className="surface service-list-card" key={service.id}>
-                  <Icon size={30} />
-
+                  <Icon size={30} aria-hidden="true" />
                   <h2>{service.name}</h2>
-
                   <p>{service.desc}</p>
-                  {/* go to useServiceRequestFlow do the requestService then pass the whole service object */}
                   <button
                     className="btn btn-dark"
                     type="button"
@@ -56,7 +55,7 @@ export default function ServicesPage() {
           </div>
         </div>
       </section>
-      {/* this is for selecting appointment if selectedService has value reder this react component ServiceRequestDialog*/}
+
       {selectedService && (
         <ServiceRequestDialog
           service={selectedService}

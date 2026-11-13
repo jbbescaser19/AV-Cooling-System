@@ -5,6 +5,9 @@ import { ensureConfirmedWorkOrders } from "../services/confirmationWorkOrderServ
 import { posModel } from "../../../models/management/sales/posModel.js";
 import { reserveAppointment } from "../../scheduling/bookingScheduleService.js";
 import { paymentModel } from "../../../models/management/sales/paymentModel.js";
+import { paymentMethodModel } from "../../../models/customer/order/paymentMethodModel.js";
+import { paymongoConfigured } from "../../payments/paymongoService.js";
+import { reserveForOrder } from "../../customer/order/stockReservationService.js";
 
 import { validatePosSale } from "../../../validators/management/sales/posValidator.js";
 import { fail, cents, peso, validStaff } from "./salesHelpers.js";
@@ -33,7 +36,11 @@ export async function getPosCatalog(staff) {
     model.catalog(),
     model.cashMethod(),
   ]);
+  const enabled = await paymentMethodModel(connectDB).enabledMethods();
   return {
+    paymentMethods: enabled.filter(
+      (code) => code === "CASH" || paymongoConfigured(),
+    ),
     items: items.map((item) => ({
       ...item,
       variantId: Number(item.variantId),
@@ -65,6 +72,14 @@ export async function createPosSale(staff, raw) {
   if (input.discount > 0 && !["OWNER", "MANAGER"].includes(staff.role)) {
     fail("Only an owner or manager can apply a discount.", 403);
   }
+  const isCash = input.paymentCode === "CASH";
+  if (!isCash && !paymongoConfigured())
+    fail(
+      "PayMongo needs merchant setup before accepting online payments.",
+      503,
+    );
+  if (!isCash && input.cashReceived > 0)
+    fail("Do not enter cash received for a PayMongo transaction.", 400);
   const connection = await connectDB.getConnection();
   try {
     await connection.beginTransaction();
@@ -74,9 +89,8 @@ export async function createPosSale(staff, raw) {
       await connection.commit();
       return { receipt: previous, alreadySaved: true };
     }
-    const methodId = await model.cashMethod();
-    if (!methodId)
-      fail("Enable the CASH payment method before using POS.", 409);
+    const methodId = await model.enabledMethod(input.paymentCode);
+    if (!methodId) fail("The selected payment method is unavailable.", 409);
     const lines = [];
     let subtotal = 0;
     for (const item of [...input.items].sort(
@@ -134,13 +148,16 @@ export async function createPosSale(staff, raw) {
         : cents(getDeliveryFee(input.deliveryArea, input.serviceAddress))
       : 0;
     const total = subtotal - discount + deliveryFee + additionalFee;
-    if (total <= 0 || received < total)
-      fail("Cash received must cover the total.");
-    const change = received - total;
+    if (total <= 0 || (isCash && received < total))
+      fail(
+        isCash ? "Cash received must cover the total." : "Invalid order total.",
+      );
+    const change = isCash ? received - total : 0;
     const orderId = await model.createOrder({
       orderNumber,
       staffId: staff.id,
       methodId,
+      paid: isCash,
       customerName: input.customerName,
       customerPhone: input.customerPhone,
       subtotal: peso(subtotal),
@@ -161,31 +178,39 @@ export async function createPosSale(staff, raw) {
         input.scheduledStart,
       );
     for (const item of lines) {
-      const taken = await model.takeStock(item.variantId, item.quantity);
-      if (taken !== 1)
-        fail("Stock changed during checkout. Refresh POS and retry.", 409);
+      if (isCash) {
+        const taken = await model.takeStock(item.variantId, item.quantity);
+        if (taken !== 1)
+          fail("Stock changed during checkout. Refresh POS and retry.", 409);
+      }
       await model.addItem(orderId, {
         ...item,
         installationIncluded: input.installationIncluded,
       });
-      await model.recordStockSale(item.variantId, item.quantity, staff.id);
+      if (isCash)
+        await model.recordStockSale(item.variantId, item.quantity, staff.id);
     }
+    if (!isCash) await reserveForOrder(connection, orderId, lines);
     await model.recordPayment(
       orderId,
       methodId,
       peso(total),
       staff.id,
-      `Cash received: PHP ${peso(received)}; change: PHP ${peso(change)}.`,
+      isCash
+        ? `Cash received: PHP ${peso(received)}; change: PHP ${peso(change)}.`
+        : "Payment pending via secure PayMongo Checkout.",
+      isCash,
     );
     await model.recordOrderHistory(
       orderId,
       staff.id,
       Boolean(input.scheduledStart),
       input.installationIncluded,
+      isCash,
     );
     await auditLogModel(connection).audit(
       staff.id,
-      "CONFIRM_POS_CASH",
+      isCash ? "CONFIRM_POS_CASH" : "CREATE_POS_PAYMONGO_PENDING",
       "orders",
       orderId,
     );
@@ -213,10 +238,11 @@ export async function createPosSale(staff, raw) {
         additionalFeeReason: input.additionalFeeReason,
         deliveryFee: peso(deliveryFee),
         total: peso(total),
-        cashReceived: peso(received),
-        change: peso(change),
-        paymentStatus: "PAID",
-        method: "CASH",
+        cashReceived: isCash ? peso(received) : null,
+        change: isCash ? peso(change) : null,
+        paymentStatus: isCash ? "PAID" : "PENDING",
+        method: input.paymentCode,
+        paymentId: await model.posPaymentId(orderId),
         appointment: input.scheduledStart,
       },
     };

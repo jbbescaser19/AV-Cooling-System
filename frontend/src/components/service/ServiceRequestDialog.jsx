@@ -688,7 +688,7 @@ export default function ServiceRequestDialog({ service, onClose }) {
               >
                 {form.paymentCode === "CASH"
                   ? "Cash is marked PAID only after staff confirm collection."
-                  : "After submitting, check My Payments for the official receiving-account details and submit your transfer reference. Management must verify the actual funds before marking PAID."}{" "}
+                  : "After the store confirms the service and final fee, open My Payments and use secure PayMongo Checkout. Your payment becomes PAID only after PayMongo confirms it."}{" "}
                 Final service charges may change after assessment and must be
                 confirmed by staff.
               </p>

@@ -12,6 +12,7 @@ import {
   FilterX,
 } from "lucide-react";
 import api from "../../../api/api.js";
+import useRealtimeRefresh from "../../hooks/useRealtimeRefresh.js";
 import "../../styles/management/installation-history.css";
 
 const peso = (value) =>
@@ -174,11 +175,14 @@ export default function InstallationHistoryPage() {
   const [to, setTo] = useState("");
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(16);
   const [totalPages, setTotalPages] = useState(1);
   const [counts, setCounts] = useState({ INSTALLATION: 0, SERVICE: 0 });
   const [selected, setSelected] = useState(null);
   const [revision, setRevision] = useState(0);
+  const hasLoadedRef = useRef(false);
+
+  useRealtimeRefresh(["jobs", "services", "orders"], setRevision);
   const closeModal = useCallback(() => setSelected(null), []);
 
   useEffect(() => {
@@ -212,7 +216,7 @@ export default function InstallationHistoryPage() {
       return undefined;
     }
     const controller = new AbortController();
-    setLoading(true);
+    if (!hasLoadedRef.current) setLoading(true);
     setError("");
     const params = { category, period, page, search: debouncedSearch };
     if (period === "MONTH") params.month = month;
@@ -230,16 +234,15 @@ export default function InstallationHistoryPage() {
       .then(({ data }) => {
         if (controller.signal.aborted) return;
         setItems(data.installations || []);
+        hasLoadedRef.current = true;
         setTotal(Number(data.total) || 0);
-        setPageSize(Number(data.pageSize) || 20);
+        setPageSize(Number(data.pageSize) || 16);
         setTotalPages(Math.max(1, Number(data.totalPages) || 1));
         setCounts(data.counts || { INSTALLATION: 0, SERVICE: 0 });
       })
       .catch((err) => {
         if (controller.signal.aborted) return;
-        setItems([]);
-        setTotal(0);
-        setCounts({ INSTALLATION: 0, SERVICE: 0 });
+        // Keep previously loaded records visible if a background request fails.
         setError(err.response?.data?.message || "Cannot load completed jobs.");
       })
       .finally(() => {

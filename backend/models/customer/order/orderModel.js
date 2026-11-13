@@ -237,6 +237,11 @@ export function orderModel(db) {
     async orders(customerId, orderNumber = null) {
       const [rows] = await db.execute(
         `SELECT o.order_id AS orderId, o.order_number AS orderNumber,
+                CONCAT('AV-', YEAR(o.ordered_at), '-',
+                  CASE WHEN o.order_id < 1000000
+                    THEN LPAD(o.order_id, 6, '0')
+                    ELSE CAST(o.order_id AS CHAR)
+                  END) AS displayOrderNumber,
                 o.order_status AS status, o.payment_status AS paymentStatus,
                 o.order_channel AS channel,
                 o.fulfillment_method AS fulfillment,

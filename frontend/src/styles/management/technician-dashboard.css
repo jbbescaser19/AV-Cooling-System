@@ -151,3 +151,28 @@
     font-size: 1.6rem;
   }
 }
+
+.tech-dashboard__metrics {
+  align-items: stretch;
+}
+.tech-dashboard__metric {
+  min-height: 143px;
+  grid-template-rows: auto auto 1fr auto;
+  align-content: start;
+}
+.tech-dashboard__metric small {
+  align-self: end;
+}
+@media (max-width: 650px) {
+  .tech-dashboard__metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .tech-dashboard__metric {
+    min-height: 124px;
+    padding: 12px;
+    gap: 5px;
+  }
+  .tech-dashboard__metric strong {
+    font-size: 1.4rem;
+  }
+}

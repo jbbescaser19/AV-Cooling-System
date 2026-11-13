@@ -1,0 +1,371 @@
+/* New MySQL archive: category filter, tidy record grid and independent details modal. */
+.av-archive-page {
+  display: grid;
+  gap: 17px;
+  min-width: 0;
+  color: #173f56;
+}
+.av-archive-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  flex-wrap: wrap;
+  padding: 19px;
+  border-radius: 16px;
+  background: linear-gradient(105deg, #123f60, #0a6885);
+  color: #fff;
+}
+.av-archive-head span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.73rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+.av-archive-head h1 {
+  margin: 7px 0;
+  font-size: clamp(1.3rem, 3vw, 1.9rem);
+}
+.av-archive-head p {
+  margin: 0;
+  max-width: 660px;
+  color: #d6eaf1;
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+.av-archive-head button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 13px;
+  border: 1px solid #8bb4c8;
+  border-radius: 10px;
+  background: #ffffff16;
+  color: #fff;
+  font-weight: 800;
+  cursor: pointer;
+}
+.av-archive-note {
+  display: flex;
+  gap: 9px;
+  align-items: start;
+  padding: 13px;
+  border: 1px solid #c6e0eb;
+  border-radius: 12px;
+  background: #f0f9fc;
+  font-size: 0.79rem;
+  line-height: 1.55;
+}
+.av-archive-note svg {
+  flex-shrink: 0;
+}
+.av-archive-summary {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+  flex-wrap: wrap;
+  font-size: 0.82rem;
+  color: #617b8c;
+}
+.av-archive-summary strong {
+  color: #164d66;
+  font-size: 1rem;
+}
+.av-archive-summary span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.av-archive-controls {
+  display: grid;
+  gap: 11px;
+}
+.av-archive-controls label {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  max-width: 440px;
+  border: 1px solid #c6dbe5;
+  border-radius: 11px;
+  background: #fff;
+  padding: 0 12px;
+}
+.av-archive-controls input {
+  width: 100%;
+  padding: 12px 0;
+  border: 0;
+  background: transparent;
+  outline: 0;
+  font: inherit;
+}
+.av-archive-categories {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+.av-archive-categories button {
+  padding: 8px 11px;
+  border-radius: 30px;
+  border: 1px solid #cbdce5;
+  background: #fff;
+  color: #365e73;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+.av-archive-categories button.active {
+  background: #0a678a;
+  color: #fff;
+  border-color: #0a678a;
+}
+.av-archive-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
+  align-items: stretch;
+  gap: 13px;
+}
+.av-archive-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 15px;
+  border: 1px solid #d5e5ed;
+  border-radius: 14px;
+  background: #fff;
+  min-width: 0;
+  box-shadow: 0 4px 15px #123b4e0d;
+}
+.av-archive-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 0.71rem;
+  color: #1e6a88;
+  font-weight: 800;
+  text-transform: capitalize;
+}
+.av-archive-card h2 {
+  margin: 7px 0;
+  font-size: 0.99rem;
+  overflow-wrap: anywhere;
+}
+.av-archive-card p {
+  margin: 0;
+  color: #617c8e;
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+.av-archive-card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 14px;
+}
+.av-archive-card-actions button,
+.av-archive-dialog footer button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: 1;
+  min-height: 40px;
+  border: 1px solid #c5dbe6;
+  background: #fff;
+  color: #175875;
+  border-radius: 9px;
+  font: inherit;
+  font-weight: 800;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+.av-archive-card-actions button:nth-child(2),
+.av-archive-dialog footer button:nth-child(2) {
+  background: #0a7193;
+  color: #fff;
+  border-color: #0a7193;
+}
+.av-archive-empty {
+  padding: 25px;
+  text-align: center;
+  border: 1px dashed #c2d5de;
+  border-radius: 12px;
+  color: #648093;
+}
+.av-archive-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 13000;
+  display: grid;
+  place-items: center;
+  padding: 15px;
+  background: #091c30b8;
+}
+.av-archive-dialog {
+  width: min(100%, 570px);
+  max-height: calc(100dvh - 30px);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  border-radius: 17px;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: 0 20px 70px #071c3670;
+}
+.av-archive-dialog header,
+.av-archive-dialog footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 9px;
+  padding: 16px 18px;
+  background: #f3fafc;
+}
+.av-archive-dialog header h2 {
+  margin: 4px 0;
+  font-size: 1.14rem;
+  overflow-wrap: anywhere;
+}
+.av-archive-dialog header span {
+  font-size: 0.72rem;
+  text-transform: capitalize;
+  color: #598196;
+}
+.av-archive-dialog header button {
+  display: grid;
+  place-items: center;
+  width: 37px;
+  height: 37px;
+  border: 1px solid #d2e2e9;
+  border-radius: 9px;
+  background: #fff;
+  cursor: pointer;
+}
+.av-archive-dialog-body {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px 18px;
+}
+.av-archive-dialog-body p {
+  font-size: 0.78rem;
+  color: #617d90;
+  line-height: 1.55;
+}
+.av-archive-dialog dl {
+  display: grid;
+  gap: 9px;
+}
+.av-archive-dialog dl > div {
+  display: grid;
+  grid-template-columns: minmax(95px, 0.6fr) minmax(0, 1fr);
+  gap: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #ebf1f4;
+  font-size: 0.82rem;
+}
+.av-archive-dialog dt {
+  text-transform: capitalize;
+  color: #637c8b;
+}
+.av-archive-dialog dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-weight: 700;
+}
+@media (max-width: 600px) {
+  .av-archive-page {
+    gap: 12px;
+  }
+  .av-archive-head {
+    padding: 15px;
+  }
+  .av-archive-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .av-archive-card {
+    padding: 11px;
+  }
+  .av-archive-card-actions {
+    flex-wrap: wrap;
+  }
+  .av-archive-card-actions button {
+    flex-basis: 100%;
+    min-height: 36px;
+  }
+  .av-archive-dialog {
+    width: min(100%, 440px);
+    align-self: center;
+    border-radius: 16px;
+    max-height: calc(100dvh - 28px);
+  }
+  .av-archive-overlay {
+    place-items: center;
+    padding: 14px;
+  }
+}
+@media (max-width: 365px) {
+  .av-archive-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Closed account categories use the same compact Management card design. */
+.av-archive-account-tag {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 8px;
+  border: 1px solid #d9e5eb;
+  border-radius: 7px;
+  background: #f5f8fa;
+  color: #516f80;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+.av-archive-account-history .av-archive-history-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin: 0 0 14px;
+  padding: 11px;
+  border: 1px solid #d4e4ec;
+  border-radius: 10px;
+  background: #f2f9fc;
+  color: #275a73;
+  line-height: 1.55;
+}
+.av-archive-account-history .av-archive-history-note svg {
+  flex: 0 0 auto;
+}
+.av-archive-account-history dl {
+  margin: 0;
+}
+.av-archive-confirm-overlay {
+  z-index: 13010;
+}
+.av-archive-card-actions button:focus-visible,
+.av-archive-dialog button:focus-visible,
+.av-archive-categories button:focus-visible,
+.av-archive-head button:focus-visible {
+  outline: 3px solid #35a7ca;
+  outline-offset: 2px;
+}
+@media (max-width: 600px) {
+  .av-archive-account-history .av-archive-history-note {
+    font-size: 0.78rem;
+  }
+  .av-archive-card h2 {
+    overflow-wrap: break-word;
+  }
+  .av-archive-dialog header,
+  .av-archive-dialog footer {
+    padding: 12px 13px;
+  }
+  .av-archive-dialog-body {
+    padding: 13px;
+  }
+}

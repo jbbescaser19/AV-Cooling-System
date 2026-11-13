@@ -3,7 +3,7 @@ export function manualTransferModel(db) {
   return {
     async lockOrderAndPayment(userId, number) {
       const [rows] = await db.execute(
-        `SELECT o.order_id AS orderId, o.order_status AS orderStatus,
+        `SELECT o.order_id AS orderId, o.order_status AS orderStatus, o.payment_status AS orderPaymentStatus,
       pm.code AS method, p.payment_id AS paymentId, p.payment_status AS paymentStatus
       FROM orders o JOIN customers c ON c.customer_id=o.customer_id
       JOIN payments p ON p.order_id=o.order_id AND p.payment_method_id=o.payment_method_id

@@ -1,8 +1,19 @@
 import { useEffect, useRef, useState } from "react";
-import { Wrench, X } from "lucide-react";
+import {
+  ArrowLeft,
+  ChevronRight,
+  Pencil,
+  RefreshCw,
+  Save,
+  Trash2,
+  Wrench,
+  X,
+  XCircle,
+} from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import api from "../../../api/api.js";
+import useRealtimeRefresh from "../../hooks/useRealtimeRefresh.js";
 import CustomerPageHeader from "../../components/customer/CustomerPageHeader";
 import CustomerStatusBadge from "../../components/customer/CustomerStatusBadge";
 
@@ -94,6 +105,7 @@ export default function ServicesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [retryCount, setRetryCount] = useState(0);
+  useRealtimeRefresh(["services", "schedules", "payments"], setRetryCount);
   const [notice, setNotice] = useState("");
 
   const [selectedRequestId, setSelectedRequestId] = useState(serviceId ?? null);
@@ -269,7 +281,7 @@ export default function ServicesPage() {
               type="button"
               onClick={() => setRetryCount((count) => count + 1)}
             >
-              Try Again
+              <RefreshCw size={16} aria-hidden="true" /> Try again
             </button>
           </div>
         )}
@@ -316,7 +328,7 @@ export default function ServicesPage() {
                     className="btn btn-soft"
                     onClick={() => openDialog(service)}
                   >
-                    View details
+                    View details <ChevronRight size={16} aria-hidden="true" />
                   </button>
                   {service.canEdit && (
                     <button
@@ -324,7 +336,7 @@ export default function ServicesPage() {
                       className="btn btn-soft"
                       onClick={() => openDialog(service, "edit")}
                     >
-                      Edit
+                      <Pencil size={16} aria-hidden="true" /> Edit
                     </button>
                   )}
                   {service.canCancel && (
@@ -333,7 +345,7 @@ export default function ServicesPage() {
                       className="btn btn-danger"
                       onClick={() => openDialog(service, "confirmCancel")}
                     >
-                      Cancel
+                      <XCircle size={16} aria-hidden="true" /> Cancel
                     </button>
                   )}
                   {service.canDelete && (
@@ -342,7 +354,7 @@ export default function ServicesPage() {
                       className="btn btn-danger"
                       onClick={() => openDialog(service, "confirmDelete")}
                     >
-                      Delete
+                      <Trash2 size={16} aria-hidden="true" /> Delete
                     </button>
                   )}
                 </div>
@@ -381,7 +393,7 @@ export default function ServicesPage() {
                   onClick={() => openDialog(service)}
                   aria-label={`View details for request ${service.requestId}`}
                 >
-                  View details
+                  View details <ChevronRight size={16} aria-hidden="true" />
                 </button>
               </div>
             </li>
@@ -504,7 +516,7 @@ export default function ServicesPage() {
                       className="btn btn-soft"
                       onClick={() => switchMode("edit")}
                     >
-                      Edit info
+                      <Pencil size={16} aria-hidden="true" /> Edit info
                     </button>
                   )}
                   {selectedService.canCancel && (
@@ -513,7 +525,7 @@ export default function ServicesPage() {
                       className="btn btn-danger"
                       onClick={() => switchMode("confirmCancel")}
                     >
-                      Cancel service
+                      <XCircle size={16} aria-hidden="true" /> Cancel service
                     </button>
                   )}
                   {selectedService.canDelete && (
@@ -522,7 +534,7 @@ export default function ServicesPage() {
                       className="btn btn-danger"
                       onClick={() => switchMode("confirmDelete")}
                     >
-                      Delete request
+                      <Trash2 size={16} aria-hidden="true" /> Delete request
                     </button>
                   )}
                   <button
@@ -530,7 +542,7 @@ export default function ServicesPage() {
                     className="btn btn-soft"
                     onClick={closeDialog}
                   >
-                    Close details
+                    <X size={16} aria-hidden="true" /> Close details
                   </button>
                 </div>
               </>
@@ -663,6 +675,7 @@ export default function ServicesPage() {
                     className="btn btn-dark"
                     disabled={saving}
                   >
+                    <Save size={16} aria-hidden="true" />{" "}
                     {saving ? "Saving..." : "Save changes"}
                   </button>
                   <button
@@ -671,7 +684,7 @@ export default function ServicesPage() {
                     disabled={saving}
                     onClick={() => switchMode("details")}
                   >
-                    Back to details
+                    <ArrowLeft size={16} aria-hidden="true" /> Back to details
                   </button>
                 </div>
               </form>
@@ -697,6 +710,7 @@ export default function ServicesPage() {
                     disabled={saving}
                     onClick={() => submitAction("cancel")}
                   >
+                    <XCircle size={16} aria-hidden="true" />{" "}
                     {saving ? "Cancelling..." : "Yes, cancel request"}
                   </button>
                   <button
@@ -705,7 +719,7 @@ export default function ServicesPage() {
                     disabled={saving}
                     onClick={() => switchMode("details")}
                   >
-                    No, keep request
+                    <ArrowLeft size={16} aria-hidden="true" /> No, keep request
                   </button>
                 </div>
               </div>
@@ -730,6 +744,7 @@ export default function ServicesPage() {
                     disabled={saving}
                     onClick={() => submitAction("delete")}
                   >
+                    <Trash2 size={16} aria-hidden="true" />{" "}
                     {saving ? "Deleting..." : "Yes, delete request"}
                   </button>
                   <button
@@ -738,7 +753,7 @@ export default function ServicesPage() {
                     disabled={saving}
                     onClick={() => switchMode("details")}
                   >
-                    No, keep request
+                    <ArrowLeft size={16} aria-hidden="true" /> No, keep request
                   </button>
                 </div>
               </div>

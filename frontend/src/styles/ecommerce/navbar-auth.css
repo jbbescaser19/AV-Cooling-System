@@ -1,0 +1,105 @@
+.public-nav-auth {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.public-nav-auth a,
+.mobile-nav-auth a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  border-radius: 9px;
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.public-nav-auth a:hover,
+.public-nav-auth a:focus-visible {
+  background: rgba(255, 255, 255, 0.14);
+}
+.public-nav-auth a:last-child {
+  background: #fff;
+  color: #123b55;
+}
+.mobile-nav-auth {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 14px 16px 22px;
+}
+.mobile-nav-auth a {
+  border-color: #c7d9e5;
+  color: #123b55;
+  background: #fff;
+}
+.mobile-nav-auth a:last-child {
+  background: #124a6b;
+  color: #fff;
+  border-color: #124a6b;
+}
+.public-nav-auth a:focus-visible,
+.mobile-nav-auth a:focus-visible {
+  outline: 3px solid #67e8f9;
+  outline-offset: 2px;
+}
+/* Guest sign-in options stay visible in the header, even on phones. */
+@media (max-width: 1120px) {
+  .public-nav-auth {
+    display: flex;
+  }
+  .public-nav-auth a {
+    min-height: 35px;
+    padding: 6px 9px;
+    font-size: 0.75rem;
+  }
+}
+@media (max-width: 700px) {
+  .public-nav .nav-inner {
+    gap: 6px;
+  }
+  .public-nav .nav-actions {
+    margin-left: auto;
+  }
+  .public-nav-auth {
+    gap: 4px;
+  }
+  .public-nav-auth a {
+    min-height: 34px;
+    padding: 6px 8px;
+    border-radius: 8px;
+    font-size: 0.72rem;
+  }
+}
+@media (max-width: 420px) {
+  .public-nav .brand-mark {
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+  }
+  .public-nav .brand {
+    gap: 5px;
+  }
+  .public-nav .brand b {
+    font-size: 0.82rem;
+  }
+  .public-nav .brand small {
+    font-size: 0.58rem;
+  }
+  .public-nav .nav-actions > a[href="/cart"] {
+    display: none;
+  }
+}
+@media (max-width: 355px) {
+  .public-nav-auth a {
+    padding: 5px 6px;
+    font-size: 0.69rem;
+  }
+  .public-nav .brand small {
+    display: none;
+  }
+}

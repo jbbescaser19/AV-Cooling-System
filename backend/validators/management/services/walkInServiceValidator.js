@@ -1,10 +1,11 @@
 import { z } from "zod";
+import { personName, contactNumber } from "../../shared/personFields.js";
 import { parseBookingStart } from "../../scheduling/bookingScheduleValidator.js";
 import { parseManagementInput } from "../parseManagementInput.js";
 const schema = z.strictObject({
   requestKey: z.string().uuid(),
-  customerName: z.string().trim().min(2).max(150),
-  customerPhone: z.string().trim().min(7).max(30),
+  customerName: personName,
+  customerPhone: contactNumber,
   serviceAddress: z.string().trim().min(5).max(2000),
   serviceTypeId: z.coerce.number().int().positive(),
   scheduledStart: z.string().refine((value) => {

@@ -5,12 +5,7 @@ import connectDB from "../../../utils/dbConn.js";
 
 import { customerModel } from "../../../models/customer/auth/authModel.js";
 
-import {
-  validateRegister,
-  validateLogin,
-} from "../../../utils/validateAndSanitize.js";
-
-const hashPassword = (password) => bcrypt.hash(password, 12);
+import { validateLogin } from "../../../utils/validateAndSanitize.js";
 
 const verifyPassword = (password, hashedPassword) =>
   bcrypt.compare(password, hashedPassword);
@@ -29,100 +24,6 @@ function createAuthError(message, status = 401) {
   const error = new Error(message);
   error.status = status;
   return error;
-}
-
-export async function registerCustomerService(input) {
-  const validation = validateRegister(input);
-
-  if (!validation.success) {
-    throw createAuthError(
-      validation.errors?.join(" ") || "Invalid registration data.",
-      400,
-    );
-  }
-
-  const { fullName, email, phone, password } = validation.data;
-
-  if (!fullName || !email || !phone || !password) {
-    throw createAuthError("All required fields must be provided.", 400);
-  }
-
-  if (!process.env.ACCESS_SECRET || !process.env.REFRESH_SECRET) {
-    throw new Error("Authentication secrets are not configured.");
-  }
-
-  const connection = await connectDB.getConnection();
-
-  try {
-    await connection.beginTransaction();
-
-    const customer = customerModel(connection);
-
-    const [existingUsers] = await customer.findUserByEmail(email);
-
-    if (existingUsers.length > 0) {
-      throw createAuthError("Email is already registered.", 409);
-    }
-
-    const passwordHash = await hashPassword(password);
-
-    const [userResult] = await customer.createUser(
-      fullName,
-      email,
-      "CUSTOMER",
-      passwordHash,
-      null,
-      "ACTIVE",
-    );
-
-    if (userResult.affectedRows !== 1) {
-      throw new Error("Failed to create user account.");
-    }
-
-    const userId = userResult.insertId;
-
-    const [customerResult] = await customer.createCustomer(
-      userId,
-      phone,
-      "ACTIVE",
-    );
-
-    if (customerResult.affectedRows !== 1) {
-      throw new Error("Failed to create customer profile.");
-    }
-
-    const payload = {
-      sub: String(userId),
-      accountType: "CUSTOMER",
-      role: null,
-      sessionVersion: 0,
-    };
-
-    const accessToken = createAccessToken(payload);
-
-    const refreshToken = createRefreshToken(payload);
-
-    await connection.commit();
-
-    return {
-      message: "Registration successful.",
-      accessToken,
-      refreshToken,
-      user: {
-        userId,
-        name: fullName,
-        email,
-        phone,
-        accountType: "CUSTOMER",
-        role: null,
-      },
-    };
-  } catch (error) {
-    await connection.rollback();
-    throw error;
-  } finally {
-    connection.release();
-  }
 }
 
 export async function loginCustomerService(input) {

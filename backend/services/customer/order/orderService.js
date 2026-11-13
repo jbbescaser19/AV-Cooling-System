@@ -1,5 +1,5 @@
-import { paymentInstructions } from "./manualPaymentService.js";
 import { getDeliveryFee } from "../../shared/deliveryPricingService.js";
+import { paymongoConfigured } from "../../payments/paymongoService.js";
 import connectDB from "../../../utils/dbConn.js";
 import { createCustomerNotification } from "../notification/notificationService.js";
 import {
@@ -111,12 +111,18 @@ export async function placeCustomerOrder(userId, rawInput) {
       return { ...replayed, replayed: true };
     }
 
-    if (!paymentInstructions(input.paymentCode).available) {
-      fail("This payment method is not configured by the store yet.", 503);
+    if (input.paymentCode !== "CASH" && !paymongoConfigured()) {
+      fail(
+        "Secure PayMongo Checkout is not available yet. Please choose Cash.",
+        503,
+      );
     }
     const methodId = await model.paymentMethod(input.paymentCode);
     if (!methodId)
-      fail("Payment method is not enabled. Contact the store.", 503);
+      fail(
+        "This payment method is currently unavailable. Choose another method.",
+        409,
+      );
 
     let cartId = null;
     const lines = [];
@@ -189,8 +195,8 @@ export async function placeCustomerOrder(userId, rawInput) {
       methodId,
       total,
       input.paymentCode === "CASH"
-        ? "Cash collection pending."
-        : `${input.paymentCode} manual transfer; unverified until bank/GCash reconciliation.`,
+        ? "Cash collection to be arranged with the store."
+        : `${input.paymentCode} selected. PayMongo Checkout will be available after staff confirms the order.`,
     );
     await model.insertStatus(orderId, userId);
     await createCustomerNotification(

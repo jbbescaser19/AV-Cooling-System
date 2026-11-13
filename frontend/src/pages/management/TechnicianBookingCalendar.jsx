@@ -1,5 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import api from "../../../api/api.js";
+import useRealtimeRefresh from "../../hooks/useRealtimeRefresh.js";
+import WorkHistoryModal from "../../components/management/WorkHistoryModal.jsx";
+import { History } from "lucide-react";
 import "../../styles/management/booking-calendar.css";
 
 const today = () =>
@@ -32,10 +35,14 @@ export default function TechnicianBookingCalendar() {
   const [revision, setRevision] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const loadedMonthRef = useRef(null);
+
+  useRealtimeRefresh(["schedules", "jobs", "services", "orders"], setRevision);
+  const [historyJob, setHistoryJob] = useState(null);
 
   useEffect(() => {
     const controller = new AbortController();
-    setLoading(true);
+    if (loadedMonthRef.current !== month) setLoading(true);
     api
       .get("/api/management/schedule/my-calendar", {
         params: { month },
@@ -46,14 +53,13 @@ export default function TechnicianBookingCalendar() {
           setJobs(data.jobs || []);
           setBlocks(data.blocks || []);
           setUpcoming(data.upcoming || []);
+          loadedMonthRef.current = month;
           setError("");
         }
       })
       .catch((err) => {
         if (!controller.signal.aborted) {
-          setJobs([]);
-          setBlocks([]);
-          setUpcoming([]);
+          // Preserve the last calendar if a background refresh fails.
           setError(
             err.response?.data?.message || "Unable to load your schedule.",
           );
@@ -68,13 +74,8 @@ export default function TechnicianBookingCalendar() {
   useEffect(() => {
     const refresh = () => setRevision((v) => v + 1);
     window.addEventListener("av-management-updated", refresh);
-    const visible = () => {
-      if (document.visibilityState === "visible") refresh();
-    };
-    window.addEventListener("focus", visible);
     return () => {
       window.removeEventListener("av-management-updated", refresh);
-      window.removeEventListener("focus", visible);
     };
   }, []);
 
@@ -203,6 +204,13 @@ export default function TechnicianBookingCalendar() {
                   </small>
                 )}
                 {job.phone && <small>Contact: {job.phone}</small>}
+                <button
+                  type="button"
+                  className="av-schedule-history"
+                  onClick={() => setHistoryJob(job)}
+                >
+                  <History size={15} aria-hidden="true" /> View history & notes
+                </button>
               </div>
             </article>
           ))}
@@ -232,12 +240,27 @@ export default function TechnicianBookingCalendar() {
                   <small>
                     {job.reference} · {job.workType} · {job.status}
                   </small>
+                  <button
+                    type="button"
+                    className="av-schedule-history"
+                    onClick={() => setHistoryJob(job)}
+                  >
+                    <History size={15} aria-hidden="true" /> View history &
+                    notes
+                  </button>
                 </div>
               </div>
             ))
           )}
         </section>
       </div>
+      {historyJob && (
+        <WorkHistoryModal
+          jobs={[historyJob]}
+          customer={historyJob.customer || historyJob.reference}
+          onClose={() => setHistoryJob(null)}
+        />
+      )}
     </main>
   );
 }

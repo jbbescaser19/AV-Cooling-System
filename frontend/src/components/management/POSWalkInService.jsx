@@ -1,3 +1,8 @@
+import {
+  sanitizePersonName,
+  sanitizeContactNumber,
+} from "../../utils/fieldSanitizers.js";
+import { confirmAction } from "../../utils/confirmAction.js";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -18,10 +23,12 @@ import AvailabilityPicker from "../scheduling/AvailabilityPicker.jsx";
 import TechnicianTeamPicker from "./TechnicianTeamPicker.jsx";
 import ReturningCustomerSearch from "./ReturningCustomerSearch.jsx";
 import ActionGuidance from "../common/ActionGuidance.jsx";
+import PayMongoAction from "../payments/PayMongoAction.jsx";
 import { getStaff } from "../../utils/authMock.js";
 import "../../styles/management/pos-enhancements.css";
 import "../../styles/management/pos-relocation.css";
 import "../../styles/management/pos-customer-fees.css";
+import "../../styles/ecommerce/paymongo.css";
 
 const money = (value) =>
   new Intl.NumberFormat("en-PH", {
@@ -34,6 +41,8 @@ export default function POSWalkInService() {
   const canAssign = ["OWNER", "MANAGER"].includes(getStaff()?.role);
 
   const [services, setServices] = useState([]);
+  const [paymentMethods, setPaymentMethods] = useState(["CASH"]);
+  const [paymentCode, setPaymentCode] = useState("CASH");
   const [refresh, setRefresh] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -68,6 +77,9 @@ export default function POSWalkInService() {
       .then(({ data }) => {
         if (!controller.signal.aborted) {
           setServices(Array.isArray(data.items) ? data.items : []);
+          setPaymentMethods(
+            Array.isArray(data.paymentMethods) ? data.paymentMethods : ["CASH"],
+          );
         }
       })
       .catch((requestError) => {
@@ -119,6 +131,9 @@ export default function POSWalkInService() {
   const bookingReasons = [
     loading ? "Active services are still loading." : null,
     !selected ? "Choose the service requested by the customer." : null,
+    !paymentMethods.includes(paymentCode)
+      ? "Choose an available payment method."
+      : null,
     customerName.trim().length < 2
       ? "Enter or select the customer's name."
       : null,
@@ -142,6 +157,7 @@ export default function POSWalkInService() {
       saving ||
       loading ||
       !selected ||
+      !paymentMethods.includes(paymentCode) ||
       !scheduledStart ||
       quotedPrice === null ||
       !phoneValid ||
@@ -153,9 +169,9 @@ export default function POSWalkInService() {
       return;
 
     if (
-      !window.confirm(
+      !(await confirmAction(
         `Book ${selected.name} for ${customerName.trim()}? Payment will remain pending.`,
-      )
+      ))
     ) {
       return;
     }
@@ -172,6 +188,7 @@ export default function POSWalkInService() {
           customerName: customerName.trim(),
           customerPhone: customerPhone.trim(),
           serviceTypeId: Number(serviceTypeId),
+          paymentCode,
           additionalFee: Math.round(fee * 100) / 100,
           additionalFeeReason: additionalFeeReason.trim(),
           serviceAddress: serviceAddress.trim(),
@@ -198,6 +215,7 @@ export default function POSWalkInService() {
       setCustomerName("");
       setCustomerPhone("");
       setAdditionalFee("0");
+      setPaymentCode("CASH");
       setAdditionalFeeReason("");
       setServiceTypeId("");
       setServiceAddress("");
@@ -283,6 +301,15 @@ export default function POSWalkInService() {
                 <strong>Destination:</strong> {saved.destinationAddress}
               </p>
             )}
+            {saved.paymentStatus === "PENDING" &&
+              saved.paymentMethod !== "CASH" &&
+              saved.paymentId && (
+                <PayMongoAction
+                  kind="SERVICE"
+                  identifier={saved.paymentId}
+                  staff
+                />
+              )}
             {canAssign ? (
               <Link to={`/management/service-requests?requestId=${saved.id}`}>
                 Open in Service Requests
@@ -329,8 +356,11 @@ export default function POSWalkInService() {
                     placeholder="Enter full name"
                     value={customerName}
                     disabled={saving}
-                    onChange={(event) => setCustomerName(event.target.value)}
+                    onChange={(event) =>
+                      setCustomerName(sanitizePersonName(event.target.value))
+                    }
                   />
+                  <small>Use letters only for customer names.</small>
                 </label>
                 <label className="pos-walkin-field">
                   Contact number <span className="pos-walkin-required">*</span>
@@ -343,7 +373,11 @@ export default function POSWalkInService() {
                     placeholder="e.g. 09XXXXXXXXX"
                     value={customerPhone}
                     disabled={saving}
-                    onChange={(event) => setCustomerPhone(event.target.value)}
+                    onChange={(event) =>
+                      setCustomerPhone(
+                        sanitizeContactNumber(event.target.value),
+                      )
+                    }
                   />
                 </label>
               </div>
@@ -685,10 +719,23 @@ export default function POSWalkInService() {
                   {bookingTotal === null ? "—" : money(bookingTotal)}
                 </strong>
               </div>
-              <div className="pos-walkin-summary-row">
-                <span>Payment method</span>
-                <strong>Cash</strong>
-              </div>
+              <label className="pos-walkin-field">
+                Payment method
+                <select
+                  value={paymentCode}
+                  onChange={(event) => setPaymentCode(event.target.value)}
+                >
+                  {paymentMethods.map((code) => (
+                    <option value={code} key={code}>
+                      {code === "CASH"
+                        ? "Cash"
+                        : code === "GCASH"
+                          ? "GCash via PayMongo"
+                          : "QR Ph / bank app via PayMongo"}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <div className="pos-walkin-summary-row">
                 <span>Payment status</span>
                 <span className="pos-walkin-pending">
@@ -696,9 +743,10 @@ export default function POSWalkInService() {
                 </span>
               </div>
               <p className="pos-walkin-payment-note">
-                Booking does not mark the service as paid. Payment is recorded
-                only after staff verify collection. Final charges may change
-                after assessment.
+                Booking remains pending. Cash is confirmed by authorized staff;
+                GCash and QR Ph payments are confirmed only by PayMongo's
+                verified notification. Final charges must be agreed before
+                paying online.
               </p>
               <ActionGuidance
                 title="Complete these before booking"
@@ -712,6 +760,7 @@ export default function POSWalkInService() {
                   saving ||
                   loading ||
                   !selected ||
+                  !paymentMethods.includes(paymentCode) ||
                   !scheduledStart ||
                   !phoneValid ||
                   !feeValid ||

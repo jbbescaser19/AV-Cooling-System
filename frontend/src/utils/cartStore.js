@@ -21,10 +21,6 @@ export function saveCart(items) {
   return items;
 }
 
-/**
- * Guest cart:
- * Only add products with available stock.
- */
 export function addCartItem(product, variant, quantity = 1) {
   const qty = Number(quantity);
 
@@ -47,6 +43,17 @@ export function addCartItem(product, variant, quantity = 1) {
   );
 
   const next = (match?.qty || 0) + qty;
+
+  const cartUnitCount = cart.reduce(
+    (total, item) => total + Math.max(0, Number(item.qty) || 0),
+    0,
+  );
+
+  if (cartUnitCount + qty > 99) {
+    throw new Error(
+      `Your cart can hold up to 99 total units. You currently have ${cartUnitCount}.`,
+    );
+  }
 
   if (next > 99 || next > variant.stock) {
     throw new Error(
@@ -73,11 +80,6 @@ export function addCartItem(product, variant, quantity = 1) {
   return saveCart(cart);
 }
 
-/**
- * Create a stable merge ID.
- * Retain it when merging fails so a retry
- * does not create duplicate cart items.
- */
 function mergeKey() {
   let key = sessionStorage.getItem(MERGE_ID_KEY);
 
@@ -90,13 +92,6 @@ function mergeKey() {
   return key;
 }
 
-/**
- * Merge guest cart into MySQL after login.
- *
- * If merging fails, keep the guest cart.
- * The customer can correct unavailable
- * products before trying again.
- */
 export async function syncGuestCart() {
   const pending = readCart();
 
@@ -125,12 +120,6 @@ export async function syncGuestCart() {
   sessionStorage.removeItem(MERGE_ID_KEY);
 }
 
-/**
- * Get the customer's cart.
- *
- * Guest: browser cart.
- * Logged in: MySQL cart.
- */
 export async function getCart() {
   try {
     await api.get("/api/auth/customer/session");
@@ -165,6 +154,7 @@ export async function getCart() {
     items: syncError
       ? [
           ...serverItems,
+
           ...readCart().map((item) => ({
             ...item,
             pendingSync: true,
@@ -177,13 +167,6 @@ export async function getCart() {
   };
 }
 
-/**
- * Remove a cart item.
- *
- * MySQL cart items are deleted through
- * the API. Unsynced guest items are
- * removed from localStorage.
- */
 export async function removeCartItem(item, authenticated) {
   if (authenticated && !item.pendingSync) {
     if (!Number.isSafeInteger(Number(item.variantId))) {
@@ -202,4 +185,61 @@ export async function removeCartItem(item, authenticated) {
       (row) => !(row.productId === item.productId && row.hp === item.hp),
     ),
   );
+}
+
+export async function updateCartItemQuantity(
+  item,
+  authenticated,
+  quantity,
+  stock,
+) {
+  const qty = Number(quantity);
+
+  if (!Number.isInteger(qty) || qty < 1 || qty > 99) {
+    throw new Error("Quantity must be between 1 and 99.");
+  }
+
+  if (!Number.isInteger(stock) || qty > stock) {
+    throw new Error(
+      `Only ${Number.isInteger(stock) ? stock : 0} units are available.`,
+    );
+  }
+
+  if (authenticated && !item.pendingSync) {
+    const variantId = Number(item.variantId);
+
+    if (!Number.isSafeInteger(variantId) || variantId < 1) {
+      throw new Error("This cart item needs to be refreshed before editing.");
+    }
+
+    await api.patch(`/api/customer/cart/items/${variantId}`, {
+      quantity: qty,
+      hp: item.hp,
+    });
+
+    window.dispatchEvent(new Event("av-cart-updated"));
+
+    return;
+  }
+
+  const current = readCart();
+
+  const index = current.findIndex(
+    (row) => row.productId === item.productId && row.hp === item.hp,
+  );
+
+  if (index === -1) {
+    throw new Error("Product no longer exists in your browser cart.");
+  }
+
+  const otherUnits = current.reduce(
+    (sum, row, i) => sum + (i === index ? 0 : Number(row.qty)),
+    0,
+  );
+
+  if (otherUnits + qty > 99) {
+    throw new Error("Your cart can hold at most 99 units in total.");
+  }
+
+  saveCart(current.map((row, i) => (i === index ? { ...row, qty } : row)));
 }

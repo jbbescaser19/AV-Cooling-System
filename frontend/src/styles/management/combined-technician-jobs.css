@@ -370,3 +370,82 @@
     transition: none !important;
   }
 }
+
+/* Mobile technician jobs: keep only decision-critical summary in the card. */
+@media (max-width: 760px) {
+  .av-technician-work__heading {
+    margin-bottom: 12px;
+    gap: 9px;
+  }
+  .av-technician-work__heading p {
+    font-size: 0.8rem;
+    line-height: 1.4;
+  }
+  .av-technician-work__list {
+    gap: 9px;
+  }
+  .av-job-card {
+    gap: 9px;
+    padding: 12px;
+    border-radius: 12px;
+    box-shadow: 0 3px 12px rgb(8 51 75 / 5%);
+  }
+  .av-job-card__topline {
+    justify-content: space-between;
+    gap: 5px;
+    margin-bottom: 5px;
+  }
+  .av-job-card__type {
+    font-size: 0.68rem;
+  }
+  .av-job-card__status {
+    font-size: 0.66rem;
+    padding: 5px 7px;
+    white-space: nowrap;
+    word-break: normal;
+  }
+  .av-job-card h3 {
+    font-size: 0.98rem;
+    margin-bottom: 3px;
+  }
+  .av-job-card__customer {
+    font-size: 0.81rem;
+    margin-bottom: 7px;
+  }
+  .av-job-card__details {
+    gap: 5px;
+  }
+  .av-job-card__details > :is(div, a) {
+    font-size: 0.75rem;
+    line-height: 1.35;
+  }
+  .av-job-card__details > :nth-child(n + 3) {
+    display: none;
+  }
+  .av-job-card__workflow-note {
+    display: none;
+  }
+  .av-job-card__action-panel {
+    gap: 5px;
+    padding: 8px;
+    border-radius: 10px;
+  }
+  .av-job-card .av-job-card__primary {
+    min-height: 40px;
+    padding: 7px 9px;
+    font-size: 0.79rem;
+  }
+  .av-job-card__calendar {
+    min-height: 38px;
+    font-size: 0.76rem;
+  }
+  .av-job-card__extras {
+    padding-top: 0;
+    border: 0;
+  }
+  .av-job-card__view {
+    width: 100%;
+    min-height: 39px;
+    font-size: 0.8rem;
+  }
+}

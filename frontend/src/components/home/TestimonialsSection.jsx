@@ -2,9 +2,14 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Star } from "lucide-react";
 import api from "../../../api/api.js";
+import useRealtimeRefresh from "../../hooks/useRealtimeRefresh.js";
 import "../../styles/home/testimonials.css";
+
 export default function TestimonialsSection() {
   const [reviews, setReviews] = useState([]);
+  const [revision, setRevision] = useState(0);
+  useRealtimeRefresh(["feedback"], setRevision);
+
   useEffect(() => {
     const ctrl = new AbortController();
     api
@@ -17,8 +22,10 @@ export default function TestimonialsSection() {
       })
       .catch(() => {});
     return () => ctrl.abort();
-  }, []);
+  }, [revision]);
+
   if (!reviews.length) return null;
+
   return (
     <section className="section testimonials-section" id="feedback">
       <div className="container">

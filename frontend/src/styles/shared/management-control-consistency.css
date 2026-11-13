@@ -1,0 +1,128 @@
+/* Management-only refinements. Customer My Orders / My Services are unchanged. */
+.mgmt-shell :is(.sales-table, .mgmt-table, .data-table, .av-table) thead th,
+.mgmt-shell
+  :is(.sales-table, .mgmt-table, .data-table, .av-table)
+  thead
+  th
+  > span {
+  white-space: nowrap;
+  word-break: normal;
+  overflow-wrap: normal;
+  hyphens: none;
+}
+
+/* Neutral secondary actions; preserve distinct primary and destructive actions. */
+.mgmt-shell :is(button, a)[class*="btn-soft"],
+.mgmt-shell :is(button, a)[class*="btn-outline"],
+.mgmt-shell :is(button, a)[class*="btn-secondary"] {
+  background: #fff;
+  color: #16445c;
+  border: 1px solid #c6d8e2;
+  box-shadow: none;
+  transform: none;
+}
+.mgmt-shell :is(button, a)[class*="btn-soft"]:hover:not(:disabled),
+.mgmt-shell :is(button, a)[class*="btn-outline"]:hover:not(:disabled),
+.mgmt-shell :is(button, a)[class*="btn-secondary"]:hover:not(:disabled) {
+  background: #f2f7fa;
+  border-color: #9bbccc;
+  transform: none;
+}
+.mgmt-shell :is(button, a):focus-visible {
+  outline: 3px solid #38bdf8;
+  outline-offset: 2px;
+}
+@media (max-width: 767px) {
+  .mgmt-shell :is(.sales-table, .mgmt-table, .data-table, .av-table) thead th {
+    font-size: 0.75rem;
+    line-height: 1.3;
+  }
+}
+
+/* Long one-word table headings must never split into individual letters. */
+.mgmt-shell
+  :is(
+    .wsm-table,
+    .sales-table,
+    .mgmt-table,
+    .data-table,
+    .av-table,
+    .av-smart-table,
+    .staff-table,
+    .pos-table
+  )
+  thead
+  th,
+.mgmt-shell
+  :is(
+    .wsm-table,
+    .sales-table,
+    .mgmt-table,
+    .data-table,
+    .av-table,
+    .av-smart-table,
+    .staff-table,
+    .pos-table
+  )
+  thead
+  th
+  :is(span, strong),
+.mgmt-shell table thead th {
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+  hyphens: none !important;
+  white-space: nowrap !important;
+}
+/* Scroll wide tables inside their own region instead of squashing header text. */
+.mgmt-shell
+  :is(
+    .sales-table-wrap,
+    .wsm-table-wrap,
+    .av-table-wrap,
+    .mgmt-table-scroll,
+    .table-responsive
+  ) {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+/* All neutral secondary action buttons use the same white outlined design. */
+.mgmt-shell
+  :is(
+    .sales-refresh,
+    .sales-small-action,
+    .wsm-secondary,
+    .wsm-row-action,
+    .staff-action-btn,
+    .archive-clear-button,
+    .archive-restore-button,
+    .install-history__details-button,
+    .tech-dashboard__refresh,
+    .ops-secondary,
+    .btn.btn-soft
+  ) {
+  background: #fff;
+  color: #16445c;
+  border: 1px solid #c6d8e2;
+  border-radius: 9px;
+  box-shadow: none;
+  transform: none;
+}
+.mgmt-shell
+  :is(
+    .sales-refresh,
+    .sales-small-action,
+    .wsm-secondary,
+    .wsm-row-action,
+    .staff-action-btn,
+    .archive-clear-button,
+    .archive-restore-button,
+    .install-history__details-button,
+    .tech-dashboard__refresh,
+    .ops-secondary,
+    .btn.btn-soft
+  ):hover:not(:disabled) {
+  background: #f2f7fa;
+  border-color: #9bbccc;
+  color: #16445c;
+  transform: none;
+}

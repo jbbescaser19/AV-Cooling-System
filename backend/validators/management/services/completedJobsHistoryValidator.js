@@ -4,7 +4,7 @@ const PERIODS = new Set(["ALL", "MONTH", "YEAR", "DATE", "RANGE"]);
 
 const CATEGORIES = new Set(["ALL", "INSTALLATION", "SERVICE"]);
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 16;
 
 function badRequest(message) {
   throw Object.assign(new Error(message), {

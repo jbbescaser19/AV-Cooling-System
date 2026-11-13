@@ -1,0 +1,126 @@
+.av-confirm-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+}
+.av-confirm-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(13, 34, 52, 0.62);
+  backdrop-filter: blur(3px);
+}
+.av-confirm-dialog {
+  position: relative;
+  display: grid;
+  gap: 15px;
+  width: min(100%, 440px);
+  max-height: min(90vh, 620px);
+  overflow-y: auto;
+  padding: 26px;
+  border-radius: 18px;
+  background: #fff;
+  color: #1a3549;
+  box-shadow: 0 24px 70px rgba(6, 28, 44, 0.25);
+}
+.av-confirm-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+.av-confirm-symbol {
+  width: 43px;
+  height: 43px;
+  display: grid;
+  place-items: center;
+  color: #136b87;
+  border-radius: 12px;
+  background: #e6f4f9;
+}
+.av-confirm-symbol.is-caution {
+  color: #96550e;
+  background: #fff3df;
+}
+.av-confirm-icon-btn {
+  border: 1px solid #d3e0e7;
+  background: #fff;
+  color: #506979;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  cursor: pointer;
+}
+.av-confirm-dialog h2 {
+  margin: 0;
+  color: #163b53;
+  font-size: clamp(1.2rem, 4vw, 1.4rem);
+  line-height: 1.3;
+}
+.av-confirm-dialog p {
+  margin: 0;
+  color: #506a7d;
+  font-size: 0.91rem;
+  line-height: 1.65;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.av-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 5px;
+}
+.av-confirm-actions button {
+  min-height: 43px;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 17px;
+  border-radius: 9px;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 750;
+  cursor: pointer;
+  transform: none;
+}
+.av-confirm-cancel {
+  border: 1px solid #c4d5df;
+  color: #234f66;
+  background: #fff;
+}
+.av-confirm-accept {
+  border: 1px solid #125476;
+  background: #125476;
+  color: #fff;
+}
+.av-confirm-cancel:hover {
+  background: #f2f8fb;
+}
+.av-confirm-accept:hover {
+  background: #0f415d;
+}
+.av-confirm-actions button:focus-visible,
+.av-confirm-icon-btn:focus-visible {
+  outline: 3px solid #38bdf8;
+  outline-offset: 3px;
+}
+@media (max-width: 480px) {
+  .av-confirm-dialog {
+    padding: 19px;
+    border-radius: 15px;
+  }
+  .av-confirm-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .av-confirm-actions button {
+    width: 100%;
+    min-width: 0;
+  }
+}

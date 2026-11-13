@@ -7,6 +7,7 @@ import {
   useNavigate,
 } from "react-router-dom";
 import {
+  Snowflake,
   User,
   Package,
   Calculator,
@@ -17,18 +18,23 @@ import {
   MapPin,
   Lock,
   Home,
+  ArrowLeft,
+  Store,
   LogOut,
   Menu,
   X,
 } from "lucide-react";
 
 import api from "../../api/api.js";
+import RealtimeBridge from "../components/realtime/RealtimeBridge.jsx";
+import { clearSelectedCartKeys } from "../utils/cartSelection.js";
 import { logoutCustomer } from "../utils/authMock";
 import { clearPendingAction, clearDirectCheckout } from "../utils/purchaseFlow";
 
 import "../styles/customer/customer.css";
 import "../styles/customer/customer-notifications.css";
 import "../styles/customer/customer-navigation.css";
+import "../styles/customer/customer-back-to-store.css";
 
 const items = [
   ["profile", User, "Profile"],
@@ -62,12 +68,10 @@ export default function CustomerLayout() {
         location.pathname.startsWith(`/account/${path}/`),
     )?.[2] || "My Account";
 
-  // Close the menu whenever the customer changes pages.
   useEffect(() => {
     setMenuOpen(false);
   }, [location.pathname]);
 
-  // Keyboard accessibility and background scroll locking.
   useEffect(() => {
     if (!menuOpen) return undefined;
 
@@ -119,7 +123,6 @@ export default function CustomerLayout() {
     };
   }, [menuOpen]);
 
-  // Keep existing unread notification behavior.
   useEffect(() => {
     let active = true;
 
@@ -133,7 +136,7 @@ export default function CustomerLayout() {
           setUnreadCount(Number(response.data.unreadCount || 0));
         }
       } catch {
-        // Notification failures must not prevent navigation.
+        // Navigation must still work if notifications fail.
       }
     }
 
@@ -142,11 +145,13 @@ export default function CustomerLayout() {
     const interval = window.setInterval(refreshUnread, 45000);
 
     window.addEventListener("av-notifications-changed", refreshUnread);
+    window.addEventListener("av-realtime-change", refreshUnread);
 
     return () => {
       active = false;
       window.clearInterval(interval);
       window.removeEventListener("av-notifications-changed", refreshUnread);
+      window.removeEventListener("av-realtime-change", refreshUnread);
     };
   }, []);
 
@@ -171,6 +176,7 @@ export default function CustomerLayout() {
       logoutCustomer();
       clearPendingAction();
       clearDirectCheckout();
+      clearSelectedCartKeys();
 
       setUnreadCount(0);
       setMenuOpen(false);
@@ -188,8 +194,9 @@ export default function CustomerLayout() {
 
   return (
     <div className="customer-shell customer-nav-shell">
-      {/* MOBILE AND TABLET HEADER */}
+      <RealtimeBridge audience="customer" />
 
+      {/* MOBILE AND TABLET HEADER */}
       <header className="customer-mobile-topbar">
         <div className="customer-mobile-identity">
           <Link
@@ -197,7 +204,8 @@ export default function CustomerLayout() {
             className="customer-mobile-brand"
             aria-label="AV Cooling homepage"
           >
-            AV Cooling
+            <Snowflake size={21} aria-hidden="true" />
+            <span>AV Cooling</span>
           </Link>
 
           <span className="customer-mobile-current">
@@ -228,8 +236,6 @@ export default function CustomerLayout() {
         </button>
       </header>
 
-      {/* DARK OVERLAY BEHIND THE OPEN MENU */}
-
       {menuOpen && (
         <button
           type="button"
@@ -239,11 +245,7 @@ export default function CustomerLayout() {
         />
       )}
 
-      {/* ACCOUNT NAVIGATION
-          Desktop: visible sidebar.
-          Mobile/tablet: slide-out menu.
-      */}
-
+      {/* DESKTOP SIDEBAR / MOBILE DRAWER */}
       <aside
         id="customer-account-menu"
         ref={panelRef}
@@ -254,14 +256,10 @@ export default function CustomerLayout() {
         role={menuOpen ? "dialog" : undefined}
         aria-modal={menuOpen ? true : undefined}
       >
-        {/* DESKTOP BRAND */}
-
         <Link to="/" className="customer-home">
           <Home size={18} aria-hidden="true" />
           <span>AV Cooling</span>
         </Link>
-
-        {/* MOBILE MENU HEADER */}
 
         <div className="customer-drawer-heading">
           <div>
@@ -282,8 +280,6 @@ export default function CustomerLayout() {
 
         <h2>My Account</h2>
 
-        {/* NAVIGATION LINKS */}
-
         <nav aria-label="Customer account navigation">
           {items.map(([path, Icon, label]) => (
             <NavLink
@@ -293,7 +289,6 @@ export default function CustomerLayout() {
               end={path === "profile"}
             >
               <Icon size={19} aria-hidden="true" />
-
               <span>{label}</span>
 
               {path === "notifications" && unreadCount > 0 && (
@@ -306,17 +301,22 @@ export default function CustomerLayout() {
               )}
             </NavLink>
           ))}
-        </nav>
 
-        {/* LOGOUT ERROR */}
+          <Link
+            to="/"
+            className="customer-return-store-nav"
+            onClick={() => setMenuOpen(false)}
+          >
+            <Store size={19} aria-hidden="true" />
+            <span>Back to Store</span>
+          </Link>
+        </nav>
 
         {logoutError && (
           <p role="alert" className="customer-logout-error">
             {logoutError}
           </p>
         )}
-
-        {/* LOG OUT */}
 
         <button
           type="button"
@@ -325,14 +325,16 @@ export default function CustomerLayout() {
           disabled={loggingOut}
         >
           <LogOut size={19} aria-hidden="true" />
-
           <span>{loggingOut ? "Logging out..." : "Log Out"}</span>
         </button>
       </aside>
 
-      {/* EXISTING ACCOUNT PAGE CONTENT */}
-
       <main className="customer-main" id="customer-account-content">
+        <Link to="/" className="customer-return-store-link">
+          <ArrowLeft size={17} aria-hidden="true" />
+          <span>Back to Store</span>
+        </Link>
+
         <Outlet />
       </main>
     </div>

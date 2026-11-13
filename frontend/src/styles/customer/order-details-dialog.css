@@ -1,0 +1,161 @@
+/* Order Details uses a native <dialog> so the fixed My Account header cannot cover it. */
+.order-details-dialog:not([open]) {
+  display: none;
+}
+
+.order-details-dialog[open] {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  width: min(640px, calc(100vw - 28px));
+  max-width: calc(100vw - 28px);
+  height: min(780px, calc(100dvh - 28px));
+  max-height: calc(100dvh - 28px);
+  margin: auto;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid #bed8e5;
+  border-radius: 16px;
+  background: #f8fcfe;
+  color: #173e55;
+  box-shadow: 0 24px 75px rgba(3, 25, 44, 0.3);
+}
+
+.order-details-dialog::backdrop {
+  background: rgba(2, 19, 34, 0.7);
+  backdrop-filter: blur(3px);
+}
+
+.order-details-dialog *,
+.order-details-dialog *::before,
+.order-details-dialog *::after {
+  box-sizing: border-box;
+}
+
+.order-details-dialog-header {
+  display: flex;
+  flex: 0 0 auto;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px 17px;
+  border-bottom: 1px solid #deebf1;
+  background: #fff;
+}
+
+.order-details-dialog-header h2 {
+  margin: 0;
+  font-size: 1.06rem;
+  line-height: 1.3;
+}
+
+.order-details-dialog-close {
+  display: grid;
+  place-items: center;
+  flex: 0 0 42px;
+  width: 42px;
+  height: 42px;
+  border: 1px solid #cee0e8;
+  border-radius: 10px;
+  color: #204e64;
+  background: #eff8fb;
+  cursor: pointer;
+}
+
+.order-details-dialog-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 17px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.order-details-dialog-body .order-modal-content {
+  min-width: 0;
+}
+
+.order-details-dialog-footer {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 12px 17px;
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
+  border-top: 1px solid #deebf1;
+  background: #fff;
+  box-shadow: 0 -6px 18px rgba(18, 60, 80, 0.04);
+}
+
+.order-details-dialog-footer .order-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: auto;
+  min-height: 44px;
+  min-width: 0;
+  padding: 8px 13px;
+  white-space: normal;
+  font-size: 0.8rem;
+}
+
+@media (max-width: 760px) {
+  .order-details-dialog[open] {
+    width: calc(100vw - 16px);
+    max-width: calc(100vw - 16px);
+    height: calc(100dvh - 16px);
+    max-height: calc(100dvh - 16px);
+    border-radius: 14px;
+  }
+
+  .order-details-dialog-header {
+    padding: 10px 12px;
+  }
+
+  .order-details-dialog-body {
+    padding: 12px;
+  }
+
+  .order-details-dialog-footer {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding: 10px 12px;
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
+  }
+
+  .order-details-dialog-footer .order-button {
+    width: 100%;
+    min-height: 44px;
+    padding: 9px 7px;
+    font-size: 0.77rem;
+  }
+
+  /* A completed/cancelled order has only Close details; use the whole row. */
+  .order-details-dialog-footer .order-button:only-child {
+    grid-column: 1 / -1;
+  }
+
+  /* When the details view has 3 buttons, Close details fills the final row. */
+  .order-details-dialog-footer .order-button:nth-child(3):last-child {
+    grid-column: 1 / -1;
+  }
+
+  .order-details-dialog-body .order-modal-intro {
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 360px) {
+  .order-details-dialog-footer .order-button {
+    font-size: 0.73rem;
+    padding-inline: 5px;
+  }
+}

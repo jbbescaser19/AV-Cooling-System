@@ -15,43 +15,26 @@ const router = Router();
 
 router.get(
   "/services",
-  requireStaffRole("OWNER", "MANAGER", "SALES_CASHIER"),
+  requireStaffRole("OWNER", "MANAGER"),
   listManagementServices,
 );
 
 router.get(
   "/services/:requestId/activity",
-  requireStaffRole("OWNER", "MANAGER", "SALES_CASHIER", "TECHNICIAN"),
+  requireStaffRole("OWNER", "MANAGER", "TECHNICIAN"),
   listServiceActivityController,
 );
 
 router.get(
   "/services/:requestId/payment",
-  requireStaffRole("OWNER", "MANAGER", "SALES_CASHIER"),
+  requireStaffRole("OWNER", "MANAGER"),
   getManagementServicePayment,
 );
 
 router.post(
   "/services/:requestId/events",
-  requireStaffRole("OWNER", "MANAGER", "SALES_CASHIER"),
-
+  requireStaffRole("OWNER", "MANAGER"),
   requireCustomerWriteOrigin,
-
-  (req, res, next) => {
-    if (
-      req.staff?.role === "SALES_CASHIER" &&
-      Array.isArray(req.body?.technicianIds) &&
-      req.body.technicianIds.length > 0
-    ) {
-      return res.status(403).json({
-        success: false,
-        message: "Only an Owner or Manager can assign technicians.",
-      });
-    }
-
-    return next();
-  },
-
   changeManagementService,
 );
 

@@ -6,7 +6,7 @@ export function staffManagementModel(db) {
   return {
     async listStaff(staffId) {
       return select(
-        `SELECT user_id AS id,name,email,role,status,last_login_at AS lastLogin FROM users WHERE account_type='STAFF' ORDER BY user_id DESC LIMIT 200`,
+        `SELECT user_id AS id,name,email,role,status,last_login_at AS lastLogin FROM users WHERE account_type='STAFF' AND deleted_at IS NULL ORDER BY user_id DESC LIMIT 200`,
       );
     },
     getStaffByEmail(email) {

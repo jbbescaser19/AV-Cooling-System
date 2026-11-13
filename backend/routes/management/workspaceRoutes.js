@@ -1,9 +1,5 @@
 import { Router } from "express";
-import {
-  requireStaffAuth,
-  requireStaffRole,
-} from "../../middleware/requireStaffAuth.js";
-
+import { requireStaffAuth } from "../../middleware/requireStaffAuth.js";
 import categoryRoutes from "./catalog/categoryRoutes.js";
 import productRoutes from "./catalog/productRoutes.js";
 import variantRoutes from "./catalog/variantRoutes.js";
@@ -20,20 +16,11 @@ import facebookRequestRoutes from "./operations/facebookRequestRoutes.js";
 import reportRoutes from "./operations/reportRoutes.js";
 import notificationRoutes from "./operations/notificationRoutes.js";
 import staffManagementRoutes from "./administration/staffManagementRoutes.js";
+import archiveRoutes from "./archiveRoutes.js";
 import auditLogRoutes from "./administration/auditLogRoutes.js";
-
 const router = Router();
-
 router.use(requireStaffAuth);
-
-// Cashiers may access only their personal notifications
-// within the management workspace.
-router.use("/notifications", notificationRoutes);
-
-// All remaining workspace modules are restricted
-// to management and technicians.
-router.use(requireStaffRole("OWNER", "MANAGER", "TECHNICIAN"));
-
+router.use("/archive", archiveRoutes);
 router.use("/categories", categoryRoutes);
 router.use("/products", productRoutes);
 router.use("/variants", variantRoutes);
@@ -48,7 +35,7 @@ router.use("/customers", customerRoutes);
 router.use("/feedback", feedbackRoutes);
 router.use("/facebook-requests", facebookRequestRoutes);
 router.use("/reports", reportRoutes);
+router.use("/notifications", notificationRoutes);
 router.use("/staff", staffManagementRoutes);
 router.use("/audit-logs", auditLogRoutes);
-
 export default router;

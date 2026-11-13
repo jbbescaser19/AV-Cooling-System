@@ -1,0 +1,1153 @@
+/* AV Cooling — mobile-first density, with clear tappable controls.
+   Safe overrides for Management/Technician screens; no data hidden except
+   summaries also available in their View Details dialog. */
+
+/* Shared mobile/touch defaults, never shrink actual tap targets. */
+.mgmt-shell
+  :is(
+    .wsm-page,
+    .sales-ui,
+    .archive-page,
+    .tech-dashboard,
+    .av-technician-work,
+    .booking-manage,
+    .av-notification-center
+  ) {
+  min-width: 0;
+}
+.mgmt-shell :is(.wsm-status, .sales-pill, .av-job-card__status) {
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: none;
+}
+.mgmt-shell :is(.wsm-overflow, .sales-table-scroll) {
+  max-width: 100%;
+}
+
+/* Technician job categories are functional, not just colored labels. */
+.av-technician-work .av-tech-filters {
+  display: grid;
+  gap: 9px;
+  min-width: 0;
+  margin: 0 0 13px;
+  padding: 12px;
+  border: 1px solid #d6e6ed;
+  border-radius: 13px;
+  background: #fff;
+}
+.av-technician-work .av-tech-filters__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #476b7e;
+  font-weight: 800;
+  font-size: 0.78rem;
+}
+.av-technician-work .av-tech-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  min-width: 0;
+}
+.av-technician-work .av-tech-filter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 39px;
+  padding: 7px 11px;
+  border: 1px solid #cfe1e9;
+  border-radius: 9px;
+  background: #f3f9fc;
+  color: #285a72;
+  font: inherit;
+  font-weight: 750;
+  font-size: 0.78rem;
+  line-height: 1.2;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.av-technician-work .av-tech-filter:hover:not(.is-active) {
+  background: #e8f5fa;
+}
+.av-technician-work .av-tech-filter.is-active {
+  color: #fff;
+  border-color: #125b7b;
+  background: #125b7b;
+}
+.av-technician-work .av-tech-filter small {
+  min-width: 19px;
+  padding: 2px 4px;
+  border-radius: 999px;
+  background: #dbeef6;
+  color: #1e6580;
+  font-weight: 850;
+  font-size: 0.66rem;
+  text-align: center;
+}
+.av-technician-work .av-tech-filter.is-active small {
+  background: #fff;
+  color: #145777;
+}
+.av-technician-work .av-tech-filter:focus-visible {
+  outline: 3px solid #64b7d4;
+  outline-offset: 2px;
+}
+.av-technician-work .av-technician-work__empty p {
+  margin: 5px 0 8px;
+  font-size: 0.8rem;
+}
+.av-technician-work .av-job-card__view svg {
+  flex: 0 0 15px;
+}
+
+/* Tablet: use the width for actual content instead of excessive gutters. */
+@media (max-width: 1024px) {
+  .mgmt-shell .mgmt-main {
+    padding: 17px 15px 28px;
+  }
+  .mgmt-shell .wsm-panel,
+  .mgmt-shell .sales-panel,
+  .mgmt-shell .archive-library {
+    padding: 15px;
+    border-radius: 14px;
+  }
+  .mgmt-shell .archive-overview {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .mgmt-shell .booking-manage__panel {
+    min-width: 0;
+  }
+  .mgmt-shell .wsm-head,
+  .mgmt-shell .sales-hero {
+    padding: 17px;
+    border-radius: 14px;
+  }
+}
+
+@media (max-width: 700px) {
+  .mgmt-shell .mgmt-main {
+    padding: 10px 9px 24px;
+  }
+  .mgmt-shell .mgmt-topbar {
+    height: 56px;
+    padding: 0 10px;
+  }
+  .mgmt-shell
+    .mgmt-main
+    :is(.wsm-page, .sales-ui, .archive-page, .tech-dashboard) {
+    gap: 10px;
+  }
+  .mgmt-shell .wsm-head,
+  .mgmt-shell .sales-hero,
+  .mgmt-shell .tech-dashboard__header,
+  .mgmt-shell .archive-hero {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    min-height: 0;
+    gap: 9px;
+    padding: 12px;
+    border-radius: 12px;
+  }
+  .mgmt-shell
+    :is(.wsm-head, .sales-hero, .tech-dashboard__header, .archive-hero)
+    > div:first-child {
+    flex: 1 1 0%;
+    min-width: 0;
+  }
+  .mgmt-shell .wsm-head h1,
+  .mgmt-shell .sales-hero h1,
+  .mgmt-shell .tech-dashboard__header h1,
+  .mgmt-shell .archive-hero h1,
+  .mgmt-shell .mgmt-page-head h1 {
+    font-size: clamp(1.06rem, 4.1vw, 1.35rem);
+    line-height: 1.18;
+    margin: 4px 0;
+  }
+  .mgmt-shell
+    :is(.wsm-head, .sales-hero, .tech-dashboard__header, .archive-hero)
+    p {
+    font-size: 0.71rem;
+    line-height: 1.3;
+    margin: 4px 0 0;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+  }
+  .mgmt-shell .wsm-kicker,
+  .mgmt-shell .sales-kicker,
+  .mgmt-shell .tech-dashboard__eyebrow,
+  .mgmt-shell .archive-hero-eyebrow {
+    font-size: 0.62rem;
+    letter-spacing: 0.04em;
+  }
+  .mgmt-shell .wsm-top-actions {
+    width: auto;
+    flex: 0 0 auto;
+    gap: 5px;
+    flex-wrap: wrap;
+  }
+  .mgmt-shell .wsm-top-actions > button,
+  .mgmt-shell .sales-refresh,
+  .mgmt-shell .tech-dashboard__refresh {
+    width: auto;
+    min-height: 38px;
+    padding: 7px 9px;
+    font-size: 0.72rem;
+    border-radius: 9px;
+  }
+  .mgmt-shell .wsm-top-actions > button svg,
+  .mgmt-shell .sales-refresh svg,
+  .mgmt-shell .tech-dashboard__refresh svg {
+    width: 14px;
+    height: 14px;
+  }
+  .mgmt-shell .archive-hero-icon {
+    display: none;
+  }
+
+  /* Alerts: desktop visual identity retained, but compact enough for a phone. */
+  .mgmt-shell .av-agenda-alerts {
+    gap: 6px;
+    padding: 8px 9px 0;
+  }
+  .mgmt-shell
+    .av-agenda-alerts:not(.is-expanded)
+    > .av-agenda-alert:nth-of-type(n + 2) {
+    display: none;
+  }
+  .mgmt-shell .av-agenda-alert {
+    display: grid;
+    grid-template-columns: 28px minmax(0, 1fr) 30px;
+    align-items: start;
+    gap: 7px;
+    padding: 9px;
+    border-width: 1px 1px 1px 4px;
+    border-radius: 10px;
+    box-shadow: 0 3px 10px rgba(100, 62, 19, 0.07);
+  }
+  .mgmt-shell .av-agenda-alert__icon {
+    width: 28px;
+    height: 28px;
+    flex: none;
+    border-radius: 8px;
+  }
+  .mgmt-shell .av-agenda-alert__icon svg {
+    width: 15px;
+    height: 15px;
+  }
+  .mgmt-shell .av-agenda-alert__headline {
+    gap: 3px 9px;
+  }
+  .mgmt-shell .av-agenda-alert__headline strong {
+    font-size: 0.74rem;
+    line-height: 1.2;
+  }
+  .mgmt-shell .av-agenda-alert__time {
+    font-size: 0.68rem;
+    gap: 4px;
+  }
+  .mgmt-shell .av-agenda-alert__time svg {
+    width: 12px;
+  }
+  .mgmt-shell .av-agenda-alert__copy p {
+    margin: 4px 0 5px;
+    font-size: 0.69rem;
+    font-weight: 500;
+    line-height: 1.3;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .mgmt-shell .av-agenda-alert__cta {
+    min-height: 32px;
+    padding: 5px 9px;
+    font-size: 0.7rem;
+    border-radius: 7px;
+  }
+  .mgmt-shell .av-agenda-alert__dismiss {
+    width: 30px;
+    height: 30px;
+    flex: none;
+  }
+  .mgmt-shell .av-agenda-alert__dismiss svg {
+    width: 15px;
+    height: 15px;
+  }
+  .mgmt-shell .av-agenda-alerts__toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    justify-self: start;
+    min-height: 34px;
+    margin: 0;
+    padding: 5px 10px;
+    border: 1px solid #d4e5ec;
+    border-radius: 8px;
+    background: #fff;
+    color: #185c7b;
+    font-size: 0.73rem;
+    font-weight: 800;
+    cursor: pointer;
+  }
+  .mgmt-shell .av-restock-strip {
+    margin: 7px 9px 0;
+    padding: 8px 10px;
+    font-size: 0.73rem;
+    min-height: 0;
+    border-radius: 9px;
+  }
+  .mgmt-shell .av-restock-strip__action {
+    font-size: 0.69rem;
+  }
+
+  /* Technician overview: metrics occupy two clean columns rather than tall tiles. */
+  .mgmt-shell .tech-dashboard {
+    gap: 10px;
+  }
+  .mgmt-shell .tech-dashboard__metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+  }
+  .mgmt-shell .tech-dashboard__metric {
+    display: flex;
+    position: relative;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 4px;
+    min-height: 75px;
+    padding: 10px;
+    border-radius: 11px;
+  }
+  .mgmt-shell .tech-dashboard__metric-icon {
+    position: absolute;
+    right: 9px;
+    top: 9px;
+    opacity: 0.8;
+  }
+  .mgmt-shell .tech-dashboard__metric-icon svg {
+    width: 15px;
+    height: 15px;
+  }
+  .mgmt-shell .tech-dashboard__metric-label {
+    max-width: calc(100% - 18px);
+    font-size: 0.7rem;
+    line-height: 1.22;
+  }
+  .mgmt-shell .tech-dashboard__metric strong {
+    font-size: 1.36rem;
+    line-height: 1;
+  }
+  .mgmt-shell .tech-dashboard__metric small {
+    display: none;
+  }
+  .mgmt-shell .tech-dashboard__context {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+  .mgmt-shell .tech-dashboard__context > :is(span, a) {
+    justify-content: flex-start;
+    min-width: 0;
+    padding: 8px;
+    border-radius: 9px;
+    font-size: 0.67rem;
+    line-height: 1.3;
+  }
+  .mgmt-shell .tech-dashboard__context > a {
+    grid-column: 1 / -1;
+    justify-content: center;
+  }
+
+  /* Technician filters remain horizontally scrollable, not crammed together. */
+  .mgmt-shell .av-technician-work__heading {
+    margin-bottom: 8px;
+    gap: 7px;
+  }
+  .mgmt-shell .av-technician-work__heading p {
+    display: none;
+  }
+  .mgmt-shell .av-technician-work__heading h2 {
+    font-size: 1.1rem;
+    margin: 2px 0;
+  }
+  .mgmt-shell .av-technician-work__heading-actions {
+    width: auto;
+    gap: 5px;
+  }
+  .mgmt-shell .av-technician-work__heading-actions button {
+    min-height: 36px;
+    padding: 6px 9px;
+    font-size: 0.72rem;
+  }
+  .mgmt-shell .av-technician-work .av-tech-filters {
+    padding: 9px;
+    gap: 7px;
+    margin-bottom: 8px;
+  }
+  .mgmt-shell .av-technician-work .av-tech-filter-row {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+    padding-bottom: 3px;
+  }
+  .mgmt-shell .av-technician-work .av-tech-filter {
+    flex: 0 0 auto;
+    min-height: 36px;
+    padding: 6px 9px;
+    font-size: 0.72rem;
+  }
+  .mgmt-shell .av-technician-work .av-tech-filter--type {
+    min-height: 33px;
+    font-size: 0.7rem;
+    background: #fff;
+  }
+  .mgmt-shell .av-technician-work .av-tech-filter--type.is-active {
+    background: #125b7b;
+  }
+  .mgmt-shell .av-technician-work .av-tech-filters__title {
+    font-size: 0.69rem;
+  }
+
+  /* Two real cards per row where readable; full details remain in modal. */
+  .mgmt-shell .av-technician-work .av-technician-work__list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .mgmt-shell .av-technician-work .av-job-card {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    height: 100%;
+    padding: 10px;
+    min-width: 0;
+    border-radius: 11px;
+    box-shadow: 0 3px 9px rgba(15, 55, 76, 0.045);
+  }
+  .mgmt-shell .av-job-card__topline {
+    display: grid;
+    gap: 4px;
+    justify-items: start;
+    margin-bottom: 3px;
+  }
+  .mgmt-shell .av-job-card__type {
+    font-size: 0.63rem;
+    letter-spacing: 0.01em;
+    line-height: 1.25;
+  }
+  .mgmt-shell .av-job-card__type svg {
+    width: 13px;
+    height: 13px;
+  }
+  .mgmt-shell .av-job-card__status {
+    max-width: 100%;
+    font-size: 0.63rem;
+    padding: 3px 7px;
+  }
+  .mgmt-shell .av-job-card h3 {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+    margin: 0;
+    font-size: 0.79rem;
+    line-height: 1.3;
+  }
+  .mgmt-shell .av-job-card__customer {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin: 0;
+    font-size: 0.73rem;
+  }
+  .mgmt-shell .av-job-card__details {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+    margin: 2px 0;
+  }
+  .mgmt-shell .av-job-card__details > :is(div, a) {
+    font-size: 0.68rem;
+    line-height: 1.35;
+  }
+  .mgmt-shell .av-job-card__details > :nth-child(n + 2) {
+    display: none;
+  }
+  .mgmt-shell .av-job-card__details > div:first-child span {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+  }
+  .mgmt-shell .av-job-card__workflow-note,
+  .mgmt-shell .av-job-card__action-caption,
+  .mgmt-shell .av-job-card__calendar {
+    display: none;
+  }
+  .mgmt-shell .av-job-card__action-panel {
+    display: grid;
+    margin-top: auto;
+    gap: 5px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+  .mgmt-shell .av-job-card .av-job-card__primary,
+  .mgmt-shell .av-job-card__extras > button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 40px;
+    padding: 7px 5px;
+    font-size: 0.72rem;
+    line-height: 1.22;
+    border-radius: 8px;
+    white-space: normal;
+  }
+  .mgmt-shell .av-job-card .av-job-card__primary svg {
+    width: 14px;
+    height: 14px;
+  }
+  .mgmt-shell .av-job-card__extras {
+    padding: 0;
+    border: 0;
+  }
+  .mgmt-shell .av-job-card__finished,
+  .mgmt-shell .av-job-card__hint {
+    font-size: 0.67rem;
+    line-height: 1.3;
+  }
+  .mgmt-shell .av-job-card__completion {
+    padding-top: 8px;
+    gap: 8px;
+  }
+  .mgmt-shell .av-job-card__completion textarea {
+    min-height: 88px;
+    font-size: 0.78rem;
+  }
+  .mgmt-shell .av-tech-detail-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* Archive: smaller cards; preserve source category, date, restore. */
+  .mgmt-shell .archive-page {
+    gap: 9px;
+  }
+  .mgmt-shell .archive-hero {
+    padding: 12px;
+  }
+  .mgmt-shell .archive-information {
+    padding: 9px;
+    gap: 6px;
+    border-radius: 10px;
+  }
+  .mgmt-shell .archive-information p {
+    font-size: 0.7rem;
+    line-height: 1.3;
+  }
+  .mgmt-shell .archive-overview {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .mgmt-shell .archive-overview-card {
+    display: grid;
+    gap: 3px;
+    min-height: 0;
+    padding: 8px;
+    border-radius: 9px;
+  }
+  .mgmt-shell .archive-overview-icon {
+    width: 23px;
+    height: 23px;
+    border-radius: 7px;
+  }
+  .mgmt-shell .archive-overview-icon svg {
+    width: 14px;
+    height: 14px;
+  }
+  .mgmt-shell .archive-overview-card > span:not(.archive-overview-icon) {
+    font-size: 0.62rem;
+  }
+  .mgmt-shell .archive-overview-card strong {
+    font-size: 1.18rem;
+  }
+  .mgmt-shell .archive-library {
+    padding: 10px;
+    border-radius: 11px;
+  }
+  .mgmt-shell .archive-library-head {
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .mgmt-shell .archive-library-head h2 {
+    font-size: 1rem;
+  }
+  .mgmt-shell .archive-controls {
+    grid-template-columns: 1fr auto;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+  .mgmt-shell .archive-search,
+  .mgmt-shell .archive-sort {
+    height: 38px;
+    padding: 0 9px;
+    border-radius: 9px;
+  }
+  .mgmt-shell .archive-sort {
+    width: 112px;
+  }
+  .mgmt-shell .archive-search input,
+  .mgmt-shell .archive-sort select {
+    font-size: 0.73rem;
+  }
+  .mgmt-shell .archive-filters {
+    gap: 5px;
+    padding-bottom: 6px;
+    margin-bottom: 8px;
+  }
+  .mgmt-shell .archive-filters button {
+    min-height: 34px;
+    padding: 5px 9px;
+    font-size: 0.68rem;
+  }
+  .mgmt-shell .archive-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+  }
+  .mgmt-shell .archive-record {
+    gap: 6px;
+    height: 100%;
+    min-height: 0;
+    padding: 9px;
+    border-radius: 10px;
+  }
+  .mgmt-shell .archive-record__top {
+    align-items: center;
+    gap: 6px;
+  }
+  .mgmt-shell .archive-record__icon {
+    width: 27px;
+    height: 27px;
+    border-radius: 7px;
+  }
+  .mgmt-shell .archive-record__icon svg {
+    width: 15px;
+    height: 15px;
+  }
+  .mgmt-shell .archive-record__group {
+    font-size: 0.55rem;
+    letter-spacing: 0.01em;
+  }
+  .mgmt-shell .archive-record h3 {
+    font-size: 0.75rem;
+    margin-top: 2px;
+    line-height: 1.3;
+  }
+  .mgmt-shell .archive-record__badges {
+    gap: 4px;
+  }
+  .mgmt-shell .archive-category-tag {
+    min-height: 22px;
+    padding: 3px 5px;
+    font-size: 0.62rem;
+  }
+  .mgmt-shell .archive-record__id {
+    font-size: 0.62rem;
+  }
+  .mgmt-shell .archive-record__facts {
+    gap: 6px;
+    padding: 7px;
+    border-radius: 7px;
+    grid-template-columns: 1fr;
+  }
+  .mgmt-shell .archive-record__facts > div {
+    gap: 2px;
+  }
+  .mgmt-shell .archive-record__facts span,
+  .mgmt-shell .archive-record__facts strong,
+  .mgmt-shell .archive-record__facts small {
+    font-size: 0.65rem;
+    line-height: 1.3;
+  }
+  .mgmt-shell .archive-restore-button {
+    min-height: 38px;
+    margin-top: auto;
+    padding: 5px;
+    font-size: 0.7rem;
+  }
+  .mgmt-shell .archive-restore-button svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  /* Management overview and common record panels. */
+  .mgmt-shell .metric-grid,
+  .mgmt-shell .metric-grid-six {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+    margin-bottom: 10px;
+  }
+  .mgmt-shell .metric-card {
+    min-height: 65px;
+    padding: 9px;
+    gap: 3px 7px;
+    border-radius: 10px;
+  }
+  .mgmt-shell .metric-card svg {
+    width: 27px;
+    height: 27px;
+    padding: 6px;
+    border-radius: 8px;
+  }
+  .mgmt-shell .metric-card b {
+    font-size: 1.1rem;
+  }
+  .mgmt-shell .mgmt-panel,
+  .mgmt-shell .sales-panel,
+  .mgmt-shell .wsm-panel {
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 11px;
+  }
+  .mgmt-shell .wsm-table-head,
+  .mgmt-shell .sales-section-head {
+    margin-bottom: 8px;
+    gap: 6px;
+  }
+  .mgmt-shell :is(.wsm-table-head h2, .sales-section-head h2, .mgmt-panel h2) {
+    font-size: 0.9rem;
+    margin: 0;
+  }
+  .mgmt-shell .wsm-table-tools {
+    gap: 6px;
+  }
+  .mgmt-shell .wsm-search {
+    min-width: 0;
+  }
+  .mgmt-shell .wsm-search input,
+  .mgmt-shell .sales-search input {
+    font-size: 0.76rem;
+  }
+  .mgmt-shell .wsm-table-tools > .wsm-secondary {
+    width: auto;
+    min-height: 37px;
+    font-size: 0.71rem;
+  }
+  .mgmt-shell .sales-filters {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 7px;
+  }
+  .mgmt-shell .sales-filters > .sales-search {
+    grid-column: 1 / -1;
+    min-width: 0;
+  }
+  .mgmt-shell .sales-filters > select {
+    min-width: 0;
+    width: 100%;
+  }
+  .mgmt-shell .sales-summary-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+  }
+  .mgmt-shell .sales-summary-cards > .sales-panel {
+    padding: 10px;
+  }
+
+  /* Workspace table: show two labeled facts across inside each record card.
+     No columns are removed; staff can still manage each record. */
+  .mgmt-shell .wsm-overflow {
+    overflow: visible;
+  }
+  .mgmt-shell .wsm-table,
+  .mgmt-shell .wsm-table tbody {
+    display: block;
+    min-width: 0;
+    width: 100%;
+  }
+  .mgmt-shell .wsm-table thead {
+    display: none;
+  }
+  .mgmt-shell .wsm-table tbody {
+    display: grid;
+    gap: 8px;
+  }
+  .mgmt-shell .wsm-table tbody tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px 8px;
+    padding: 9px;
+    border: 1px solid #d4e3eb;
+    border-radius: 10px;
+    background: #fff;
+  }
+  .mgmt-shell .wsm-table tbody td {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+    min-width: 0;
+    width: auto;
+    max-width: none;
+    margin: 0;
+    padding: 3px 0;
+    border: 0;
+    text-align: left;
+    white-space: normal;
+    font-size: 0.74rem;
+    line-height: 1.34;
+    overflow-wrap: anywhere;
+  }
+  .mgmt-shell .wsm-table tbody td::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 0.62rem;
+    font-weight: 850;
+    letter-spacing: 0.01em;
+    color: #718a9b;
+    text-transform: capitalize;
+  }
+  .mgmt-shell .wsm-table tbody td:last-child:has(.wsm-row-actions) {
+    grid-column: 1 / -1;
+    border-top: 1px solid #e5edf1;
+    padding-top: 6px;
+  }
+  .mgmt-shell .wsm-table tbody td:last-child:has(.wsm-row-actions)::before {
+    display: none;
+  }
+  .mgmt-shell .wsm-row-actions {
+    justify-content: flex-end;
+    gap: 5px;
+  }
+  .mgmt-shell .wsm-row-action {
+    min-height: 37px;
+    padding: 6px 9px;
+  }
+
+  /* Orders & service-request lists: two record facts across on phones.
+     Existing View/Manage buttons remain accessible. */
+  .mgmt-shell .av-records-responsive .sales-table tbody tr {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 3px 8px;
+    padding: 9px;
+  }
+  .mgmt-shell .av-records-responsive .sales-table tbody td {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+    min-width: 0;
+    width: auto;
+    padding: 3px 0;
+    text-align: left;
+    font-size: 0.74rem;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+    border: 0;
+    background: transparent;
+  }
+  .mgmt-shell .av-records-responsive .sales-table tbody td::before {
+    content: attr(data-label);
+    display: block;
+    flex: none;
+    font-size: 0.62rem;
+    text-align: left;
+    font-weight: 850;
+    color: #758d9c;
+    text-transform: capitalize;
+  }
+  .mgmt-shell .av-records-responsive .sales-table tbody td:last-child {
+    grid-column: 1 / -1;
+    padding-top: 7px;
+    border-top: 1px solid #e2edf2;
+  }
+  .mgmt-shell .av-records-responsive .sales-table tbody td:last-child::before {
+    display: none;
+  }
+  .mgmt-shell .av-records-responsive .sales-table tbody td .sales-small-action {
+    min-height: 39px;
+    width: 100%;
+  }
+  .mgmt-shell .av-management-pages {
+    gap: 5px;
+    padding: 8px 0;
+  }
+
+  /* Calendar controls remain seven columns; don't turn dates into tall cards. */
+  .mgmt-shell .booking-manage__columns {
+    gap: 9px;
+  }
+  .mgmt-shell .booking-manage__panel {
+    padding: 10px;
+    border-radius: 11px;
+  }
+  .mgmt-shell .booking-picker__grid {
+    gap: 3px;
+  }
+  .mgmt-shell .booking-picker__day {
+    min-width: 0;
+  }
+  .mgmt-shell .booking-manage__row {
+    padding: 9px;
+    gap: 7px;
+  }
+  .mgmt-shell .booking-manage__toolbar {
+    gap: 5px;
+  }
+  .mgmt-shell .booking-manage__toolbar button {
+    min-height: 38px;
+  }
+
+  /* Compact notifications center. */
+  .mgmt-shell .av-notification-center {
+    gap: 9px;
+  }
+  .mgmt-shell .av-notification-center__item {
+    padding: 10px;
+    gap: 8px;
+    border-radius: 10px;
+  }
+  .mgmt-shell .av-notification-center__item p {
+    font-size: 0.73rem;
+  }
+  .mgmt-shell .av-notification-center__stock-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Preserve usability on particularly small devices. */
+@media (max-width: 369px) {
+  .mgmt-shell .av-technician-work .av-technician-work__list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .mgmt-shell .archive-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .mgmt-shell .archive-record__facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .mgmt-shell .wsm-table tbody tr,
+  .mgmt-shell .av-records-responsive .sales-table tbody tr {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .mgmt-shell .wsm-table tbody td,
+  .mgmt-shell .av-records-responsive .sales-table tbody td {
+    display: grid;
+    grid-template-columns: minmax(76px, 0.75fr) minmax(0, 1.25fr);
+    gap: 7px;
+    align-items: baseline;
+  }
+  .mgmt-shell .wsm-table tbody td:last-child:has(.wsm-row-actions),
+  .mgmt-shell .av-records-responsive .sales-table tbody td:last-child {
+    grid-column: 1;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .mgmt-shell .wsm-table tbody td::before,
+  .mgmt-shell .av-records-responsive .sales-table tbody td::before {
+    align-self: start;
+  }
+  .mgmt-shell .tech-dashboard__context {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .mgmt-shell .tech-dashboard__context > a {
+    grid-column: auto;
+  }
+}
+
+@media (min-width: 701px) {
+  .mgmt-shell .av-agenda-alerts__toggle {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mgmt-shell .av-job-card,
+  .mgmt-shell .archive-record {
+    transition: none;
+  }
+}
+
+/* DB-backed Archive variant from the archive module update: compact cards,
+   keep Details + Restore available, and leave transaction records untouched. */
+@media (max-width: 700px) {
+  .mgmt-shell .av-archive-page {
+    gap: 9px;
+  }
+  .mgmt-shell .av-archive-head {
+    padding: 12px;
+    gap: 8px;
+    border-radius: 11px;
+  }
+  .mgmt-shell .av-archive-head h1 {
+    font-size: 1.15rem;
+    margin: 4px 0;
+  }
+  .mgmt-shell .av-archive-head p {
+    font-size: 0.71rem;
+    line-height: 1.35;
+  }
+  .mgmt-shell .av-archive-head button {
+    padding: 7px 10px;
+    min-height: 37px;
+    font-size: 0.71rem;
+  }
+  .mgmt-shell .av-archive-note {
+    padding: 9px;
+    font-size: 0.7rem;
+    line-height: 1.35;
+    border-radius: 9px;
+  }
+  .mgmt-shell .av-archive-summary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .mgmt-shell .av-archive-summary > :is(strong, span) {
+    justify-content: center;
+    min-width: 0;
+    padding: 9px 6px;
+    border: 1px solid #d6e6ec;
+    border-radius: 9px;
+    background: #fff;
+    text-align: center;
+    font-size: 0.69rem;
+  }
+  .mgmt-shell .av-archive-summary strong {
+    font-size: 0.82rem;
+  }
+  .mgmt-shell .av-archive-controls {
+    gap: 7px;
+  }
+  .mgmt-shell .av-archive-controls label {
+    max-width: none;
+    padding: 0 9px;
+  }
+  .mgmt-shell .av-archive-controls input {
+    padding: 9px 0;
+    font-size: 0.76rem;
+  }
+  .mgmt-shell .av-archive-categories {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 5px;
+    padding-bottom: 5px;
+    scrollbar-width: thin;
+  }
+  .mgmt-shell .av-archive-categories button {
+    flex: 0 0 auto;
+    min-height: 35px;
+    padding: 6px 9px;
+    font-size: 0.68rem;
+  }
+  .mgmt-shell .av-archive-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+  }
+  .mgmt-shell .av-archive-card {
+    gap: 5px;
+    height: 100%;
+    padding: 9px;
+    border-radius: 10px;
+  }
+  .mgmt-shell .av-archive-card-top {
+    font-size: 0.62rem;
+  }
+  .mgmt-shell .av-archive-card-top span:last-child {
+    max-width: 65px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  .mgmt-shell .av-archive-card h2 {
+    font-size: 0.78rem;
+    margin: 3px 0;
+    line-height: 1.3;
+  }
+  .mgmt-shell .av-archive-card p {
+    font-size: 0.66rem;
+    line-height: 1.3;
+  }
+  .mgmt-shell .av-archive-card-actions {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    gap: 5px;
+    padding-top: 5px;
+  }
+  .mgmt-shell .av-archive-card-actions button {
+    flex: 0 0 auto;
+    min-height: 37px;
+    padding: 7px 4px;
+    font-size: 0.7rem;
+  }
+  .mgmt-shell .av-archive-dialog header,
+  .mgmt-shell .av-archive-dialog footer {
+    padding: 10px;
+  }
+  .mgmt-shell .av-archive-dialog-body {
+    padding: 12px;
+  }
+  .mgmt-shell .av-archive-dialog footer button {
+    min-height: 42px;
+  }
+}
+@media (max-width: 369px) {
+  .mgmt-shell .av-archive-grid {
+    grid-template-columns: 1fr;
+  }
+  .mgmt-shell .av-archive-card-actions {
+    flex-direction: row;
+  }
+}
+
+.av-technician-work .av-tech-page-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 9px;
+  padding: 9px 0;
+  color: #5c798b;
+  font-size: 0.76rem;
+}
+.av-technician-work .av-tech-page-controls > div {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.av-technician-work .av-tech-page-controls button {
+  min-height: 39px;
+  padding: 6px 11px;
+  border: 1px solid #bad6e3;
+  background: #e9f6fa;
+  border-radius: 9px;
+  color: #155b78;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.av-technician-work .av-tech-page-controls button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+@media (max-width: 700px) {
+  .av-technician-work .av-tech-page-controls {
+    font-size: 0.7rem;
+  }
+  .av-technician-work .av-tech-page-controls > div {
+    gap: 6px;
+  }
+  .av-technician-work .av-tech-page-controls button {
+    padding: 5px 8px;
+  }
+}

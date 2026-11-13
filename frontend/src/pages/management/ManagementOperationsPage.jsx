@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { ArrowRight } from "lucide-react";
+import { Eye } from "lucide-react";
 import { createPortal } from "react-dom";
 import {
   CalendarDays,
@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import api from "../../../api/api.js";
+import useRealtimeRefresh from "../../hooks/useRealtimeRefresh.js";
 import { getStaff } from "../../utils/authMock.js";
 import AvailabilityPicker from "../../components/scheduling/AvailabilityPicker";
 import TechnicianTeamPicker from "../../components/management/TechnicianTeamPicker";
@@ -22,6 +23,7 @@ import ServicePaymentPanel from "../../components/management/ServicePaymentPanel
 import "../../styles/management/workspace.css";
 import "../../styles/management/sales-live.css";
 import "../../styles/management/av-records.css";
+import "../../styles/management/record-pagination.css";
 import "../../styles/management/service-request-dialog.css";
 
 const labels = {
@@ -29,8 +31,8 @@ const labels = {
   SERVICE_DECLINED: "Decline request",
   SERVICE_SCHEDULED: "Confirm schedule",
   SERVICE_RESCHEDULED: "Reschedule",
-  SERVICE_STARTED: "Record service started (technician report)",
-  SERVICE_COMPLETED: "Record service completed (technician report)",
+  SERVICE_STARTED: "Start service",
+  SERVICE_COMPLETED: "Complete service",
   SERVICE_CANCELLED: "Cancel request",
 };
 
@@ -69,7 +71,15 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
   const [actionError, setActionError] = useState("");
   const [notice, setNotice] = useState("");
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [page, setPage] = useState(1);
   const [revision, setRevision] = useState(0);
+  const hasLoadedRef = useRef(false);
+
+  useRealtimeRefresh(
+    ["services", "schedules", "jobs", "payments"],
+    setRevision,
+  );
   const [event, setEvent] = useState("");
   const [schedule, setSchedule] = useState("");
   const [originalSchedule, setOriginalSchedule] = useState("");
@@ -113,13 +123,15 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
 
   useEffect(() => {
     const controller = new AbortController();
-    setLoading(true);
+    if (!hasLoadedRef.current) setLoading(true);
     setError("");
     api
       .get("/api/management/services", { signal: controller.signal })
       .then(({ data }) => {
-        if (!controller.signal.aborted)
+        if (!controller.signal.aborted) {
           setItems(Array.isArray(data.records) ? data.records : []);
+          hasLoadedRef.current = true;
+        }
       })
       .catch((requestError) => {
         if (!controller.signal.aborted)
@@ -163,13 +175,17 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
 
   const filtered = useMemo(
     () =>
-      items.filter((row) =>
-        `${row.reference} ${row.customer} ${row.products} ${row.contact} ${row.status} ${row.paymentStatus || ""}`
-          .toLowerCase()
-          .includes(search.trim().toLowerCase()),
+      items.filter(
+        (row) =>
+          (statusFilter === "ALL" || row.status === statusFilter) &&
+          `${row.reference} ${row.customer} ${row.products} ${row.contact} ${row.status} ${row.paymentStatus || ""}`
+            .toLowerCase()
+            .includes(search.trim().toLowerCase()),
       ),
-    [items, search],
+    [items, search, statusFilter],
   );
+  const totalPages = Math.max(1, Math.ceil(filtered.length / 16));
+  const pageItems = filtered.slice((page - 1) * 16, page * 16);
 
   async function save(submitEvent) {
     submitEvent.preventDefault();
@@ -194,26 +210,14 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
       );
       return;
     }
-    if (
-      ["SERVICE_STARTED", "SERVICE_COMPLETED"].includes(event) &&
-      internalNote.trim().length < 10
-    ) {
-      setActionError(
-        "Record who reported this job update (e.g. technician's name and phone call) in the internal note, at least 10 characters.",
-      );
-      return;
-    }
     if (event === "SERVICE_STARTED" && !hasAssignedTeam) {
       setActionError("Assign a technician team before starting this service.");
       return;
     }
     if (
-      [
-        "SERVICE_DECLINED",
-        "SERVICE_CANCELLED",
-        "SERVICE_COMPLETED",
-        "SERVICE_STARTED",
-      ].includes(event) &&
+      ["SERVICE_DECLINED", "SERVICE_CANCELLED", "SERVICE_COMPLETED"].includes(
+        event,
+      ) &&
       !window.confirm(`${labels[event]} for service #${selected.id}?`)
     )
       return;
@@ -291,7 +295,9 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
       <section className="sales-panel" aria-label="Service request records">
         <div className="sales-section-head">
           <h2>Service request records</h2>
-          <span>{filtered.length} shown</span>
+          <span>
+            {filtered.length} matching · page {page} of {totalPages}
+          </span>
         </div>
         <div className="sales-filters">
           <label className="sales-search">
@@ -300,9 +306,29 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
               aria-label="Search service requests"
               placeholder="Search requests, contacts, or payments"
               value={search}
-              onChange={(ev) => setSearch(ev.target.value)}
+              onChange={(ev) => {
+                setSearch(ev.target.value);
+                setPage(1);
+              }}
             />
           </label>
+          <select
+            aria-label="Filter service status"
+            value={statusFilter}
+            onChange={(event) => {
+              setStatusFilter(event.target.value);
+              setPage(1);
+            }}
+          >
+            <option value="ALL">All statuses</option>
+            {["PENDING", "CONFIRMED", "COMPLETED", "CANCELLED"].map(
+              (status) => (
+                <option key={status} value={status}>
+                  {status.replaceAll("_", " ")}
+                </option>
+              ),
+            )}
+          </select>
         </div>
         {loading ? (
           <p role="status" className="sales-empty">
@@ -312,28 +338,30 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
           <p className="sales-empty">No matching service requests.</p>
         ) : (
           <div className="sales-table-scroll">
-            <table className="sales-table">
+            <table className="sales-table av-smart-table">
               <thead>
                 <tr>
-                  <th>Request</th>
-                  <th>Customer</th>
+                  <th data-mobile="primary">Request</th>
+                  <th data-mobile="secondary">Customer</th>
                   <th>Source</th>
                   <th>Contact</th>
-                  <th>Status</th>
+                  <th data-mobile="status">Status</th>
                   <th>Payment</th>
                   <th>Service</th>
                   <th>Total</th>
                   <th>Schedule</th>
-                  <th>Action</th>
+                  <th data-mobile="action">Action</th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((row) => (
+                {pageItems.map((row) => (
                   <tr key={row.id}>
-                    <td data-label="Request">
+                    <td data-label="Request" data-mobile="primary">
                       <strong>#{row.reference || row.id}</strong>
                     </td>
-                    <td data-label="Customer">{row.customer}</td>
+                    <td data-label="Customer" data-mobile="secondary">
+                      {row.customer}
+                    </td>
                     <td data-label="Source">
                       {row.facebookRequestId
                         ? "Facebook"
@@ -350,7 +378,7 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
                         row.contact || "Not provided"
                       )}
                     </td>
-                    <td data-label="Status">
+                    <td data-label="Status" data-mobile="status">
                       <span
                         className={`sales-pill is-${String(row.status || "unknown").toLowerCase()}`}
                       >
@@ -380,13 +408,15 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
                         ? String(row.schedule).replace("T", " at ")
                         : "Not scheduled"}
                     </td>
-                    <td data-label="Action">
+                    <td data-label="Action" data-mobile="action">
                       <button
                         type="button"
-                        className="sales-small-action"
+                        className="sales-small-action av-smart-view"
+                        aria-label={`View and manage service request ${row.reference || row.id}`}
                         onClick={() => open(row)}
                       >
-                        View / Manage <ArrowRight size={15} />
+                        <Eye size={15} aria-hidden="true" />{" "}
+                        <span className="av-smart-view-text">View Details</span>
                       </button>
                     </td>
                   </tr>
@@ -394,6 +424,36 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
               </tbody>
             </table>
           </div>
+        )}
+        {!loading && filtered.length > 0 && (
+          <nav
+            className="av-management-pages"
+            aria-label="Service request pages"
+          >
+            <span>
+              Showing {(page - 1) * 16 + 1}–
+              {Math.min(page * 16, filtered.length)} of {filtered.length}
+            </span>
+            <div>
+              <button
+                type="button"
+                disabled={page <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+              >
+                Previous
+              </button>
+              <span>
+                {page} / {totalPages}
+              </span>
+              <button
+                type="button"
+                disabled={page >= totalPages}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                Next
+              </button>
+            </div>
+          </nav>
         )}
       </section>
 
@@ -469,20 +529,6 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
                       {selected.customerNotes?.trim() || "No additional notes."}
                     </p>
                   </div>
-                  {Number(selected.additionalFee) > 0 && (
-                    <div>
-                      <strong>
-                        Additional fee:{" "}
-                        {new Intl.NumberFormat("en-PH", {
-                          style: "currency",
-                          currency: "PHP",
-                        }).format(Number(selected.additionalFee))}
-                      </strong>
-                      <p>
-                        {selected.additionalFeeReason || "No reason recorded."}
-                      </p>
-                    </div>
-                  )}
                   {selected.destinationAddress && (
                     <div>
                       <strong>Relocation destination</strong>
@@ -602,12 +648,7 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
                         </small>
                       </label>
                       <label className="wsm-field">
-                        Internal staff note{" "}
-                        {["SERVICE_STARTED", "SERVICE_COMPLETED"].includes(
-                          event,
-                        )
-                          ? "(required for manager's phone-reported update)"
-                          : "(optional)"}
+                        Internal staff note (optional)
                         <textarea
                           maxLength={1000}
                           rows={3}
@@ -616,9 +657,8 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
                           placeholder="For store staff and assigned technicians only"
                         />
                         <small>
-                          For start/completion by management, enter who called
-                          and how you verified the work. Private; not shown to
-                          customers.
+                          Private. Not included in customer notifications or
+                          customer history.
                         </small>
                       </label>
                     </div>
@@ -650,12 +690,7 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
                     type="submit"
                     form="service-request-action-form"
                     disabled={
-                      busy ||
-                      (event === "SERVICE_STARTED" && !hasAssignedTeam) ||
-                      (["SERVICE_STARTED", "SERVICE_COMPLETED"].includes(
-                        event,
-                      ) &&
-                        internalNote.trim().length < 10)
+                      busy || (event === "SERVICE_STARTED" && !hasAssignedTeam)
                     }
                   >
                     {busy

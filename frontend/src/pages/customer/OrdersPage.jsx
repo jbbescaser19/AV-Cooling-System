@@ -1,20 +1,30 @@
+import {
+  sanitizePersonName,
+  sanitizeContactNumber,
+} from "../../utils/fieldSanitizers.js";
 import { useEffect, useMemo, useState } from "react";
 import {
+  ArrowLeft,
   ChevronRight,
   Clock3,
   MapPin,
   Package,
   Pencil,
+  RefreshCw,
+  Save,
   ShoppingBag,
+  X,
   XCircle,
 } from "lucide-react";
 import api from "../../../api/api.js";
-import CustomerDialog from "../../components/customer/CustomerDialog";
+import useRealtimeRefresh from "../../hooks/useRealtimeRefresh.js";
+import OrderDialog from "../../components/customer/OrderDialog";
 import CustomerPageHeader from "../../components/customer/CustomerPageHeader";
 import CustomerStatusBadge from "../../components/customer/CustomerStatusBadge";
 import SavedAddressSelector from "../../components/common/SavedAddressSelector";
 import { formatCustomerMoney } from "../../utils/customerAccountUtils";
 import "../../styles/customer/order-management.css";
+import "../../styles/customer/order-details-dialog.css";
 
 const FILTERS = [
   { id: "all", label: "All orders" },
@@ -62,6 +72,7 @@ export default function OrdersPage() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [retry, setRetry] = useState(0);
+  useRealtimeRefresh(["orders", "payments", "services"], setRetry);
   const [filter, setFilter] = useState("all");
   const [selectedNumber, setSelectedNumber] = useState(null);
   const [mode, setMode] = useState("details");
@@ -221,7 +232,7 @@ export default function OrdersPage() {
             type="button"
             onClick={() => setRetry((value) => value + 1)}
           >
-            Try again
+            <RefreshCw size={16} aria-hidden="true" /> Try again
           </button>
         </div>
       )}
@@ -267,7 +278,9 @@ export default function OrdersPage() {
                       <span className="order-muted">
                         Order placed {formatDate(order.orderedAt)}
                       </span>
-                      <strong>{order.orderNumber}</strong>
+                      <strong>
+                        {order.displayOrderNumber || order.orderNumber}
+                      </strong>
                     </div>
                     <CustomerStatusBadge>{order.status}</CustomerStatusBadge>
                   </div>
@@ -306,7 +319,7 @@ export default function OrdersPage() {
       )}
 
       {selected && (
-        <CustomerDialog
+        <OrderDialog
           title={
             mode === "edit"
               ? "Edit order details"
@@ -317,10 +330,90 @@ export default function OrdersPage() {
           onClose={() => {
             if (!saving) setSelectedNumber(null);
           }}
+          busy={saving}
+          footer={
+            mode === "details" ? (
+              <>
+                {selected.canManage && (
+                  <>
+                    <button
+                      className="order-button order-button--primary"
+                      type="button"
+                      onClick={openEdit}
+                    >
+                      <Pencil size={15} aria-hidden="true" /> Edit info
+                    </button>
+                    <button
+                      className="order-button order-button--danger"
+                      type="button"
+                      onClick={openCancel}
+                    >
+                      <XCircle size={15} aria-hidden="true" /> Cancel order
+                    </button>
+                  </>
+                )}
+                <button
+                  className="order-button order-button--secondary"
+                  type="button"
+                  onClick={() => setSelectedNumber(null)}
+                >
+                  <X size={16} aria-hidden="true" /> Close details
+                </button>
+              </>
+            ) : mode === "edit" ? (
+              <>
+                <button
+                  className="order-button order-button--secondary"
+                  type="button"
+                  disabled={saving}
+                  onClick={() => {
+                    setActionError("");
+                    setMode("details");
+                  }}
+                >
+                  <ArrowLeft size={16} aria-hidden="true" /> Back to details
+                </button>
+                <button
+                  className="order-button order-button--primary"
+                  type="submit"
+                  form="customer-order-edit-form"
+                  disabled={saving}
+                >
+                  <Save size={16} aria-hidden="true" />{" "}
+                  {saving ? "Saving…" : "Save changes"}
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  className="order-button order-button--secondary"
+                  type="button"
+                  disabled={saving}
+                  onClick={() => {
+                    setActionError("");
+                    setMode("details");
+                  }}
+                >
+                  <ArrowLeft size={16} aria-hidden="true" /> Keep order
+                </button>
+                <button
+                  className="order-button order-button--danger-solid"
+                  type="submit"
+                  form="customer-order-cancel-form"
+                  disabled={saving}
+                >
+                  <XCircle size={16} aria-hidden="true" />{" "}
+                  {saving ? "Cancelling…" : "Confirm cancellation"}
+                </button>
+              </>
+            )
+          }
         >
           <div className="order-modal-content">
             <div className="order-modal-intro">
-              <span className="order-muted">{selected.orderNumber}</span>
+              <span className="order-muted">
+                {selected.displayOrderNumber || selected.orderNumber}
+              </span>
               <CustomerStatusBadge>{selected.status}</CustomerStatusBadge>
             </div>
 
@@ -434,26 +527,7 @@ export default function OrdersPage() {
                     </ol>
                   </div>
                 )}
-                {selected.canManage ? (
-                  <div className="order-dialog-actions">
-                    {selected.fulfillment === "DELIVERY" && (
-                      <button
-                        className="order-button order-button--primary"
-                        type="button"
-                        onClick={openEdit}
-                      >
-                        <Pencil size={15} /> Edit details
-                      </button>
-                    )}
-                    <button
-                      className="order-button order-button--danger"
-                      type="button"
-                      onClick={openCancel}
-                    >
-                      <XCircle size={15} /> Cancel order
-                    </button>
-                  </div>
-                ) : (
+                {!selected.canManage && (
                   <p className="order-helper">
                     <Clock3 size={15} /> Online changes are unavailable for this
                     order. Contact the store for assistance.
@@ -463,7 +537,11 @@ export default function OrdersPage() {
             )}
 
             {mode === "edit" && draft && (
-              <form className="order-edit-form" onSubmit={saveChanges}>
+              <form
+                id="customer-order-edit-form"
+                className="order-edit-form"
+                onSubmit={saveChanges}
+              >
                 <p className="order-helper">
                   Changes are allowed before staff begin processing your unpaid
                   order. Products and prices cannot be changed here.
@@ -477,7 +555,10 @@ export default function OrdersPage() {
                       required
                       maxLength={150}
                       onChange={(e) =>
-                        setField("recipientName", e.target.value)
+                        setField(
+                          "recipientName",
+                          sanitizePersonName(e.target.value),
+                        )
                       }
                       disabled={saving}
                     />
@@ -494,7 +575,10 @@ export default function OrdersPage() {
                       pattern="[+0-9 ()-]{7,30}"
                       value={draft.contactNumber}
                       onChange={(e) =>
-                        setField("contactNumber", e.target.value)
+                        setField(
+                          "contactNumber",
+                          sanitizeContactNumber(e.target.value),
+                        )
                       }
                       disabled={saving}
                     />
@@ -502,7 +586,9 @@ export default function OrdersPage() {
                   <div className="order-field">
                     <span>Fulfillment</span>
                     <strong>
-                      Delivery + free standard installation (up to 10ft)
+                      {draft.fulfillment === "PICKUP"
+                        ? "Store pickup"
+                        : "Delivery + free standard installation (up to 10ft)"}
                     </strong>
                   </div>
                   <label className="order-field">
@@ -542,31 +628,15 @@ export default function OrdersPage() {
                     onChange={(e) => setField("customerNotes", e.target.value)}
                   />
                 </label>
-                <div className="order-dialog-actions">
-                  <button
-                    className="order-button order-button--secondary"
-                    type="button"
-                    disabled={saving}
-                    onClick={() => {
-                      setActionError("");
-                      setMode("details");
-                    }}
-                  >
-                    Back
-                  </button>
-                  <button
-                    className="order-button order-button--primary"
-                    type="submit"
-                    disabled={saving}
-                  >
-                    {saving ? "Saving…" : "Save changes"}
-                  </button>
-                </div>
               </form>
             )}
 
             {mode === "cancel" && (
-              <form className="order-edit-form" onSubmit={confirmCancellation}>
+              <form
+                id="customer-order-cancel-form"
+                className="order-edit-form"
+                onSubmit={confirmCancellation}
+              >
                 <p className="order-cancel-note">
                   Cancel this order? This cannot be undone. No cash payment has
                   been collected.
@@ -601,30 +671,10 @@ export default function OrdersPage() {
                     placeholder="Briefly describe your reason"
                   />
                 </label>
-                <div className="order-dialog-actions">
-                  <button
-                    className="order-button order-button--secondary"
-                    type="button"
-                    disabled={saving}
-                    onClick={() => {
-                      setActionError("");
-                      setMode("details");
-                    }}
-                  >
-                    Keep order
-                  </button>
-                  <button
-                    className="order-button order-button--danger-solid"
-                    type="submit"
-                    disabled={saving}
-                  >
-                    {saving ? "Cancelling…" : "Confirm cancellation"}
-                  </button>
-                </div>
               </form>
             )}
           </div>
-        </CustomerDialog>
+        </OrderDialog>
       )}
     </div>
   );

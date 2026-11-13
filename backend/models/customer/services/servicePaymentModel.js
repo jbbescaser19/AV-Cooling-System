@@ -18,11 +18,12 @@ export function servicePaymentModel(db) {
       return row?.status || null;
     },
     async createPending(serviceId, code, amount) {
-      await db.execute(
+      const [result] = await db.execute(
         `INSERT INTO service_payments (service_request_id,method_code,amount)
         VALUES (?,?,?)`,
         [serviceId, code, amount],
       );
+      return result.insertId;
     },
     async customerPayments(userId) {
       const [rows] = await db.execute(

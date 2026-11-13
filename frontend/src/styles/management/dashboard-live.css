@@ -859,3 +859,108 @@
     animation: none;
   }
 }
+
+/* Responsive feedback summary: only verified database counts are displayed. */
+.sentiment-overview {
+  min-width: 0;
+}
+.sentiment-overview .live-dashboard__panel-heading {
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.sentiment-overview .live-dashboard__panel-heading h2 {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+.sentiment-overview__stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 18px 0 21px;
+}
+.sentiment-overview__stats > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+  padding: 15px;
+  border: 1px solid #e0eaf0;
+  background: #f7fafc;
+  border-radius: 12px;
+}
+.sentiment-overview__stats strong {
+  font-size: clamp(1.25rem, 3vw, 1.7rem);
+  color: #173f57;
+  overflow-wrap: anywhere;
+}
+.sentiment-overview__stats span {
+  font-size: 0.77rem;
+  color: #587185;
+}
+.sentiment-overview__bars {
+  display: grid;
+  gap: 17px;
+}
+.sentiment-overview__row {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+.sentiment-overview__label {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 0.83rem;
+}
+.sentiment-overview__label span {
+  color: #557083;
+  white-space: nowrap;
+}
+.sentiment-overview__track {
+  height: 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e5edf2;
+}
+.sentiment-overview__bar {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  transition: width 0.2s ease;
+}
+.sentiment-overview__bar.is-positive {
+  background: #16805f;
+}
+.sentiment-overview__bar.is-neutral {
+  background: #ad7a19;
+}
+.sentiment-overview__bar.is-negative {
+  background: #be4553;
+}
+.sentiment-overview__note {
+  margin: 17px 0 0;
+  color: #597185;
+  font-size: 0.77rem;
+  line-height: 1.55;
+}
+@media (max-width: 600px) {
+  .sentiment-overview__stats {
+    gap: 8px;
+  }
+  .sentiment-overview__stats > div {
+    padding: 11px 9px;
+  }
+  .sentiment-overview__stats span {
+    font-size: 0.7rem;
+  }
+  .sentiment-overview__label {
+    font-size: 0.78rem;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sentiment-overview__bar {
+    transition: none;
+  }
+}

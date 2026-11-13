@@ -1,0 +1,497 @@
+/* AV Cooling System — preserve the desktop visual hierarchy on narrow screens.
+   Import AFTER mobile-density.css and component styles.
+   Four-across KPI summaries stay visible; wide forms/tables swipe rather
+   than becoming oversized vertical cards or unreadably narrow columns. */
+
+.mgmt-shell
+  :is(
+    .live-dashboard,
+    .dashboard-page,
+    .wsm-page,
+    .sales-ui,
+    .pos-page-shell,
+    .tech-dashboard,
+    .archive-page,
+    .av-archive-page
+  ) {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* The 4-column visual language also applies to tablet widths. */
+@media (max-width: 1024px) {
+  .mgmt-shell .live-dashboard__metrics,
+  .mgmt-shell .dashboard-page .dashboard-metrics,
+  .mgmt-shell .tech-dashboard__metrics,
+  .mgmt-shell .metric-grid,
+  .mgmt-shell .metric-grid-six,
+  .mgmt-shell .report-example-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .mgmt-shell .sales-summary-cards {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  /* Keep the actual content canvas wide; remove wasteful outer spacing. */
+  .mgmt-shell .mgmt-main {
+    min-width: 0;
+    padding: 10px 9px 22px;
+  }
+
+  .mgmt-shell
+    :is(
+      .live-dashboard,
+      .dashboard-page,
+      .wsm-page,
+      .sales-ui,
+      .pos-page-shell,
+      .tech-dashboard,
+      .archive-page,
+      .av-archive-page
+    ) {
+    gap: 10px;
+  }
+
+  /* Keep headers and refresh/actions in a compact desktop-like row. */
+  .mgmt-shell .live-dashboard__hero,
+  .mgmt-shell .sales-hero,
+  .mgmt-shell .wsm-head,
+  .mgmt-shell .mgmt-page-head {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 9px;
+  }
+  .mgmt-shell .live-dashboard__hero {
+    padding: 12px;
+  }
+  .mgmt-shell .live-dashboard__hero h1 {
+    font-size: 1.15rem;
+  }
+  .mgmt-shell .live-dashboard__hero p {
+    font-size: 0.74rem;
+    line-height: 1.4;
+  }
+  .mgmt-shell .live-dashboard__hero-actions {
+    width: auto;
+    justify-items: end;
+    gap: 5px;
+  }
+  .mgmt-shell .live-dashboard__hero-actions button,
+  .mgmt-shell .sales-hero .sales-refresh,
+  .mgmt-shell .mgmt-page-head > .btn,
+  .mgmt-shell .pos-cashier-chip {
+    width: auto;
+    min-height: 38px;
+    padding: 7px 10px;
+    font-size: 0.72rem;
+  }
+
+  /* OWNER + MANAGER DASHBOARDS: four KPIs on one line, just like desktop. */
+  .mgmt-shell .live-dashboard__metrics,
+  .mgmt-shell .dashboard-page .dashboard-metrics,
+  .mgmt-shell .tech-dashboard__metrics,
+  .mgmt-shell .metric-grid,
+  .mgmt-shell .metric-grid-six,
+  .mgmt-shell .report-example-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+    min-width: 0;
+    margin-bottom: 8px;
+  }
+
+  .mgmt-shell .live-dashboard__metric,
+  .mgmt-shell .dashboard-page .dashboard-metric,
+  .mgmt-shell .tech-dashboard__metric,
+  .mgmt-shell .metric-card {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    min-width: 0;
+    min-height: 88px;
+    height: 100%;
+    padding: 9px 7px;
+    gap: 4px;
+    border-radius: 10px;
+  }
+
+  .mgmt-shell .live-dashboard__metric-top {
+    width: 100%;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .mgmt-shell .live-dashboard__metric-icon,
+  .mgmt-shell .dashboard-metric-icon,
+  .mgmt-shell .tech-dashboard__metric-icon,
+  .mgmt-shell .metric-card > svg {
+    position: static;
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+    width: 24px;
+    height: 24px;
+    padding: 5px;
+    border-radius: 7px;
+  }
+
+  .mgmt-shell .live-dashboard__metric-icon svg,
+  .mgmt-shell .dashboard-metric-icon svg,
+  .mgmt-shell .tech-dashboard__metric-icon svg,
+  .mgmt-shell .metric-card > svg {
+    width: 14px;
+    height: 14px;
+    padding: 0;
+  }
+
+  .mgmt-shell .live-dashboard__metric-link,
+  .mgmt-shell .dashboard-metric-arrow {
+    position: static;
+    min-width: 24px;
+    min-height: 24px;
+  }
+  .mgmt-shell .live-dashboard__metric-link svg,
+  .mgmt-shell .dashboard-metric-arrow svg {
+    width: 13px;
+    height: 13px;
+  }
+
+  .mgmt-shell .live-dashboard__metric-label,
+  .mgmt-shell .dashboard-page .dashboard-metric-label,
+  .mgmt-shell .tech-dashboard__metric-label,
+  .mgmt-shell .metric-card span {
+    max-width: 100%;
+    min-width: 0;
+    color: #557487;
+    font-size: clamp(0.62rem, 2.35vw, 0.73rem);
+    font-weight: 750;
+    line-height: 1.2;
+    overflow-wrap: normal;
+    word-break: normal;
+  }
+
+  .mgmt-shell .live-dashboard__metric-number,
+  .mgmt-shell .dashboard-page .dashboard-metric-value,
+  .mgmt-shell .tech-dashboard__metric strong,
+  .mgmt-shell .metric-card b {
+    display: block;
+    max-width: 100%;
+    min-width: 0;
+    color: #123c56;
+    font-size: clamp(0.85rem, 3.4vw, 1.12rem);
+    font-weight: 850;
+    line-height: 1.2;
+    letter-spacing: -0.025em;
+    overflow-wrap: anywhere;
+  }
+
+  /* The same data remains in its destination page; descriptions on KPI
+     tiles are secondary and take too much space on 4-column phones. */
+  .mgmt-shell .live-dashboard__metric-description,
+  .mgmt-shell .tech-dashboard__metric small {
+    display: none;
+  }
+
+  /* Dashboard charts and activity panels retain side-by-side composition.
+     Their scroll viewport shows a peek of the next panel on phones. */
+  .mgmt-shell .live-dashboard__columns,
+  .mgmt-shell .live-dashboard__columns-bottom,
+  .mgmt-shell .dashboard-page .dashboard-chart-grid,
+  .mgmt-shell .dashboard-page .dashboard-panels {
+    display: flex;
+    align-items: stretch;
+    gap: 9px;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x proximity;
+    scrollbar-width: thin;
+    overscroll-behavior-x: contain;
+    padding: 2px 2px 12px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .mgmt-shell .live-dashboard__columns > *,
+  .mgmt-shell .dashboard-page .dashboard-chart-grid > *,
+  .mgmt-shell .dashboard-page .dashboard-panels > * {
+    flex: 0 0 min(82%, 390px);
+    width: min(82%, 390px);
+    max-width: none;
+    min-width: 0;
+    scroll-snap-align: start;
+  }
+  .mgmt-shell .live-dashboard__panel,
+  .mgmt-shell .dashboard-page .dashboard-chart-card {
+    padding: 12px;
+  }
+
+  /* POS: do NOT pile Product Selection, Checkout and other panels into
+     a long vertical page. Keep the desktop left/right relationship, allow
+     a sideways swipe when the form needs more width than a phone provides. */
+  .mgmt-shell .pos-product-page > .pos-product-columns,
+  .mgmt-shell .pos-page-shell .sales-columns,
+  .mgmt-shell .pos-walkin-page .pos-walkin-layout,
+  .mgmt-shell .pos-layout,
+  .mgmt-shell .pos-layout-full {
+    display: grid;
+    grid-template-columns: minmax(265px, 1fr) minmax(285px, 1fr);
+    align-items: start;
+    gap: 9px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+    padding: 2px 1px 12px;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+  }
+  .mgmt-shell .pos-product-columns > .sales-panel,
+  .mgmt-shell .pos-page-shell .sales-columns > *,
+  .mgmt-shell .pos-walkin-page .pos-walkin-layout > *,
+  .mgmt-shell :is(.pos-layout, .pos-layout-full) > * {
+    min-width: 0;
+    width: auto;
+    scroll-snap-align: start;
+  }
+  .mgmt-shell .pos-products-panel .pos-quick-products__list,
+  .mgmt-shell .pos-product-grid,
+  .mgmt-shell .sales-products {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+  }
+  .mgmt-shell .pos-quick-product {
+    padding: 8px;
+  }
+  .mgmt-shell .pos-product-columns .sales-panel,
+  .mgmt-shell .pos-walkin-page .sales-panel {
+    padding: 10px;
+  }
+
+  /* Payments, Facebook Requests, Orders, Services and inventory:
+     restore their DESKTOP table header and rows on phones. Wide tables
+     scroll within their own panel, never make the whole page overflow. */
+  .mgmt-shell
+    :is(
+      .wsm-overflow,
+      .sales-table-scroll,
+      .responsive-table,
+      .mgmt-table-scroll,
+      .table-scroll
+    ) {
+    display: block;
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: auto !important;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  .mgmt-shell .mgmt-main table {
+    display: table !important;
+    width: 100%;
+    min-width: 650px;
+    border-collapse: collapse;
+  }
+  .mgmt-shell .mgmt-main table thead {
+    display: table-header-group !important;
+  }
+  .mgmt-shell .mgmt-main table tbody {
+    display: table-row-group !important;
+  }
+  .mgmt-shell .mgmt-main table tr {
+    display: table-row !important;
+    width: auto;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background: transparent;
+  }
+  .mgmt-shell .mgmt-main table th,
+  .mgmt-shell .mgmt-main table td {
+    display: table-cell !important;
+    width: auto;
+    min-width: 0;
+    max-width: 280px;
+    padding: 10px 9px;
+    border: 0;
+    border-bottom: 1px solid #e4edf2;
+    vertical-align: middle;
+    font-size: 0.75rem;
+    line-height: 1.35;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .mgmt-shell .mgmt-main table th {
+    color: #4a6d82;
+    font-weight: 850;
+    background: #f2f8fb;
+    white-space: nowrap;
+  }
+  .mgmt-shell .mgmt-main table td::before {
+    display: none !important;
+    content: none !important;
+  }
+  .mgmt-shell .mgmt-main table .wsm-row-actions,
+  .mgmt-shell .mgmt-main table .action-row {
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    gap: 5px;
+  }
+  .mgmt-shell .mgmt-main table :is(.wsm-row-action, .sales-small-action) {
+    width: auto;
+    min-height: 36px;
+    padding: 6px 9px;
+    white-space: nowrap;
+  }
+  .mgmt-shell .mgmt-main table .wsm-status,
+  .mgmt-shell .mgmt-main table .sales-pill {
+    display: inline-flex;
+    width: max-content;
+    white-space: nowrap;
+    word-break: normal;
+  }
+  .mgmt-shell .wsm-top-actions,
+  .mgmt-shell .wsm-table-tools {
+    width: auto;
+  }
+  .mgmt-shell .wsm-top-actions > button,
+  .mgmt-shell .wsm-table-tools > button {
+    flex: 0 0 auto;
+    width: auto;
+  }
+  .mgmt-shell .wsm-table-head,
+  .mgmt-shell .sales-section-head,
+  .mgmt-shell .mgmt-page-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  /* List summaries should resemble the desktop layout, not full-width tiles. */
+  .mgmt-shell .sales-summary-cards,
+  .mgmt-shell .wsm-sentiment-grid,
+  .mgmt-shell .av-notification-center__stock-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+  }
+  .mgmt-shell .sales-summary-cards > .sales-panel {
+    padding: 10px;
+  }
+  .mgmt-shell .sales-summary-cards strong {
+    font-size: clamp(0.9rem, 3.7vw, 1.2rem);
+  }
+
+  /* Archive and technician retain multi-column cards with Details/Restore. */
+  .mgmt-shell
+    :is(
+      .archive-list,
+      .av-archive-grid,
+      .av-technician-work .av-technician-work__list
+    ) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
+    gap: 7px;
+  }
+  .mgmt-shell :is(.archive-record, .av-archive-card, .av-job-card) {
+    min-width: 0;
+    height: 100%;
+    padding: 9px;
+    border-radius: 10px;
+  }
+  .mgmt-shell .archive-overview,
+  .mgmt-shell .av-archive-summary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .mgmt-shell .archive-record__facts {
+    grid-template-columns: 1fr;
+  }
+  .mgmt-shell .av-archive-card-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+  .mgmt-shell .av-archive-card-actions button {
+    min-height: 38px;
+  }
+
+  .mgmt-shell .av-agenda-alert {
+    min-height: 0;
+  }
+  .mgmt-shell :is(.wsm-panel, .sales-panel, .mgmt-panel, .archive-library) {
+    min-width: 0;
+    padding: 10px;
+  }
+}
+
+/* Extremely narrow phones: keep 4 KPI columns in a short swipeable strip
+   rather than making text 8px tall or reducing everything to one column. */
+@media (max-width: 350px) {
+  .mgmt-shell .live-dashboard__metrics,
+  .mgmt-shell .dashboard-page .dashboard-metrics,
+  .mgmt-shell .tech-dashboard__metrics,
+  .mgmt-shell .metric-grid,
+  .mgmt-shell .metric-grid-six,
+  .mgmt-shell .report-example-grid {
+    grid-template-columns: repeat(4, minmax(80px, 1fr));
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+    padding-bottom: 6px;
+  }
+  .mgmt-shell .live-dashboard__metric-number,
+  .mgmt-shell .dashboard-page .dashboard-metric-value,
+  .mgmt-shell .tech-dashboard__metric strong,
+  .mgmt-shell .metric-card b {
+    font-size: 0.9rem;
+  }
+}
+
+@media (min-width: 761px) and (max-width: 1024px) {
+  /* On tablets, use the genuine desktop multi-panel layout where possible. */
+  .mgmt-shell .live-dashboard__columns,
+  .mgmt-shell .live-dashboard__columns-bottom {
+    display: grid;
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+    gap: 12px;
+  }
+  .mgmt-shell .dashboard-page .dashboard-chart-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mgmt-shell
+    :is(
+      .live-dashboard__columns,
+      .pos-product-columns,
+      .pos-walkin-layout,
+      .sales-columns
+    ) {
+    scroll-behavior: auto;
+  }
+}

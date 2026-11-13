@@ -111,7 +111,7 @@ export default function TechnicianDashboard({
         <Link to="/management/schedules">View my schedules</Link>
       </div>
 
-      <TechnicianAssignedJobsPanel limit={8} />
+      <TechnicianAssignedJobsPanel limit={6} />
 
       <p className="tech-dashboard__footnote">
         {generatedAt

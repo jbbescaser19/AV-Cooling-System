@@ -1,36 +1,24 @@
-/* POS: show both locations for actual aircon relocation only. */
+/* Walk-in relocation uses two clear, independent addresses. */
 .pos-walkin-page .pos-walkin-location-help {
-  margin: 0;
-  padding: 11px 13px;
-  border: 1px solid #cce6f1;
+  margin: -3px 0 6px;
+  padding: 9px 12px;
+  border: 1px solid #cce2ea;
   border-radius: 10px;
-  background: #f0f9fd;
-  color: #315c72;
-  font-size: 0.79rem;
-  line-height: 1.55;
-}
-.pos-walkin-page .pos-walkin-address-row {
-  align-items: start;
-  gap: 10px;
-}
-.pos-walkin-page .pos-walkin-address-row strong {
-  min-width: 0;
-  max-width: 65%;
+  background: #f0f9fc;
+  color: #3a6477;
+  font-size: 0.78rem;
+  line-height: 1.45;
   overflow-wrap: anywhere;
-  white-space: normal;
-  text-align: right;
-  line-height: 1.5;
 }
-.pos-walkin-page .pos-walkin-fields textarea {
-  max-width: 100%;
+.pos-walkin-page .pos-walkin-success__content {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.pos-walkin-page .pos-walkin-fields .pos-walkin-field {
+  min-width: 0;
+}
+.pos-walkin-page .pos-walkin-fields .pos-walkin-field textarea {
+  width: 100%;
+  min-width: 0;
   box-sizing: border-box;
-}
-@media (max-width: 540px) {
-  .pos-walkin-page .pos-walkin-address-row {
-    flex-wrap: wrap;
-  }
-  .pos-walkin-page .pos-walkin-address-row strong {
-    max-width: 100%;
-    text-align: left;
-  }
 }

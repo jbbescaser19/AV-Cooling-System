@@ -279,7 +279,7 @@ export const workspaceConfig = {
   feedback: {
     title: "Customer Feedback",
     description:
-      "Real reviews, automatic estimated sentiment, and private staff responses. Reviews remain customer-controlled.",
+      "Read customer reviews, check estimated sentiment, and reply privately to the original customer in My Account → Feedback.",
     columns: [
       ["customer", "Customer"],
       ["rating", "Rating"],
@@ -289,12 +289,17 @@ export const workspaceConfig = {
       ["publicReview", "Public consent"],
       ["staffReply", "Staff response"],
     ],
-    update: [note("staffReply", "Private staff response")],
+    update: [
+      note(
+        "staffReply",
+        "Reply visible to this customer in My Account → Feedback",
+      ),
+    ],
   },
   "facebook-requests": {
     title: "Facebook Agreements",
     description:
-      "Record Facebook agreements manually. Confirm the contact, selected product or service, and schedule with the customer.",
+      "Staff manually records Messenger agreements. This page does not read Facebook messages automatically.",
     columns: [
       ["reference", "Reference"],
       ["customer", "Customer"],
@@ -335,6 +340,12 @@ export const workspaceConfig = {
         nullable: true,
         required: false,
       },
+      text(
+        "conversationUrl",
+        "Optional Messenger conversation link",
+        false,
+        500,
+      ),
       note("notes", "What was agreed with the customer"),
     ],
     update: [
@@ -345,11 +356,15 @@ export const workspaceConfig = {
   reports: {
     title: "Revenue Reports",
     description:
-      "Paid payment totals for the last 12 months. Export exactly the records returned by MySQL.",
+      "Last 12 months of verified paid product orders and services. Pending payments and refunds are not counted. Revenue is not profit.",
     columns: [
       ["period", "Month"],
-      ["payments", "Paid payments"],
-      ["revenue", "Recorded cash revenue"],
+      ["paidOrders", "Paid orders"],
+      ["paidServices", "Paid services"],
+      ["payments", "Total paid transactions"],
+      ["orderRevenue", "Product revenue"],
+      ["serviceRevenue", "Service revenue"],
+      ["revenue", "Total paid revenue"],
     ],
   },
   notifications: {

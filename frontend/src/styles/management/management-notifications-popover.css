@@ -1,0 +1,107 @@
+/* The top-bar bell is the single notification entry point. */
+.av-notify-wrap {
+  position: relative;
+  display: flex;
+  flex: 0 0 auto;
+  z-index: 110;
+}
+/* The old icon-button rules targeted only direct top-bar children. */
+.av-notify-wrap > .mgmt-notification-link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid #c8dae5;
+  border-radius: 11px;
+  background: #fff;
+  color: #1c4a62;
+  cursor: pointer;
+}
+.av-notify-wrap > .mgmt-notification-link:hover,
+.av-notify-wrap > .mgmt-notification-link[aria-expanded="true"] {
+  background: #e9f5f9;
+  border-color: #8fc8db;
+}
+.av-notify-wrap > .mgmt-notification-link:focus-visible {
+  outline: 3px solid #2295b7;
+  outline-offset: 2px;
+}
+.av-notify-popover {
+  position: absolute;
+  z-index: 111;
+  top: calc(100% + 12px);
+  right: 0;
+  width: min(360px, calc(100vw - 22px));
+  max-height: min(66vh, 470px);
+  overflow-y: auto;
+  padding: 12px;
+  border: 1px solid #cadfe9;
+  border-radius: 15px;
+  background: #fff;
+  color: #153c51;
+  box-shadow: 0 18px 50px rgb(7 27 47 / 20%);
+}
+.av-notify-popover__head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+  padding: 4px 4px 10px;
+}
+.av-notify-popover__head strong {
+  font-size: 0.96rem;
+}
+.av-notify-popover__head button {
+  background: #edf5f8;
+  border: 0;
+  border-radius: 8px;
+  width: 34px;
+  height: 34px;
+  font-size: 1.3rem;
+  cursor: pointer;
+}
+.av-notify-popover__item {
+  display: grid;
+  gap: 4px;
+  padding: 11px 5px;
+  border-top: 1px solid #e4edf1;
+  min-width: 0;
+}
+.av-notify-popover__item strong {
+  font-size: 0.81rem;
+  overflow-wrap: anywhere;
+}
+.av-notify-popover__item span {
+  font-size: 0.76rem;
+  line-height: 1.43;
+  color: #5b7586;
+  overflow-wrap: anywhere;
+}
+.av-notify-popover__empty {
+  padding: 12px 4px;
+  font-size: 0.83rem;
+  color: #5b7586;
+}
+.av-notify-popover__all {
+  display: block;
+  padding: 11px;
+  margin-top: 8px;
+  border-radius: 10px;
+  text-align: center;
+  color: #08678a;
+  background: #eaf6fa;
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+@media (max-width: 760px) {
+  .av-notify-wrap {
+    position: static;
+  }
+  .av-notify-popover {
+    top: calc(100% + 4px);
+    right: 10px;
+  }
+}

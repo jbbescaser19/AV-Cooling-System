@@ -64,7 +64,7 @@ export default function OrderConfirmationPage() {
                   </div>
                 ))}
                 <div className="checkout-confirmation-total">
-                  <span>Product total</span>
+                  <span>Order total (including delivery)</span>
                   <strong>{money(order.total)}</strong>
                 </div>
               </div>
@@ -72,7 +72,7 @@ export default function OrderConfirmationPage() {
                 Your order is pending store confirmation.{" "}
                 {order.paymentCode === "CASH"
                   ? "Cash has not been collected."
-                  : `Selected payment: ${order.paymentMethod}. Use the store-verified payment details from checkout and report the transaction reference in Account → Payments. The order remains unpaid until staff confirms funds.`}
+                  : `Selected payment: ${order.paymentMethod}. Wait for store confirmation, then visit My Account → Payments for the receiving details and to report your transfer reference. Never share your PIN or OTP. Payment remains PENDING until the store verifies funds.`}
               </p>
             </>
           )}

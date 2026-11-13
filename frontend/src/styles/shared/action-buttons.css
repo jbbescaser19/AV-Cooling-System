@@ -1,0 +1,585 @@
+/*
+ * AV Cooling — shared action-button design.
+ * The My Orders button is the visual reference for customer and staff actions.
+ * These rules are intentionally scoped; product purchase buttons, calendars,
+ * quantity steppers, navigation icons, and form inputs keep their own controls.
+ */
+
+.customer-shell,
+.mgmt-shell {
+  --av-action-ink: #095d81;
+  --av-action-border: #b9d8e5;
+  --av-action-soft: #eaf6fa;
+  --av-action-soft-hover: #d9eff7;
+  --av-action-solid: #124a6b;
+  --av-action-solid-hover: #0d3955;
+  --av-action-danger: #9f3440;
+  --av-action-danger-soft: #fff1f2;
+  --av-action-danger-border: #e6bdc3;
+}
+
+/* My Account: same size, weight, palette and icon spacing as My Orders. */
+.customer-shell
+  :is(
+    .customer-orders .order-button,
+    .customer-services-page .btn,
+    .customer-services-page .customer-service-view-button,
+    .customer-module .btn.btn-soft,
+    .customer-module .btn.btn-dark,
+    .customer-module .btn.btn-danger,
+    .av-address-card__set,
+    .av-address-card__delete,
+    .customer-feedback-refresh,
+    .notification-load-more,
+    .notification-confirm-delete
+  ) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  gap: 7px;
+  min-width: 0;
+  min-height: 40px;
+  padding: 8px 12px;
+  border-radius: 9px;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.3;
+  text-align: center;
+  text-decoration: none;
+  white-space: normal;
+  overflow-wrap: break-word;
+  cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease,
+    box-shadow 150ms ease;
+  transform: none;
+}
+
+.customer-shell
+  :is(
+    .customer-orders .order-button,
+    .customer-services-page .btn,
+    .customer-services-page .customer-service-view-button,
+    .customer-module .btn,
+    .av-address-card__set,
+    .av-address-card__delete
+  )
+  > svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  stroke-width: 2;
+}
+
+.customer-shell
+  :is(
+    .customer-orders .order-button--secondary,
+    .customer-services-page .btn.btn-soft,
+    .customer-services-page .customer-service-view-button,
+    .customer-module .btn.btn-soft,
+    .av-address-card__set,
+    .customer-feedback-refresh,
+    .notification-load-more
+  ) {
+  color: var(--av-action-ink);
+  background: var(--av-action-soft);
+  border: 1px solid var(--av-action-border);
+}
+
+.customer-shell
+  :is(
+    .customer-orders .order-button--secondary,
+    .customer-services-page .btn.btn-soft,
+    .customer-services-page .customer-service-view-button,
+    .customer-module .btn.btn-soft,
+    .av-address-card__set,
+    .customer-feedback-refresh,
+    .notification-load-more
+  ):hover:not(:disabled) {
+  color: var(--av-action-ink);
+  background: var(--av-action-soft-hover);
+  border-color: #79b8ce;
+  transform: none;
+}
+
+.customer-shell
+  :is(
+    .customer-orders .order-button--primary,
+    .customer-services-page .btn.btn-dark,
+    .customer-module .btn.btn-dark
+  ) {
+  color: #fff;
+  background: var(--av-action-solid);
+  border: 1px solid var(--av-action-solid);
+}
+
+.customer-shell
+  :is(
+    .customer-orders .order-button--primary,
+    .customer-services-page .btn.btn-dark,
+    .customer-module .btn.btn-dark
+  ):hover:not(:disabled) {
+  color: #fff;
+  background: var(--av-action-solid-hover);
+  border-color: var(--av-action-solid-hover);
+  transform: none;
+}
+
+.customer-shell
+  :is(
+    .customer-orders .order-button--danger,
+    .customer-services-page .btn.btn-danger,
+    .customer-module .btn.btn-danger,
+    .av-address-card__delete
+  ) {
+  color: var(--av-action-danger);
+  background: var(--av-action-danger-soft);
+  border: 1px solid var(--av-action-danger-border);
+}
+
+.customer-shell
+  :is(
+    .customer-orders .order-button--danger,
+    .customer-services-page .btn.btn-danger,
+    .customer-module .btn.btn-danger,
+    .av-address-card__delete
+  ):hover:not(:disabled) {
+  color: #832732;
+  background: #ffe3e6;
+  border-color: #dca3ad;
+  transform: none;
+}
+
+.customer-shell .customer-orders .order-button--danger-solid {
+  color: #fff;
+  background: #a73541;
+  border: 1px solid #a73541;
+}
+
+.customer-shell
+  .customer-orders
+  .order-button--danger-solid:hover:not(:disabled) {
+  color: #fff;
+  background: #872733;
+  border-color: #872733;
+  transform: none;
+}
+
+.customer-shell .notification-confirm-delete {
+  background: #a73541;
+  border: 1px solid #a73541;
+  color: #fff;
+}
+
+/* My Services dialogs use the same action row as My Orders details. */
+.customer-shell .customer-service-dialog-actions {
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.customer-shell .customer-service-dialog-actions > .btn {
+  min-height: 44px;
+}
+
+.customer-shell .customer-service-desktop-buttons {
+  gap: 7px;
+}
+
+.customer-shell .customer-service-desktop-buttons .btn {
+  min-height: 38px;
+  padding: 7px 11px;
+}
+
+/* Management: Orders' outlined View/Manage button is the shared standard. */
+.mgmt-shell
+  :is(
+    .sales-refresh,
+    .sales-small-action,
+    .wsm-secondary,
+    .staff-action-btn,
+    .staff-cancel-btn,
+    .archive-clear-button,
+    .archive-restore-button,
+    .install-history__details-button,
+    .install-history__head button,
+    .install-history__pagination button,
+    .install-history__filter-footer button,
+    .av-management-pages button,
+    .tech-dashboard__refresh,
+    .management-operations .ops-secondary,
+    .btn.btn-soft,
+    .sales-product-bottom button
+  ) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-width: 0;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid #c5dce8;
+  border-radius: 9px;
+  background: #eaf6fa;
+  color: #146486;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.3;
+  text-align: center;
+  text-decoration: none;
+  white-space: normal;
+  cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease,
+    box-shadow 150ms ease;
+  transform: none;
+}
+
+.mgmt-shell
+  :is(
+    .sales-refresh,
+    .sales-small-action,
+    .wsm-secondary,
+    .staff-action-btn,
+    .staff-cancel-btn,
+    .archive-clear-button,
+    .archive-restore-button,
+    .install-history__details-button,
+    .install-history__head button,
+    .install-history__pagination button,
+    .install-history__filter-footer button,
+    .av-management-pages button,
+    .tech-dashboard__refresh,
+    .management-operations .ops-secondary,
+    .btn.btn-soft,
+    .sales-product-bottom button
+  ):hover:not(:disabled) {
+  border-color: #7bbcd3;
+  background: #d9eff7;
+  color: #0c5374;
+  transform: none;
+}
+
+.mgmt-shell
+  :is(
+    .sales-primary,
+    .wsm-primary,
+    .staff-primary-btn,
+    .pos-walkin-page .pos-book-submit,
+    .management-operations .ops-primary,
+    .action-primary,
+    .btn.btn-dark
+  ) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 9px 14px;
+  border: 1px solid #145e80;
+  border-radius: 9px;
+  background: #145e80;
+  color: #fff;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 800;
+  line-height: 1.3;
+  text-align: center;
+  text-decoration: none;
+  white-space: normal;
+  cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease,
+    box-shadow 150ms ease;
+  transform: none;
+}
+
+.mgmt-shell
+  :is(
+    .sales-primary,
+    .wsm-primary,
+    .staff-primary-btn,
+    .pos-walkin-page .pos-book-submit,
+    .management-operations .ops-primary,
+    .action-primary,
+    .btn.btn-dark
+  ):hover:not(:disabled) {
+  background: #0d4867;
+  border-color: #0d4867;
+  color: #fff;
+  transform: none;
+}
+
+.mgmt-shell
+  :is(.sales-danger, .btn.btn-danger, .management-operations .ops-danger) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 42px;
+  padding: 9px 13px;
+  border: 1px solid #e3b8be;
+  border-radius: 9px;
+  background: #fff1f2;
+  color: #963a44;
+  font: inherit;
+  font-size: 0.79rem;
+  font-weight: 800;
+  line-height: 1.3;
+  cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease;
+  transform: none;
+}
+
+.mgmt-shell
+  :is(
+    .sales-danger,
+    .btn.btn-danger,
+    .management-operations .ops-danger
+  ):hover:not(:disabled) {
+  background: #ffe0e5;
+  border-color: #dca3ac;
+  transform: none;
+}
+
+/* Add a small directional icon to older table actions that are still text-only. */
+.mgmt-shell
+  :is(.sales-small-action, .staff-action-btn, .wsm-row-action):not(
+    :has(svg)
+  )::after {
+  content: "";
+  display: inline-block;
+  flex: 0 0 15px;
+  width: 15px;
+  height: 15px;
+  background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12h14m-7-7 7 7-7 7'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12h14m-7-7 7 7-7 7'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+}
+
+/* Confirm/submit buttons get a check icon if no explicit Lucide icon exists. */
+.mgmt-shell :is(.sales-primary, .wsm-primary):not(:has(svg))::before {
+  content: "";
+  display: inline-block;
+  flex: 0 0 15px;
+  width: 15px;
+  height: 15px;
+  background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12 5 5L20 7'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12 5 5L20 7'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+}
+
+/* On dark management headers, maintain high contrast. */
+.mgmt-shell .wsm-head :is(.wsm-primary, .wsm-secondary),
+.mgmt-shell .sales-hero .sales-refresh {
+  border-color: #d7edf6;
+  background: #fff;
+  color: #164f6b;
+}
+
+.mgmt-shell .wsm-head :is(.wsm-primary, .wsm-secondary):hover:not(:disabled),
+.mgmt-shell .sales-hero .sales-refresh:hover:not(:disabled) {
+  background: #ddf3fb;
+  border-color: #9bcddd;
+  color: #0e4f70;
+}
+
+/* Small table actions should match Orders but not fill an entire table cell. */
+.mgmt-shell :is(.sales-small-action, .wsm-row-action, .staff-action-btn) {
+  min-height: 38px;
+  padding: 7px 11px;
+  white-space: nowrap;
+}
+
+.mgmt-shell :is(.sales-small-action, .wsm-row-action, .staff-action-btn) svg,
+.mgmt-shell
+  :is(
+    .sales-refresh,
+    .wsm-secondary,
+    .wsm-primary,
+    .sales-primary,
+    .staff-primary-btn
+  )
+  svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+}
+
+/* Links styled as actions (for example, a converted Facebook request). */
+.mgmt-shell a.wsm-primary,
+.mgmt-shell a.wsm-secondary {
+  text-decoration: none;
+}
+
+/* Don't let older page rules make icon-only close buttons inconsistent. */
+.mgmt-shell
+  :is(
+    .wsm-close,
+    .staff-close-btn,
+    .install-history__modal-close,
+    .av-tech-detail-close
+  ) {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+  min-height: 40px;
+  padding: 0;
+  border: 1px solid #c5dce8;
+  border-radius: 9px;
+  background: #eaf6fa;
+  color: #146486;
+  cursor: pointer;
+  transition: background-color 150ms ease;
+  transform: none;
+}
+
+.mgmt-shell
+  :is(
+    .wsm-close,
+    .staff-close-btn,
+    .install-history__modal-close,
+    .av-tech-detail-close
+  ):hover:not(:disabled) {
+  background: #d9eff7;
+  transform: none;
+}
+
+/* React portals mount to document.body, outside ManagementLayout. */
+.wsm-backdrop :is(.wsm-primary, .wsm-secondary),
+.install-history__overlay .install-history__modal-footer button {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 7px;
+  min-height: 42px;
+  padding: 9px 13px;
+  border: 1px solid #c5dce8;
+  border-radius: 9px;
+  background: #eaf6fa;
+  color: #146486;
+  font: inherit;
+  font-size: 0.79rem;
+  font-weight: 800;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.wsm-backdrop .wsm-primary {
+  border-color: #145e80;
+  background: #145e80;
+  color: #fff;
+}
+
+.wsm-backdrop .wsm-primary:hover:not(:disabled) {
+  border-color: #0d4867;
+  background: #0d4867;
+}
+
+.wsm-backdrop .wsm-secondary:hover:not(:disabled),
+.install-history__overlay
+  .install-history__modal-footer
+  button:hover:not(:disabled) {
+  background: #d9eff7;
+  border-color: #7bbcd3;
+}
+
+.wsm-backdrop .wsm-close,
+.install-history__overlay .install-history__modal-close {
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid #c5dce8;
+  border-radius: 9px;
+  background: #eaf6fa;
+  color: #146486;
+  cursor: pointer;
+}
+
+.wsm-backdrop :is(button, a):focus-visible,
+.install-history__overlay :is(button, a):focus-visible {
+  outline: 3px solid #35a5ca;
+  outline-offset: 3px;
+}
+
+/* Shared accessibility and disabled styling. */
+:is(.customer-shell, .mgmt-shell) :is(button, a):disabled,
+:is(.customer-shell, .mgmt-shell) button[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+:is(.customer-shell, .mgmt-shell) :is(button, a):focus-visible {
+  outline: 3px solid #35a5ca;
+  outline-offset: 3px;
+}
+
+@media (max-width: 760px) {
+  .customer-shell .customer-service-dialog-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+  }
+
+  .customer-shell .customer-service-dialog-actions > .btn {
+    min-width: 0;
+    min-height: 44px;
+    padding: 9px 7px;
+    font-size: 0.76rem;
+  }
+
+  /* When there are 3+ actions, the final Close Details row is easy to find. */
+  .customer-shell
+    .customer-service-dialog-actions:has(> button:nth-child(3))
+    > button:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .mgmt-shell :is(.sales-small-action, .wsm-row-action, .staff-action-btn) {
+    min-height: 40px;
+  }
+}
+
+@media (max-width: 360px) {
+  .customer-shell .customer-service-dialog-actions > .btn {
+    gap: 5px;
+    font-size: 0.72rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .customer-shell :is(.order-button, .btn, .customer-service-view-button),
+  .mgmt-shell
+    :is(
+      .sales-small-action,
+      .wsm-primary,
+      .wsm-secondary,
+      .sales-primary,
+      .sales-refresh
+    ) {
+    transition: none;
+  }
+}

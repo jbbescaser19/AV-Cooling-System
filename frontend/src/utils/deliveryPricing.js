@@ -22,59 +22,59 @@ export function displayedDeliveryFee(code) {
   return area ? area[2] : null;
 }
 
-/** Complete a staff-entered address using its selected published delivery zone. */
-export function completeDeliveryAddress(address, areaCode) {
-  const typed = String(address || "").trim();
-  const area = DELIVERY_AREAS.find(([code]) => code === areaCode);
-  if (!typed || !area) return typed;
-  const [city, province] = area[1].split(", ");
-  const hasCity = includesPlace(typed, city);
-  const hasProvince = includesPlace(typed, province);
-  if (hasCity && hasProvince) return typed;
-  if (hasCity) return `${typed}, ${province}`;
-  if (hasProvince) return `${typed}, ${city}`;
-  return `${typed}, ${city}, ${province}`;
-}
-
-function normalizePlace(text) {
-  return String(text || "")
+function normalizedPlace(value) {
+  return String(value || "")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
 }
-
-function includesPlace(address, place) {
-  return ` ${normalizePlace(address)} `.includes(` ${normalizePlace(place)} `);
+function containsPlace(address, place) {
+  return ` ${normalizedPlace(address)} `.includes(
+    ` ${normalizedPlace(place)} `,
+  );
 }
 
-/** Do not auto-append a selected area over a conflicting explicit address. */
+// Use the destination the customer typed, plus the chosen delivery zone.
+// The backend still validates the zone and calculates the true price.
+export function completeDeliveryAddress(address, areaCode) {
+  const input = String(address || "").trim();
+  const area = DELIVERY_AREAS.find(([code]) => code === areaCode);
+  if (!input || !area) return input;
+  const [city, province] = area[1].split(", ");
+  const hasCity = containsPlace(input, city);
+  const hasProvince = containsPlace(input, province);
+  if (hasCity && hasProvince) return input;
+  if (hasCity) return `${input}, ${province}`;
+  if (hasProvince) return `${input}, ${city}`;
+  return `${input}, ${city}, ${province}`;
+}
+
+// Do not silently append Calamba over an address explicitly stating another area.
 export function deliveryAddressConflict(address, areaCode) {
   const area = DELIVERY_AREAS.find(([code]) => code === areaCode);
   if (!String(address || "").trim() || !area) return "";
-  const [, selectedLabel] = area;
-  const [selectedCity, selectedProvince] = selectedLabel.split(", ");
+  const [chosenCity, chosenProvince] = area[1].split(", ");
   const provinces = [
     ...new Set(DELIVERY_AREAS.map((item) => item[1].split(", ")[1])),
   ];
   const wrongProvince = provinces.find(
-    (province) =>
-      province !== selectedProvince && includesPlace(address, province),
+    (place) => place !== chosenProvince && containsPlace(address, place),
   );
   if (wrongProvince) {
-    return `Your address mentions ${wrongProvince}, but you selected ${selectedLabel}. Choose the correct delivery area.`;
+    return `Your address mentions ${wrongProvince}, but you selected ${area[1]}. Choose the correct delivery area.`;
   }
-  const otherArea = DELIVERY_AREAS.find(([code, label]) => {
+  const other = DELIVERY_AREAS.find(([code, label]) => {
     if (code === areaCode) return false;
     const [city, province] = label.split(", ");
     return (
-      includesPlace(address, city) &&
-      includesPlace(address, province) &&
-      (city !== selectedCity || province !== selectedProvince)
+      containsPlace(address, city) &&
+      containsPlace(address, province) &&
+      (city !== chosenCity || province !== chosenProvince)
     );
   });
-  return otherArea
-    ? `Your address mentions ${otherArea[1]}, but you selected ${selectedLabel}. Choose the correct delivery area.`
+  return other
+    ? `Your address mentions ${other[1]}, but you selected ${area[1]}. Choose the correct delivery area.`
     : "";
 }

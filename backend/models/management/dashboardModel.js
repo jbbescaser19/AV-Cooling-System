@@ -4,6 +4,17 @@
  */
 export function dashboardModel(db) {
   return {
+    async feedbackSentimentSummary() {
+      const [rows] = await db.execute(
+        `SELECT COUNT(*) AS total,
+                SUM(CASE WHEN sentiment='POSITIVE' THEN 1 ELSE 0 END) AS positive,
+                SUM(CASE WHEN sentiment='NEUTRAL' THEN 1 ELSE 0 END) AS neutral,
+                SUM(CASE WHEN sentiment='NEGATIVE' THEN 1 ELSE 0 END) AS negative,
+                SUM(CASE WHEN sentiment='NOT_ANALYZED' OR sentiment IS NULL THEN 1 ELSE 0 END) AS unanalyzed
+         FROM feedback`,
+      );
+      return rows[0] || {};
+    },
     async orderSummary() {
       const [rows] = await db.execute(
         `SELECT

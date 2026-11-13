@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { UserRound } from "lucide-react";
 
 import api from "../../../api/api.js";
+import useRealtimeRefresh from "../../hooks/useRealtimeRefresh.js";
 import CustomerPageHeader from "../../components/customer/CustomerPageHeader";
 import CustomerStatusBadge from "../../components/customer/CustomerStatusBadge";
 
@@ -13,6 +14,7 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [retry, setRetry] = useState(0);
+  useRealtimeRefresh(["customers"], setRetry);
 
   useEffect(() => {
     /**

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import api from "../../../api/api.js";
+import useRealtimeRefresh from "../../hooks/useRealtimeRefresh.js";
 import "../../styles/management/booking-calendar.css";
 
 const manilaMonth = () =>
@@ -38,6 +39,8 @@ export default function AvailabilityPicker({
   const [focusedDate, setFocusedDate] = useState(() => selectedDate || "");
 
   const [revision, setRevision] = useState(0);
+
+  useRealtimeRefresh(["schedules", "orders", "services", "jobs"], setRevision);
 
   useEffect(() => {
     const controller = new AbortController();

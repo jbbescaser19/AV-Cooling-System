@@ -11,7 +11,7 @@ export function feedbackModel(db) {
     },
     async listCustomerFeedback(id) {
       return select(
-        `SELECT f.feedback_id AS id,f.category,f.rating,f.comment,f.sentiment,f.allow_public_review AS allowPublicReview,DATE_FORMAT(f.created_at,'%Y-%m-%d %H:%i') AS createdAt,CASE WHEN o.order_id IS NOT NULL THEN CONCAT('Order ',o.order_number) WHEN sr.service_request_id IS NOT NULL THEN CONCAT(st.service_name,' #',sr.service_request_id) ELSE 'General feedback' END AS subjectLabel,CASE WHEN o.order_status='COMPLETED' OR sr.status='COMPLETED' THEN 1 ELSE 0 END AS canPublish FROM feedback f LEFT JOIN orders o ON o.order_id=f.order_id LEFT JOIN service_requests sr ON sr.service_request_id=f.service_request_id LEFT JOIN service_types st ON st.service_type_id=sr.service_type_id WHERE f.customer_id=? ORDER BY f.feedback_id DESC LIMIT 100`,
+        `SELECT f.feedback_id AS id,f.category,f.rating,f.comment,f.sentiment,f.allow_public_review AS allowPublicReview,f.staff_reply AS staffReply,DATE_FORMAT(f.created_at,'%Y-%m-%d %H:%i') AS createdAt,CASE WHEN o.order_id IS NOT NULL THEN CONCAT('Order ',o.order_number) WHEN sr.service_request_id IS NOT NULL THEN CONCAT(st.service_name,' #',sr.service_request_id) ELSE 'General feedback' END AS subjectLabel,CASE WHEN o.order_status='COMPLETED' OR sr.status='COMPLETED' THEN 1 ELSE 0 END AS canPublish FROM feedback f LEFT JOIN orders o ON o.order_id=f.order_id LEFT JOIN service_requests sr ON sr.service_request_id=f.service_request_id LEFT JOIN service_types st ON st.service_type_id=sr.service_type_id WHERE f.customer_id=? ORDER BY f.feedback_id DESC LIMIT 100`,
         [id],
       );
     },

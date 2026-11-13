@@ -21,8 +21,9 @@ export default function AboutPage() {
             workflow.
           </p>
           <p className="muted">
-            This current build is a frontend-only prototype prepared for a
-            future MERN backend.
+            Our E-commerce and Management modules connect through a secure
+            backend to a MySQL database for product, booking, and business
+            records.
           </p>
         </div>
       </div>

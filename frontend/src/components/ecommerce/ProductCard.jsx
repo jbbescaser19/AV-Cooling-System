@@ -1,45 +1,59 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Eye, FileText, ShoppingCart, Wind, Zap } from "lucide-react";
+
 import ProductPurchaseDialog from "./ProductPurchaseDialog";
 import api from "../../../api/api.js";
 import { addCartItem } from "../../utils/cartStore";
 import { getProductImage } from "../../utils/productImages";
+
 import {
   PENDING_ACTIONS,
   saveDirectCheckout,
   savePendingAction,
 } from "../../utils/purchaseFlow";
+
 import "../../styles/ecommerce/product-card.css";
 
 const peso = (value) => `₱${Number(value || 0).toLocaleString("en-PH")}`;
 
 export default function ProductCard({ product }) {
   const navigate = useNavigate();
+
   const [purchaseMode, setPurchaseMode] = useState(null);
   const [notice, setNotice] = useState("");
   const [failedImageSrc, setFailedImageSrc] = useState("");
 
   const image = getProductImage(product);
+
   const showPhoto = Boolean(image) && failedImageSrc !== image;
+
   const quotationOnly = Boolean(
     product.quotationOnly || !product.variants?.length,
   );
+
   const inStock = quotationOnly
     ? []
-    : product.variants.filter((v) => v.stock > 0);
+    : product.variants.filter((variant) => variant.stock > 0);
+
   const checking = !quotationOnly && product.stockStatus !== "ready";
+
   const outOfStock = !quotationOnly && !checking && inStock.length === 0;
+
   const canBuy = !quotationOnly && !checking && inStock.length > 0;
+
   const preview = canBuy
     ? inStock.reduce((a, b) => (b.price < a.price ? b : a))
     : product.variants?.[0];
+
   const savings = preview ? Math.max(0, preview.srp - preview.price) : 0;
+
   const discount = preview?.srp ? Math.round((savings / preview.srp) * 100) : 0;
 
   function handleAddToCart({ variant, quantity }) {
     try {
       addCartItem(product, variant, quantity);
+
       setPurchaseMode(null);
       setNotice("Added to cart.");
     } catch (error) {
@@ -48,20 +62,35 @@ export default function ProductCard({ product }) {
   }
 
   async function handleOrderNow({ variant, quantity }) {
-    if (!variant?.stock || variant.stock < quantity) return;
-    const intent = { productId: product.id, variant: variant.hp, quantity };
+    if (!variant?.stock || variant.stock < quantity) {
+      return;
+    }
+
+    const intent = {
+      productId: product.id,
+      variant: variant.hp,
+      quantity,
+    };
+
     try {
       await api.get("/api/auth/customer/session");
+
       saveDirectCheckout(intent);
       setPurchaseMode(null);
+
       navigate("/checkout");
     } catch (error) {
       if (error.response?.status === 401) {
-        savePendingAction({ type: PENDING_ACTIONS.ORDER_NOW, ...intent });
+        savePendingAction({
+          type: PENDING_ACTIONS.ORDER_NOW,
+          ...intent,
+        });
+
         setPurchaseMode(null);
         navigate("/login");
         return;
       }
+
       setNotice("Unable to verify your account. Please try again.");
     }
   }
@@ -73,12 +102,15 @@ export default function ProductCard({ product }) {
           {outOfStock && (
             <span className="product-out-stock-badge">Out of Stock</span>
           )}
+
           {!outOfStock && product.badge && (
             <span className="product-card-badge">{product.badge}</span>
           )}
+
           {!quotationOnly && !outOfStock && discount > 0 && (
             <span className="discount-badge">-{discount}%</span>
           )}
+
           {showPhoto ? (
             <img
               className={
@@ -95,14 +127,19 @@ export default function ProductCard({ product }) {
           ) : (
             <Wind size={68} aria-hidden="true" />
           )}
+
           <small>{product.category}</small>
         </div>
+
         <div className="product-body">
           <div className="product-brand">{product.brand}</div>
+
           <h3>{product.name}</h3>
+
           {quotationOnly ? (
             <>
               <div className="quotation-card-price">Subject for Quotation</div>
+
               <p className="product-note">
                 Commercial pricing depends on capacity and installation
                 requirements.
@@ -113,13 +150,19 @@ export default function ProductCard({ product }) {
               <div className="product-model">
                 Choose horsepower and quantity before purchasing.
               </div>
+
               <div className="price-block">
                 <span className="price-from">Starting from</span>
+
                 <strong>{peso(preview.price)}</strong>
+
                 <span className="srp">SRP {peso(preview.srp)}</span>
               </div>
+
               <p
-                className={`stock ${outOfStock ? "product-stock-unavailable" : ""}`}
+                className={`stock ${
+                  outOfStock ? "product-stock-unavailable" : ""
+                }`}
                 role="status"
               >
                 {checking
@@ -128,8 +171,11 @@ export default function ProductCard({ product }) {
                     : "Checking stock…"
                   : outOfStock
                     ? "Out of Stock — all horsepower options"
-                    : `${inStock.length} HP option${inStock.length === 1 ? "" : "s"} in stock`}
+                    : `${inStock.length} HP option${
+                        inStock.length === 1 ? "" : "s"
+                      } in stock`}
               </p>
+
               {notice && (
                 <p className="product-added-note" role="status">
                   {notice}
@@ -137,8 +183,11 @@ export default function ProductCard({ product }) {
               )}
             </>
           )}
+
           <div
-            className={`product-actions ${quotationOnly ? "" : "product-actions-purchase"}`}
+            className={`product-actions ${
+              quotationOnly ? "" : "product-actions-purchase"
+            }`}
           >
             <Link
               className="btn btn-soft product-view-action"
@@ -147,39 +196,55 @@ export default function ProductCard({ product }) {
               <Eye size={17} />
               <span>View Details</span>
             </Link>
+
             {quotationOnly ? (
               <Link className="btn btn-dark" to={`/shop/${product.id}`}>
                 <FileText size={17} />
                 <span>Request Quote</span>
               </Link>
+            ) : !canBuy ? (
+              <button
+                className="btn btn-dark product-unavailable-action"
+                type="button"
+                disabled
+                aria-label={
+                  outOfStock
+                    ? "Unavailable — out of stock"
+                    : "Checking product availability"
+                }
+              >
+                <span>
+                  {outOfStock ? "Unavailable" : "Checking availability"}
+                </span>
+              </button>
             ) : (
               <>
                 <button
                   className="btn btn-soft"
                   type="button"
-                  disabled={!canBuy}
                   onClick={() => {
                     setNotice("");
                     setPurchaseMode("cart");
                   }}
                 >
                   <ShoppingCart size={17} />
-                  <span>{outOfStock ? "Out of Stock" : "Add to Cart"}</span>
+                  <span>Add to Cart</span>
                 </button>
+
                 <button
                   className="btn btn-dark"
                   type="button"
-                  disabled={!canBuy}
                   onClick={() => setPurchaseMode("order")}
                 >
                   <Zap size={17} />
-                  <span>{outOfStock ? "Unavailable" : "Order Now"}</span>
+                  <span>Order Now</span>
                 </button>
               </>
             )}
           </div>
         </div>
       </article>
+
       {purchaseMode && canBuy && (
         <ProductPurchaseDialog
           product={product}

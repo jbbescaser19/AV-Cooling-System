@@ -1,0 +1,68 @@
+/* Visible on every account page, regardless of screen size. */
+
+.customer-nav-shell .customer-return-store-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: fit-content;
+  min-height: 38px;
+  max-width: 100%;
+  padding: 7px 12px;
+  margin-bottom: 18px;
+  border: 1px solid #b7d1e0;
+  border-radius: 9px;
+  background: #fff;
+  color: #174867;
+  font-size: 0.87rem;
+  font-weight: 750;
+  text-decoration: none;
+}
+
+.customer-nav-shell .customer-return-store-link:hover {
+  background: #ecf7fc;
+  border-color: #7eafca;
+}
+
+.customer-nav-shell .customer-return-store-link:focus-visible,
+.customer-nav-shell .customer-return-store-nav:focus-visible {
+  outline: 3px solid #3b99c2;
+  outline-offset: 2px;
+}
+
+.customer-nav-shell .customer-nav-panel nav .customer-return-store-nav {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 12px;
+  padding: 11px 10px;
+  border-top: 1px solid rgba(211, 235, 246, 0.2);
+  border-radius: 9px;
+  color: #9ae6f5;
+  font-size: 0.86rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.customer-nav-shell .customer-nav-panel nav .customer-return-store-nav:hover {
+  background: rgba(103, 232, 249, 0.12);
+  color: #fff;
+}
+
+@media (max-width: 1024px) {
+  .customer-nav-shell .customer-return-store-link {
+    margin-bottom: 14px;
+    min-height: 40px;
+  }
+
+  .customer-nav-shell .customer-nav-panel nav .customer-return-store-nav span {
+    display: inline;
+  }
+}
+
+@media (max-width: 420px) {
+  .customer-nav-shell .customer-return-store-link {
+    font-size: 0.82rem;
+    padding: 7px 10px;
+  }
+}

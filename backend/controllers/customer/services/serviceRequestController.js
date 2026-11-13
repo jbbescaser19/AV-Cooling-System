@@ -1,7 +1,5 @@
-import {
-  listMyServicePayments,
-  submitServiceTransfer,
-} from "../../../services/customer/services/servicePaymentService.js";
+import { listMyServicePayments } from "../../../services/customer/services/servicePaymentService.js";
+
 import {
   createServiceRequestService,
   getActiveServiceTypesService,
@@ -40,7 +38,11 @@ export async function getActiveServiceTypesController(req, res) {
 export async function getInstallationProductsController(req, res) {
   try {
     const products = await getInstallationProductsService(req.auth.userId);
-    return res.status(200).json({ success: true, products });
+
+    return res.status(200).json({
+      success: true,
+      products,
+    });
   } catch (error) {
     return sendError(res, error, "getInstallationProducts");
   }
@@ -49,7 +51,11 @@ export async function getInstallationProductsController(req, res) {
 export async function getCustomerAirconPurchasesController(req, res) {
   try {
     const purchases = await getCustomerAirconPurchasesService(req.auth.userId);
-    return res.status(200).json({ success: true, purchases });
+
+    return res.status(200).json({
+      success: true,
+      purchases,
+    });
   } catch (error) {
     return sendError(res, error, "getCustomerAirconPurchases");
   }
@@ -94,19 +100,5 @@ export async function listMyServicePaymentsController(req, res) {
     });
   } catch (error) {
     return sendError(res, error, "servicePayments");
-  }
-}
-export async function submitServiceTransferController(req, res) {
-  try {
-    return res.json({
-      success: true,
-      ...(await submitServiceTransfer(
-        req.auth.userId,
-        req.params.requestId,
-        req.body,
-      )),
-    });
-  } catch (error) {
-    return sendError(res, error, "serviceTransfer");
   }
 }

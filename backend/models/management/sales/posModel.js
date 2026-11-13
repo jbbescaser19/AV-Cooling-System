@@ -68,7 +68,8 @@ export function posModel(db) {
                     CAST(total_amount AS CHAR) AS total,
                     CAST(additional_fee_amount AS CHAR) AS additionalFee,
                     additional_fee_reason AS additionalFeeReason,
-                    payment_status AS paymentStatus
+                    payment_status AS paymentStatus,
+                    (SELECT payment_id FROM payments WHERE order_id=orders.order_id LIMIT 1) AS paymentId
              FROM orders WHERE order_number = ? AND created_by = ?
                AND order_channel = 'POS' LIMIT 1`,
         [orderNumber, staffId],
@@ -109,13 +110,14 @@ export function posModel(db) {
               discount_amount, delivery_fee, additional_fee_amount, additional_fee_reason,
               total_amount, recipient_name,
               contact_number, delivery_address, preferred_schedule, customer_notes, completed_at)
-             VALUES (?, ?, ?, 'POS', ?, 'PAID', ?, ?, ?, ?, ?, ?,
+             VALUES (?, ?, ?, 'POS', ?, ?, ?, ?, ?, ?, ?, ?,
                      ?, ?, ?, ?, ?, ?, ?)`,
         [
           data.orderNumber,
           data.staffId,
           data.methodId,
-          scheduled ? "CONFIRMED" : "COMPLETED",
+          scheduled || !data.paid ? "CONFIRMED" : "COMPLETED",
+          data.paid ? "PAID" : "PENDING",
           scheduled ? "DELIVERY" : "PICKUP",
           data.subtotal,
           data.discount,
@@ -127,15 +129,22 @@ export function posModel(db) {
           data.customerPhone,
           scheduled ? data.serviceAddress : null,
           scheduled ? `${data.scheduledStart.replace("T", " ")}:00` : null,
-          scheduled
-            ? data.installationIncluded
-              ? "Paid at POS; delivery and installation appointment requested"
-              : "Paid at POS; delivery appointment requested"
-            : "Paid cash at POS; take-home purchase",
-          scheduled ? null : new Date(),
+          data.paid
+            ? scheduled
+              ? "Cash paid; scheduled POS fulfillment"
+              : "Cash paid; take-home purchase"
+            : "PayMongo payment pending; do not release stock before provider confirmation",
+          data.paid && !scheduled ? new Date() : null,
         ],
       );
       return result.insertId;
+    },
+    async posPaymentId(orderId) {
+      const [rows] = await db.execute(
+        `SELECT payment_id AS id FROM payments WHERE order_id=? LIMIT 1`,
+        [orderId],
+      );
+      return rows[0]?.id || null;
     },
     async addItem(orderId, item) {
       await db.execute(
@@ -168,6 +177,7 @@ export function posModel(db) {
       staffId,
       scheduled = false,
       installationIncluded = false,
+      paid = true,
     ) {
       await db.execute(
         `INSERT INTO order_status_history
@@ -175,13 +185,15 @@ export function posModel(db) {
              VALUES (?, NULL, ?, ?, ?)`,
         [
           orderId,
-          scheduled ? "CONFIRMED" : "COMPLETED",
+          scheduled || !paid ? "CONFIRMED" : "COMPLETED",
           staffId,
-          scheduled
-            ? installationIncluded
-              ? "Cash received; appointment awaits delivery and installation"
-              : "Cash received; appointment awaits delivery"
-            : "Cash collected; walk-in sale completed",
+          !paid
+            ? "PayMongo payment awaiting verification"
+            : scheduled
+              ? installationIncluded
+                ? "Cash received; appointment awaits delivery and installation"
+                : "Cash received; appointment awaits delivery"
+              : "Cash collected; walk-in sale completed",
         ],
       );
     },

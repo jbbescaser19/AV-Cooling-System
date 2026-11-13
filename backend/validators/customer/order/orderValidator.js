@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { personName, contactNumber } from "../../shared/personFields.js";
 import { parseBookingStart } from "../../scheduling/bookingScheduleValidator.js";
 
 const key = z.string().uuid();
@@ -21,13 +22,8 @@ function validSchedule(value) {
 
 const base = z.object({
   requestId: key,
-  recipientName: z.string().trim().min(2).max(150),
-  contactNumber: z
-    .string()
-    .trim()
-    .min(7)
-    .max(30)
-    .regex(/^[+0-9 ()-]+$/),
+  recipientName: personName,
+  contactNumber,
   fulfillment: z.literal("DELIVERY"),
   deliveryArea: z.string().regex(/^[A-Z_]{3,40}$/),
   paymentCode: z.enum(["CASH", "GCASH", "BANK_TRANSFER"]),

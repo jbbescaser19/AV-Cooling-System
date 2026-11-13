@@ -116,3 +116,14 @@
   outline: 3px solid #1b8eac;
   outline-offset: 2px;
 }
+
+.product-inline-error {
+  max-width: 900px;
+  margin: 16px auto;
+  padding: 12px 16px;
+  border: 1px solid #f1b5b5;
+  background: #fff2f2;
+  color: #8f2c36;
+  border-radius: 10px;
+  font-size: 0.9rem;
+}

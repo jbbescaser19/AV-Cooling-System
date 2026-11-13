@@ -2,23 +2,44 @@ import express from "express";
 
 import {
   registerCustomerController,
+  verifyCustomerRegistrationController,
   loginCustomerController,
   refreshCustomerSessionController,
   checkCustomerSessionController,
   logoutCustomerController,
 } from "../../controllers/customer/auth/authController.js";
 
+import {
+  requestPasswordResetController,
+  confirmPasswordResetController,
+} from "../../controllers/customer/auth/passwordResetController.js";
+
 import { requireCustomerAuth } from "../../middleware/requireCustomerAuth.js";
+
+import { requireCustomerWriteOrigin } from "../../middleware/requireCustomerWriteOrigin.js";
 
 const router = express.Router();
 
 router.post("/register", registerCustomerController);
+
+router.post("/register/verify", verifyCustomerRegistrationController);
+
 router.post("/login", loginCustomerController);
 
-// Renew the access token using the refresh-token cookie.
+router.post(
+  "/password-reset/request",
+  requireCustomerWriteOrigin,
+  requestPasswordResetController,
+);
+
+router.post(
+  "/password-reset/confirm",
+  requireCustomerWriteOrigin,
+  confirmPasswordResetController,
+);
+
 router.post("/refresh", refreshCustomerSessionController);
 
-// Check whether the current access token is valid.
 router.get("/session", requireCustomerAuth, checkCustomerSessionController);
 
 router.post("/logout", logoutCustomerController);

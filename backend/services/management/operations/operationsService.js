@@ -1,4 +1,5 @@
 import connectDB from "../../../utils/dbConn.js";
+import { paymongoModel } from "../../../models/payments/paymongoModel.js";
 
 import { auditLogModel } from "../../../models/management/administration/auditLogModel.js";
 
@@ -211,6 +212,24 @@ export async function applyManagementEvent(kind, reference, staff, rawInput) {
       return {
         alreadyRecorded: true,
       };
+    }
+
+    // Never cancel an order/service while a payable PayMongo link exists.
+    // First reconcile or expire the provider session through an authorized
+    // merchant process. Otherwise the customer could pay a cancelled record.
+    if (
+      [
+        "ORDER_DECLINED",
+        "ORDER_CANCELLED_BY_STAFF",
+        "SERVICE_DECLINED",
+        "SERVICE_CANCELLED",
+      ].includes(data.eventCode) &&
+      (await paymongoModel(connection).hasUnsettledCheckout(kind, record.id))
+    ) {
+      fail(
+        "A PayMongo checkout link exists for this booking. Contact the merchant administrator to reconcile or expire that link before cancelling.",
+        409,
+      );
     }
 
     // Field work must be assigned before it can start.

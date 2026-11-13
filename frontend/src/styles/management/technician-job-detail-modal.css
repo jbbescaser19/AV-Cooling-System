@@ -1,0 +1,123 @@
+/* Native-feeling, scrollable technician details, above fixed navigation. */
+.av-tech-detail-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 5000;
+  display: grid;
+  place-items: center;
+  padding: 14px;
+  background: rgb(6 24 36 / 68%);
+  backdrop-filter: blur(3px);
+}
+.av-tech-detail-modal {
+  display: flex;
+  flex-direction: column;
+  width: min(660px, 100%);
+  max-height: min(88dvh, 800px);
+  background: #fff;
+  color: #173e55;
+  border-radius: 17px;
+  overflow: hidden;
+  box-shadow: 0 18px 50px rgb(0 0 0 / 25%);
+}
+.av-tech-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 18px;
+  gap: 10px;
+  border-bottom: 1px solid #e2edf2;
+  flex: 0 0 auto;
+}
+.av-tech-detail-header small {
+  color: #598096;
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+.av-tech-detail-header h2 {
+  margin: 5px 0 0;
+  font-size: 1.15rem;
+}
+.av-tech-detail-close {
+  display: grid;
+  place-items: center;
+  width: 39px;
+  height: 39px;
+  border-radius: 9px;
+  border: 1px solid #c9dee9;
+  background: #f2f9fc;
+  color: #22566f;
+  cursor: pointer;
+}
+.av-tech-detail-body {
+  overflow-y: auto;
+  min-height: 0;
+  padding: 15px 18px 20px;
+  display: grid;
+  gap: 16px;
+}
+.av-tech-detail-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+.av-tech-detail-fields > div {
+  background: #f4f9fc;
+  border: 1px solid #e0ebf1;
+  border-radius: 10px;
+  padding: 10px;
+  min-width: 0;
+}
+.av-tech-detail-fields dt {
+  font-size: 0.7rem;
+  color: #648295;
+  margin-bottom: 5px;
+}
+.av-tech-detail-fields dd {
+  margin: 0;
+  font-size: 0.83rem;
+  color: #173b50;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.av-tech-detail-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 18px;
+  border-top: 1px solid #e2edf2;
+  flex: 0 0 auto;
+  background: #fff;
+}
+.av-tech-detail-footer button {
+  min-height: 42px;
+  min-width: 130px;
+}
+@media (max-width: 600px) {
+  .av-tech-detail-backdrop {
+    padding: 6px;
+    place-items: end center;
+  }
+  .av-tech-detail-modal {
+    width: 100%;
+    max-height: calc(100dvh - 20px);
+    border-radius: 14px 14px 9px 9px;
+  }
+  .av-tech-detail-header,
+  .av-tech-detail-body,
+  .av-tech-detail-footer {
+    padding: 12px;
+  }
+  .av-tech-detail-fields {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 7px;
+  }
+  .av-tech-detail-fields > div {
+    padding: 9px;
+  }
+  .av-tech-detail-footer button {
+    width: 100%;
+  }
+}

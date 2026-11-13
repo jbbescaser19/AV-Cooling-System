@@ -1,8 +1,12 @@
 import {
-  registerCustomerService,
   loginCustomerService,
   refreshCustomerSessionService,
 } from "../../../services/customer/auth/authServices.js";
+
+import {
+  requestCustomerRegistrationOtp,
+  verifyCustomerRegistrationOtp,
+} from "../../../services/customer/auth/registrationOtpService.js";
 
 const cookieOptions = {
   httpOnly: true,
@@ -41,15 +45,14 @@ function isCustomerAccount(req) {
 
 export async function registerCustomerController(req, res) {
   try {
-    const result = await registerCustomerService(req.body);
-
-    setAuthCookies(res, result.accessToken, result.refreshToken);
-
-    return res.status(201).json({
-      success: true,
-      message: result.message,
-      user: result.user,
-    });
+    const result = await requestCustomerRegistrationOtp(req.body, req.ip);
+    return res
+      .status(202)
+      .json({
+        success: true,
+        message: result.message,
+        verificationRequired: true,
+      });
   } catch (error) {
     console.error(`authController - registerCustomer: ${error.message}`);
 
@@ -60,6 +63,28 @@ export async function registerCustomerController(req, res) {
           ? error.message
           : "Registration failed. Please try again.",
     });
+  }
+}
+
+export async function verifyCustomerRegistrationController(req, res) {
+  try {
+    const result = await verifyCustomerRegistrationOtp(req.body);
+    setAuthCookies(res, result.accessToken, result.refreshToken);
+    return res
+      .status(201)
+      .json({ success: true, message: result.message, user: result.user });
+  } catch (error) {
+    if (!error.status || error.status >= 500)
+      console.error("Registration verification failed:", error.message);
+    return res
+      .status(error.status || 500)
+      .json({
+        success: false,
+        message:
+          error.status && error.status < 500
+            ? error.message
+            : "Unable to verify your registration.",
+      });
   }
 }
 

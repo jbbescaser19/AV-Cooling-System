@@ -1,9 +1,18 @@
 import connectDB from "../../../utils/dbConn.js";
 import { orderModel } from "../../../models/management/sales/orderModel.js";
 import { fail, validStaff } from "./salesHelpers.js";
-export async function getSalesOrders(staff) {
+import { validateOrderListQuery } from "../../../validators/management/sales/orderListValidator.js";
+export async function getSalesOrders(staff, rawQuery = {}) {
   validStaff(staff);
-  return { orders: await orderModel(connectDB).orders() };
+  const filters = validateOrderListQuery(rawQuery);
+  const result = await orderModel(connectDB).orders(filters);
+  return {
+    orders: result.rows,
+    total: result.total,
+    page: result.page,
+    pageSize: result.pageSize,
+    totalPages: result.totalPages,
+  };
 }
 export async function getSalesOrderDetails(staff, rawId) {
   validStaff(staff);
