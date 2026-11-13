@@ -1,0 +1,192 @@
+/*
+ * AV Cooling System — Management branding
+ * Same visual identity as Ecommerce.
+ * Snowflakes appear on the page background ONLY.
+ */
+
+.mgmt-shell {
+  background-color: #f8fcff;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.58), rgba(245, 251, 254, 0.64)),
+    url("../../assets/snowflake-tile.svg");
+
+  background-repeat: no-repeat, repeat;
+  background-size:
+    100% 100%,
+    280px 280px;
+  background-position:
+    center,
+    center top;
+}
+
+.mgmt-shell .mgmt-workspace,
+.mgmt-shell .mgmt-main {
+  background-color: transparent;
+}
+
+/* Match the Ecommerce dark navigation header. */
+
+.mgmt-shell .mgmt-topbar {
+  background: rgba(6, 19, 33, 0.97);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  color: #fff;
+  backdrop-filter: blur(16px);
+}
+
+.mgmt-shell .mgmt-topbar-identity {
+  min-width: 0;
+}
+
+.mgmt-shell .mgmt-topbar-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  color: #fff;
+  text-decoration: none;
+}
+
+.mgmt-shell .mgmt-topbar-brand .mgmt-brand-copy {
+  display: grid;
+  min-width: 0;
+  line-height: 1.05;
+}
+
+.mgmt-shell .mgmt-topbar-brand .mgmt-brand-copy b {
+  font-size: 0.96rem;
+  line-height: 1.1;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.mgmt-shell .mgmt-topbar-brand .mgmt-brand-copy small {
+  margin-top: 4px;
+  color: #a8c5d2;
+  font-weight: 600;
+  font-size: 0.66rem;
+  white-space: nowrap;
+}
+
+/* Ecommerce-style snowflake mark in header and sidebar. */
+
+.mgmt-shell .mgmt-brand-logo {
+  display: grid;
+  flex: 0 0 40px;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #22d3ee, #60a5fa);
+  color: #061827;
+  box-shadow: 0 8px 24px rgba(34, 211, 238, 0.14);
+}
+
+.mgmt-shell .mgmt-brand-logo svg {
+  color: #061827;
+}
+
+.mgmt-shell .mgmt-sidebar .mgmt-brand-info strong {
+  color: #fff;
+  font-size: 0.96rem;
+}
+
+.mgmt-shell .mgmt-sidebar .mgmt-brand-info small {
+  color: #a8c5d2;
+  font-size: 0.66rem;
+}
+
+/* Preserve visible Menu, notification, role, and logout controls. */
+
+.mgmt-shell .mgmt-topbar .mgmt-menu,
+.mgmt-shell .mgmt-topbar .mgmt-logout-button,
+.mgmt-shell .mgmt-topbar .mgmt-notification-link {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #fff;
+}
+
+.mgmt-shell .mgmt-topbar .mgmt-menu:hover,
+.mgmt-shell .mgmt-topbar .mgmt-logout-button:hover,
+.mgmt-shell .mgmt-topbar .mgmt-notification-link:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.mgmt-shell .mgmt-topbar .mgmt-menu-label {
+  color: #fff;
+}
+
+.mgmt-shell .mgmt-topbar .staff-chip {
+  background: rgba(103, 232, 249, 0.12) !important;
+  border-color: rgba(103, 232, 249, 0.24) !important;
+  color: #d4f7ff !important;
+}
+
+/* Tablet: hamburger icon and Menu label stay side by side. */
+
+@media (max-width: 1024px) {
+  .mgmt-shell .mgmt-topbar .mgmt-menu {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    width: auto;
+    min-width: 82px;
+    min-height: 40px;
+    padding: 7px 10px;
+    white-space: nowrap;
+  }
+
+  .mgmt-shell .mgmt-topbar .mgmt-menu svg {
+    flex: 0 0 19px;
+  }
+
+  .mgmt-shell .mgmt-topbar .mgmt-menu-label {
+    display: inline;
+  }
+}
+
+/* Phones: compact logo, brand, and navigation. */
+
+@media (max-width: 760px) {
+  .mgmt-shell .mgmt-topbar-brand .mgmt-brand-logo {
+    display: grid !important;
+  }
+
+  .mgmt-shell .mgmt-topbar-brand .mgmt-brand-copy {
+    display: grid !important;
+  }
+
+  .mgmt-shell .mgmt-topbar-brand .mgmt-brand-copy b {
+    display: block;
+  }
+
+  .mgmt-shell .mgmt-topbar-brand .mgmt-brand-copy small {
+    display: none;
+  }
+
+  .mgmt-shell .mgmt-topbar-brand {
+    gap: 7px;
+  }
+
+  .mgmt-shell .mgmt-brand-logo {
+    width: 34px;
+    height: 34px;
+    flex-basis: 34px;
+    border-radius: 10px;
+  }
+}
+
+@media (max-width: 380px) {
+  .mgmt-shell .mgmt-topbar-brand .mgmt-brand-copy b {
+    font-size: 0.82rem;
+  }
+
+  .mgmt-shell .mgmt-topbar .mgmt-menu {
+    min-width: 72px;
+    gap: 4px;
+    padding-inline: 6px;
+  }
+}

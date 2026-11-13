@@ -779,7 +779,6 @@ export default function ManagementWorkspacePage({ module }) {
       archive: ["archive"],
       staff: ["staff"],
     }[module] || [];
-  useRealtimeRefresh(moduleTopic, setReload);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [search, setSearch] = useState("");
@@ -792,6 +791,7 @@ export default function ManagementWorkspacePage({ module }) {
   const [editor, setEditor] = useState(null);
   const [teamSource, setTeamSource] = useState(null);
   const [reload, setReload] = useState(0);
+  useRealtimeRefresh(moduleTopic, setReload);
 
   const staff = getStaff();
   const mobilePrimary = config.columns[0]?.[0];

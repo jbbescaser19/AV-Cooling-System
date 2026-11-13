@@ -557,14 +557,147 @@
 
 /* Small-screen navigation spacing and contained, scrollable drawer. */
 @media (max-width: 700px) {
-  .nav-inner { gap: 8px; min-width: 0; }
-  .nav-actions { gap: 5px; }
-  .mobile-nav-drawer { width: min(90vw, 360px); max-width: 100%; max-height: 100dvh; overflow-y: auto; }
-  .mobile-nav-links a { min-height: 44px; }
+  .nav-inner {
+    gap: 8px;
+    min-width: 0;
+  }
+  .nav-actions {
+    gap: 5px;
+  }
+  .mobile-nav-drawer {
+    width: min(90vw, 360px);
+    max-width: 100%;
+    max-height: 100dvh;
+    overflow-y: auto;
+  }
+  .mobile-nav-links a {
+    min-height: 44px;
+  }
 }
 @media (max-width: 380px) {
-  .brand { gap: 7px; }
-  .brand b { font-size: .83rem; }
-  .brand-mark { width: 34px; height: 34px; }
-  .icon-link, .menu-btn { width: 36px; height: 36px; }
+  .brand {
+    gap: 7px;
+  }
+  .brand b {
+    font-size: 0.83rem;
+  }
+  .brand-mark {
+    width: 34px;
+    height: 34px;
+  }
+  .icon-link,
+  .menu-btn {
+    width: 36px;
+    height: 36px;
+  }
+}
+
+/* Guest Login and Sign Up links.
+   Does not remove Cart or My Account. */
+
+.public-nav .public-nav-auth {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 7px;
+}
+
+.public-nav .public-nav-auth a,
+.mobile-nav-auth a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  padding: 7px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  color: #eaf7ff;
+  background: rgba(255, 255, 255, 0.06);
+  text-decoration: none;
+  white-space: nowrap;
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.public-nav .public-nav-auth a:last-child {
+  background: #67e8f9;
+  color: #082236;
+  border-color: #67e8f9;
+}
+
+.public-nav .public-nav-auth a:hover,
+.mobile-nav-auth a:hover {
+  filter: brightness(1.12);
+}
+
+.public-nav .public-nav-auth a:focus-visible,
+.mobile-nav-auth a:focus-visible {
+  outline: 3px solid #67e8f9;
+  outline-offset: 2px;
+}
+
+.mobile-nav-auth {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 12px 16px 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.mobile-nav-auth a {
+  min-width: 0;
+  min-height: 44px;
+}
+
+/* Give the login controls room on tablets. */
+@media (max-width: 1350px) {
+  .public-nav .desktop-links {
+    display: none;
+  }
+
+  .public-nav .menu-btn {
+    display: grid;
+  }
+
+  .public-nav .nav-actions {
+    margin-left: auto;
+  }
+}
+
+/* Guest links get their own row on small phones.
+   Cart and the hamburger button remain accessible. */
+@media (max-width: 600px) {
+  .public-nav .nav-inner {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    height: auto;
+    min-height: var(--nav-height);
+    padding-block: 8px;
+  }
+
+  .public-nav .brand {
+    order: 1;
+    min-width: 0;
+  }
+
+  .public-nav .nav-actions {
+    order: 2;
+    margin-left: auto;
+  }
+
+  .public-nav .public-nav-auth {
+    order: 3;
+    flex-basis: 100%;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .public-nav .public-nav-auth a {
+    flex: 1 1 0;
+    max-width: 180px;
+    min-height: 34px;
+    padding: 6px 10px;
+    font-size: 0.74rem;
+  }
 }

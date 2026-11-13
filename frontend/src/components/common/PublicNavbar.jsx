@@ -6,6 +6,7 @@ import { Search, ShoppingCart, User, Menu, X, Snowflake } from "lucide-react";
 import "../../styles/ecommerce/navbar.css";
 import "../../styles/ecommerce/navbar-auth.css";
 import api from "../../../api/api.js";
+import { getCustomer } from "../../utils/authMock.js";
 
 const links = [
   ["Our Expertise", "/#expertise"],
@@ -19,22 +20,37 @@ const links = [
 export default function PublicNavbar() {
   const [open, setOpen] = useState(false);
   const location = useLocation();
-  const [authenticated, setAuthenticated] = useState(null);
+  const [authenticated, setAuthenticated] = useState(() =>
+    Boolean(getCustomer()),
+  );
 
   useEffect(() => {
+    const cachedCustomer = getCustomer();
+
+    if (!cachedCustomer) {
+      setAuthenticated(false);
+      return undefined;
+    }
+
     const controller = new AbortController();
+
     api
-      .get("/api/auth/customer/session", { signal: controller.signal })
+      .get("/api/auth/customer/session", {
+        signal: controller.signal,
+      })
       .then(({ data }) => {
-        if (!controller.signal.aborted)
+        if (!controller.signal.aborted) {
           setAuthenticated(Boolean(data?.authenticated));
+        }
       })
       .catch((error) => {
         if (controller.signal.aborted) return;
-        if ([401, 403].includes(error.response?.status))
+
+        if ([401, 403].includes(error.response?.status)) {
           setAuthenticated(false);
-        else setAuthenticated(null);
+        }
       });
+
     return () => controller.abort();
   }, [location.pathname]);
 
@@ -43,9 +59,7 @@ export default function PublicNavbar() {
   }, [location.pathname, location.hash]);
 
   useEffect(() => {
-    if (!open) {
-      return;
-    }
+    if (!open) return undefined;
 
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -92,7 +106,7 @@ export default function PublicNavbar() {
 
               <div>
                 <strong>AV Cooling</strong>
-                <small>Sales & Service</small>
+                <small>Sales &amp; Service</small>
               </div>
             </div>
 
@@ -130,8 +144,9 @@ export default function PublicNavbar() {
               <span>My Account</span>
             </Link>
           </div>
-          {authenticated === false && (
-            <div className="mobile-nav-auth">
+
+          {!authenticated && (
+            <div className="mobile-nav-auth" aria-label="Customer sign in">
               <Link to="/login" onClick={closeMenu}>
                 Log In
               </Link>
@@ -156,7 +171,7 @@ export default function PublicNavbar() {
 
             <span>
               <b>AV Cooling</b>
-              <small>Sales & Service</small>
+              <small>Sales &amp; Service</small>
             </span>
           </Link>
 
@@ -169,12 +184,6 @@ export default function PublicNavbar() {
           </nav>
 
           <div className="nav-actions">
-            {authenticated === false && (
-              <div className="public-nav-auth">
-                <Link to="/login">Log In</Link>
-                <Link to="/register">Sign Up</Link>
-              </div>
-            )}
             <Link
               className="icon-link search-link"
               to="/shop"
@@ -213,6 +222,13 @@ export default function PublicNavbar() {
               <Menu size={20} />
             </button>
           </div>
+
+          {!authenticated && (
+            <div className="public-nav-auth" aria-label="Customer sign in">
+              <Link to="/login">Log In</Link>
+              <Link to="/register">Sign Up</Link>
+            </div>
+          )}
         </div>
       </header>
 

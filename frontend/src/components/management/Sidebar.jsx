@@ -19,8 +19,8 @@ import {
   UserCog,
   Users,
   Wrench,
+  Snowflake,
   X,
-  KeyRound,
 } from "lucide-react";
 
 import { readStaff } from "../../utils/authMock";
@@ -34,7 +34,7 @@ const nav = [
         "Dashboard",
         "/management/dashboard",
         LayoutDashboard,
-        ["OWNER", "MANAGER", "TECHNICIAN"],
+        ["OWNER", "MANAGER", "SALES_CASHIER", "TECHNICIAN"],
       ],
       ["Archive", "/management/archive", Archive, ["OWNER", "MANAGER"]],
     ],
@@ -48,20 +48,35 @@ const nav = [
         ShoppingCart,
         ["OWNER", "MANAGER", "SALES_CASHIER"],
       ],
-      ["Orders", "/management/orders", ClipboardList, ["OWNER", "MANAGER"]],
+      [
+        "Orders",
+        "/management/orders",
+        ClipboardList,
+        ["OWNER", "MANAGER", "SALES_CASHIER"],
+      ],
       [
         "Completed Jobs History",
         "/management/installation-history",
         History,
-        ["OWNER", "MANAGER"],
+        ["OWNER", "MANAGER", "SALES_CASHIER"],
       ],
-      ["Payments", "/management/payments", CreditCard, ["OWNER", "MANAGER"]],
+      [
+        "Payments",
+        "/management/payments",
+        CreditCard,
+        ["OWNER", "MANAGER", "SALES_CASHIER"],
+      ],
     ],
   },
   {
     label: "Catalog",
     items: [
-      ["Products", "/management/products", Package, ["OWNER", "MANAGER"]],
+      [
+        "Products",
+        "/management/products",
+        Package,
+        ["OWNER", "MANAGER", "SALES_CASHIER"],
+      ],
       [
         "Product Categories",
         "/management/categories",
@@ -72,7 +87,7 @@ const nav = [
         "Product Variants",
         "/management/variants",
         Package,
-        ["OWNER", "MANAGER"],
+        ["OWNER", "MANAGER", "SALES_CASHIER"],
       ],
       ["Inventory", "/management/inventory", Boxes, ["OWNER", "MANAGER"]],
       [
@@ -90,7 +105,7 @@ const nav = [
         "Capacity Calculator",
         "/management/capacity-calculator",
         Calculator,
-        ["OWNER", "MANAGER", "TECHNICIAN"],
+        ["OWNER", "MANAGER", "SALES_CASHIER", "TECHNICIAN"],
       ],
     ],
   },
@@ -107,20 +122,20 @@ const nav = [
         "Service Requests",
         "/management/service-requests",
         ReceiptText,
-        ["OWNER", "MANAGER"],
+        ["OWNER", "MANAGER", "SALES_CASHIER"],
       ],
       ["Technicians", "/management/technicians", Users, ["OWNER", "MANAGER"]],
       [
         "Booking Calendar",
         "/management/booking-calendar",
         CalendarDays,
-        ["OWNER", "MANAGER", "TECHNICIAN"],
+        ["OWNER", "MANAGER", "SALES_CASHIER", "TECHNICIAN"],
       ],
       [
         "Schedules",
         "/management/schedules",
         CalendarDays,
-        ["OWNER", "MANAGER", "TECHNICIAN"],
+        ["OWNER", "MANAGER", "SALES_CASHIER", "TECHNICIAN"],
       ],
     ],
   },
@@ -131,7 +146,7 @@ const nav = [
         "Customers",
         "/management/customers",
         ContactRound,
-        ["OWNER", "MANAGER"],
+        ["OWNER", "MANAGER", "SALES_CASHIER"],
       ],
       [
         "Feedback & Sentiment",
@@ -148,26 +163,9 @@ const nav = [
         "Facebook Requests",
         "/management/facebook-requests",
         MessageCircle,
-        ["OWNER", "MANAGER"],
+        ["OWNER", "MANAGER", "SALES_CASHIER"],
       ],
       ["Reports", "/management/reports", BarChart3, ["OWNER", "MANAGER"]],
-    ],
-  },
-  {
-    label: "Account Security",
-    items: [
-      [
-        "Change Password",
-        "/management/change-password",
-        KeyRound,
-        ["OWNER", "MANAGER", "SALES_CASHIER", "TECHNICIAN"],
-      ],
-      [
-        "Reset Staff Password",
-        "/management/staff-password-reset",
-        UserCog,
-        ["OWNER"],
-      ],
     ],
   },
   {
@@ -186,11 +184,13 @@ export default function Sidebar({ open, onClose }) {
     <aside className={`mgmt-sidebar ${open ? "open" : ""}`}>
       <div className="mgmt-brand">
         <div className="mgmt-brand-info">
-          <span className="mgmt-brand-logo">AV</span>
+          <span className="mgmt-brand-logo">
+            <Snowflake size={20} aria-hidden="true" />
+          </span>
 
           <div>
             <strong>AV Cooling</strong>
-            <small>Management</small>
+            <small>Sales &amp; Service</small>
           </div>
         </div>
 
@@ -207,16 +207,11 @@ export default function Sidebar({ open, onClose }) {
       <nav className="side-scroll">
         {nav.map((group) => {
           const items = group.items.filter(
-            ([, path, , roles]) =>
-              Array.isArray(roles) &&
-              roles.includes(staff?.role) &&
-              (!staff?.mustChangePassword ||
-                path === "/management/change-password"),
+            ([, , , roles]) =>
+              Array.isArray(roles) && roles.includes(staff?.role),
           );
 
-          if (!items.length) {
-            return null;
-          }
+          if (!items.length) return null;
 
           return (
             <div className="side-group" key={group.label || "main"}>

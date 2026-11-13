@@ -1,6 +1,4 @@
-import { confirmAction } from "../utils/confirmAction.js";
 import { useCallback, useEffect, useState } from "react";
-
 import {
   Navigate,
   Outlet,
@@ -8,29 +6,27 @@ import {
   useLocation,
   useNavigate,
 } from "react-router-dom";
-
 import {
   AlertTriangle,
   Bell,
   CheckCheck,
   LogOut,
   Menu,
+  Snowflake,
   Trash2,
   UserRound,
   X,
 } from "lucide-react";
 
 import Sidebar from "../components/management/Sidebar";
-import RealtimeBridge from "../components/realtime/RealtimeBridge.jsx";
 import ManagementReauthGate from "../components/management/ManagementReauthGate";
 import UpcomingAgendaAlerts from "../components/management/UpcomingAgendaAlerts";
-
 import { getStaff, loginStaff, logoutStaff } from "../utils/authMock";
-
 import api from "../../api/api.js";
 
 import "../styles/management/management.css";
 import "../styles/management/management-notifications-popover.css";
+import "../styles/management/management-brand-background.css";
 
 const access = {
   OWNER: [
@@ -58,10 +54,7 @@ const access = {
     "audit-logs",
     "archive",
     "staff",
-    "change-password",
-    "staff-password-reset",
   ],
-
   MANAGER: [
     "dashboard",
     "capacity-calculator",
@@ -85,18 +78,29 @@ const access = {
     "reports",
     "notifications",
     "archive",
-    "change-password",
   ],
-
-  SALES_CASHIER: ["pos", "notifications", "change-password"],
-
+  SALES_CASHIER: [
+    "dashboard",
+    "capacity-calculator",
+    "pos",
+    "booking-calendar",
+    "orders",
+    "installation-history",
+    "payments",
+    "products",
+    "variants",
+    "customers",
+    "facebook-requests",
+    "notifications",
+    "schedules",
+    "service-requests",
+  ],
   TECHNICIAN: [
     "dashboard",
     "capacity-calculator",
     "booking-calendar",
     "schedules",
     "notifications",
-    "change-password",
   ],
 };
 
@@ -105,27 +109,17 @@ export default function ManagementLayout() {
   const location = useLocation();
 
   const [open, setOpen] = useState(false);
-
   const [staff, setStaff] = useState(() => getStaff());
-
   const [session, setSession] = useState(null);
   const [checking, setChecking] = useState(true);
   const [unread, setUnread] = useState(0);
-
   const [notificationOpen, setNotificationOpen] = useState(false);
-
   const [recentNotifications, setRecentNotifications] = useState([]);
-
   const [lowStockCount, setLowStockCount] = useState(0);
-
   const [lowStockItems, setLowStockItems] = useState([]);
-
   const [notificationBusy, setNotificationBusy] = useState(false);
-
   const [notificationError, setNotificationError] = useState("");
-
   const [logoutError, setLogoutError] = useState("");
-
   const [loggingOut, setLoggingOut] = useState(false);
 
   useEffect(() => {
@@ -145,7 +139,6 @@ export default function ManagementLayout() {
         }
 
         loginStaff(person);
-
         setStaff(person);
         setSession(data.session);
       })
@@ -157,9 +150,7 @@ export default function ManagementLayout() {
         setSession(null);
       })
       .finally(() => {
-        if (active) {
-          setChecking(false);
-        }
+        if (active) setChecking(false);
       });
 
     return () => {
@@ -181,31 +172,23 @@ export default function ManagementLayout() {
   }, [endSession]);
 
   const refreshNotificationOverview = useCallback(async () => {
-    if (!staff?.id || !session || staff.mustChangePassword) {
-      return;
-    }
+    if (!staff?.id || !session) return;
 
     const { data } = await api.get(
       "/api/management/workspace/notifications/overview",
     );
 
     setRecentNotifications(Array.isArray(data.items) ? data.items : []);
-
     setUnread(Number(data.unreadCount) || 0);
-
     setLowStockCount(Number(data.lowStockCount) || 0);
-
     setLowStockItems(
       Array.isArray(data.lowStockItems) ? data.lowStockItems : [],
     );
-
     setNotificationError("");
   }, [staff?.id, session]);
 
   useEffect(() => {
-    if (!staff?.id || !session || staff.mustChangePassword) {
-      return undefined;
-    }
+    if (!staff?.id || !session) return undefined;
 
     const refresh = () => {
       refreshNotificationOverview().catch(() => {
@@ -216,12 +199,10 @@ export default function ManagementLayout() {
     refresh();
 
     const interval = window.setInterval(refresh, 60000);
-
     window.addEventListener("av-management-updated", refresh);
 
     return () => {
       window.clearInterval(interval);
-
       window.removeEventListener("av-management-updated", refresh);
     };
   }, [staff?.id, session, refreshNotificationOverview]);
@@ -231,9 +212,9 @@ export default function ManagementLayout() {
 
     if (
       confirmClear &&
-      !(await confirmAction(
+      !window.confirm(
         "Delete all your saved notifications? Low-stock alerts will remain visible until restocked.",
-      ))
+      )
     ) {
       return;
     }
@@ -269,7 +250,6 @@ export default function ManagementLayout() {
     if (!open) return undefined;
 
     const previous = document.body.style.overflow;
-
     document.body.style.overflow = "hidden";
 
     const escape = (event) => {
@@ -282,7 +262,6 @@ export default function ManagementLayout() {
 
     return () => {
       document.body.style.overflow = previous;
-
       window.removeEventListener("keydown", escape);
     };
   }, [open]);
@@ -325,30 +304,14 @@ export default function ManagementLayout() {
   }
 
   const slug = location.pathname.split("/")[2] || "dashboard";
-
-  if (staff.mustChangePassword && slug !== "change-password") {
-    return <Navigate to="/management/change-password" replace />;
-  }
-
   const allowed = access[staff.role] || [];
 
   if (!allowed.includes(slug)) {
-    return (
-      <Navigate
-        to={
-          staff.role === "SALES_CASHIER"
-            ? "/management/pos"
-            : "/management/dashboard"
-        }
-        replace
-      />
-    );
+    return <Navigate to="/management/dashboard" replace />;
   }
 
   return (
     <div className="mgmt-shell">
-      {!staff.mustChangePassword && <RealtimeBridge audience="staff" />}
-
       <Sidebar open={open} onClose={() => setOpen(false)} />
 
       {open && (
@@ -370,14 +333,24 @@ export default function ManagementLayout() {
             onClick={() => setOpen(true)}
           >
             <Menu size={19} />
-
             <span className="mgmt-menu-label">Menu</span>
           </button>
 
-          <div>
-            <b>AV Cooling Management</b>
+          <div className="mgmt-topbar-identity">
+            <Link
+              to="/"
+              className="mgmt-topbar-brand"
+              aria-label="AV Cooling storefront"
+            >
+              <span className="mgmt-brand-logo">
+                <Snowflake size={20} aria-hidden="true" />
+              </span>
 
-            <span>Sales, inventory, service, and operations</span>
+              <span className="mgmt-brand-copy">
+                <b>AV Cooling</b>
+                <small>Sales &amp; Service</small>
+              </span>
+            </Link>
           </div>
 
           <div className="mgmt-top-actions">
@@ -442,7 +415,6 @@ export default function ManagementLayout() {
                               .slice(0, 2)
                               .map((item) => item.name)
                               .join(" · ")}
-
                             {lowStockCount > 2 ? " · View all inventory" : ""}
                           </small>
                         </span>
@@ -549,7 +521,6 @@ export default function ManagementLayout() {
 
             <span className="staff-chip">
               <UserRound size={16} />
-
               {staff.role.replaceAll("_", " ")}
             </span>
 
@@ -585,7 +556,7 @@ export default function ManagementLayout() {
           </p>
         )}
 
-        {staff.role !== "SALES_CASHIER" && !staff.mustChangePassword && (
+        {staff.role !== "SALES_CASHIER" && (
           <UpcomingAgendaAlerts staff={staff} />
         )}
 

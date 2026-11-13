@@ -1,0 +1,739 @@
+/*
+ * AV Cooling System
+ * Management tablet navigation, tables, buttons,
+ * and consistent blue page headers.
+ *
+ * Import this file LAST in frontend/src/main.jsx.
+ *
+ * Important:
+ * - One word must never split into several lines.
+ * - Multiple words may wrap at spaces.
+ * - Tables remain tables, never record cards.
+ * - Only the table container may scroll horizontally.
+ * - Existing Management functionality is unchanged.
+ */
+
+/* =========================================================
+   1. TABLET NAVIGATION
+   Keep hamburger icon and Menu label side by side.
+========================================================= */
+
+@media (max-width: 1024px) {
+  .mgmt-shell .mgmt-topbar {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    gap: 10px;
+  }
+
+  .mgmt-shell .mgmt-topbar .mgmt-menu {
+    box-sizing: border-box;
+    display: inline-flex !important;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+
+    width: auto !important;
+    min-width: 88px !important;
+    height: 40px;
+    min-height: 40px;
+
+    margin: 0;
+    padding: 0 11px !important;
+
+    white-space: nowrap !important;
+  }
+
+  .mgmt-shell .mgmt-topbar .mgmt-menu svg {
+    display: block;
+    width: 19px;
+    height: 19px;
+    flex: 0 0 19px;
+  }
+
+  .mgmt-shell .mgmt-topbar .mgmt-menu .mgmt-menu-label {
+    display: inline !important;
+    width: auto !important;
+    min-width: 0;
+
+    font-size: 0.78rem !important;
+    line-height: 1.15;
+    white-space: nowrap !important;
+  }
+
+  .mgmt-shell .mgmt-topbar > div:nth-child(2) {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .mgmt-shell .mgmt-topbar > div:nth-child(2) b,
+  .mgmt-shell .mgmt-topbar > div:nth-child(2) span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mgmt-shell .mgmt-topbar .mgmt-top-actions {
+    flex: 0 0 auto;
+    min-width: 0;
+    margin-left: auto;
+  }
+}
+
+@media (max-width: 420px) {
+  .mgmt-shell .mgmt-topbar {
+    gap: 6px;
+    padding-inline: 9px;
+  }
+
+  .mgmt-shell .mgmt-topbar .mgmt-menu {
+    min-width: 76px !important;
+    height: 36px;
+    min-height: 36px;
+    gap: 5px;
+    padding-inline: 7px !important;
+  }
+
+  .mgmt-shell .mgmt-topbar .mgmt-menu .mgmt-menu-label {
+    font-size: 0.72rem !important;
+  }
+
+  .mgmt-shell .mgmt-topbar > div:nth-child(2) b {
+    font-size: 0.74rem;
+  }
+}
+
+/* =========================================================
+   2. RESTORE HTML TABLES ON TABLETS AND LAPTOPS
+
+   Older av-records.css rules converted table rows
+   into cards at widths below 1650px.
+========================================================= */
+
+@media (min-width: 761px) and (max-width: 1650px) {
+  .mgmt-shell .mgmt-main .av-records-responsive .sales-table-scroll {
+    display: block !important;
+    box-sizing: border-box;
+
+    max-width: 100%;
+    min-width: 0;
+
+    overflow-x: auto !important;
+    overflow-y: hidden;
+
+    border: 1px solid #d9e7ee;
+    border-radius: 12px;
+
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .mgmt-shell .mgmt-main .av-records-responsive table.sales-table {
+    display: table !important;
+    width: 100%;
+    min-width: 100%;
+
+    border-collapse: collapse !important;
+    table-layout: auto !important;
+    background: #fff;
+  }
+
+  .mgmt-shell .mgmt-main .av-records-responsive table.sales-table > thead {
+    display: table-header-group !important;
+  }
+
+  .mgmt-shell .mgmt-main .av-records-responsive table.sales-table > tbody {
+    display: table-row-group !important;
+    width: auto !important;
+  }
+
+  .mgmt-shell .mgmt-main .av-records-responsive table.sales-table tr {
+    display: table-row !important;
+
+    width: auto !important;
+    padding: 0 !important;
+    margin: 0 !important;
+
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+  }
+
+  .mgmt-shell
+    .mgmt-main
+    .av-records-responsive
+    table.sales-table
+    :is(th, td):not(.av-mobile-only) {
+    display: table-cell !important;
+
+    box-sizing: border-box;
+    padding: 9px 6px !important;
+
+    border: 0 !important;
+    border-bottom: 1px solid #e4edf2 !important;
+
+    vertical-align: middle;
+    text-align: center !important;
+
+    font-size: 0.75rem;
+    line-height: 1.35;
+
+    overflow-wrap: normal !important;
+    word-break: normal !important;
+    hyphens: none !important;
+  }
+
+  .mgmt-shell .mgmt-main .av-records-responsive table.sales-table th {
+    background: #f0f7fa !important;
+    color: #426477;
+    font-weight: 800;
+  }
+
+  .mgmt-shell .mgmt-main .av-records-responsive table.sales-table td::before {
+    content: none !important;
+    display: none !important;
+  }
+
+  .mgmt-shell
+    .mgmt-main
+    .av-records-responsive
+    table.sales-table
+    td:first-child,
+  .mgmt-shell
+    .mgmt-main
+    .av-records-responsive
+    table.sales-table
+    td:last-child {
+    background: transparent !important;
+  }
+}
+
+/* =========================================================
+   3. ALL MANAGEMENT TABLES ON TABLET
+
+   Main fix:
+   "Source" must never become "Sour" + "ce".
+   "Created" must never become "Crea" + "ted".
+
+   Text may wrap ONLY between complete words.
+========================================================= */
+
+@media (min-width: 761px) and (max-width: 1180px) {
+  /*
+   * Limit scrolling to each table area.
+   * The Management page itself must not overflow.
+   */
+  .mgmt-shell .mgmt-workspace,
+  .mgmt-shell .mgmt-main {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .mgmt-shell
+    .mgmt-main
+    :is(
+      .wsm-overflow,
+      .sales-table-scroll,
+      .responsive-table,
+      .mgmt-table-scroll,
+      .table-scroll,
+      .staff-table-wrap,
+      .install-history__table-wrap
+    ) {
+    display: block;
+
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+
+    overflow-x: auto !important;
+    overscroll-behavior-x: contain;
+
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /*
+   * Disable fixed table sizing.
+   * Let column width respect the longest word.
+   */
+  .mgmt-shell .mgmt-main table {
+    display: table !important;
+
+    table-layout: auto !important;
+
+    width: max-content !important;
+    min-width: 100% !important;
+    max-width: none !important;
+
+    border-collapse: collapse;
+  }
+
+  .mgmt-shell .mgmt-main table > thead {
+    display: table-header-group !important;
+  }
+
+  .mgmt-shell .mgmt-main table > tbody {
+    display: table-row-group !important;
+  }
+
+  .mgmt-shell .mgmt-main table tr {
+    display: table-row !important;
+  }
+
+  /*
+   * ALL TABLE HEADERS AND CELLS
+   *
+   * No breaking inside words.
+   * Multiple words may use multiple lines.
+   */
+  .mgmt-shell .mgmt-main table :is(th, td):not(.av-mobile-only) {
+    display: table-cell !important;
+
+    box-sizing: border-box;
+
+    padding: 9px 7px !important;
+
+    text-align: center !important;
+    vertical-align: middle !important;
+
+    font-size: 0.73rem;
+    line-height: 1.4;
+
+    white-space: normal !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+    hyphens: none !important;
+
+    min-width: min-content;
+  }
+
+  /*
+   * Nested elements must follow the same rule.
+   *
+   * Previous styles applied overflow-wrap:anywhere
+   * to spans, labels, links and buttons independently.
+   * This overrides those rules inside table cells.
+   */
+  .mgmt-shell
+    .mgmt-main
+    table
+    :is(th, td)
+    :is(span, strong, b, small, p, div, label, a, button) {
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+    hyphens: none !important;
+  }
+
+  /*
+   * Keep short column headings readable.
+   * Each complete word may occupy one line.
+   */
+  .mgmt-shell .mgmt-main table th {
+    font-size: 0.69rem !important;
+    font-weight: 800;
+
+    white-space: normal !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+    hyphens: none !important;
+  }
+
+  /*
+   * Avoid breaking table values into individual letters.
+   */
+  .mgmt-shell .mgmt-main table td {
+    white-space: normal !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+    hyphens: none !important;
+  }
+
+  /*
+   * Status labels should stay on one line.
+   * Example: COMPLETED, PENDING, CONFIRMED.
+   */
+  .mgmt-shell
+    .mgmt-main
+    table
+    :is(
+      .wsm-status,
+      .sales-pill,
+      .status-pill,
+      .av-status,
+      .wsm-sentiment-label
+    ) {
+    display: inline-flex;
+
+    align-items: center;
+    justify-content: center;
+
+    width: max-content;
+    max-width: none;
+
+    white-space: nowrap !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+    hyphens: none !important;
+
+    font-size: 0.68rem;
+    line-height: 1.25;
+  }
+
+  /*
+   * Keep tables centered and readable.
+   */
+  .mgmt-shell .mgmt-main table th,
+  .mgmt-shell .mgmt-main table td {
+    text-align: center !important;
+  }
+
+  /* =====================================================
+     TABLE ACTION BUTTONS
+     "View Details" may use two lines.
+     "Confirm" must stay as one complete word.
+  ===================================================== */
+
+  .mgmt-shell
+    .mgmt-main
+    table
+    td
+    :is(
+      button,
+      a[role="button"],
+      a[class*="button"],
+      a[class*="action"],
+      .wsm-row-action,
+      .sales-small-action,
+      .av-delete-to-archive,
+      .av-smart-expand-btn
+    ) {
+    box-sizing: border-box;
+
+    min-width: min-content !important;
+    max-width: none !important;
+
+    padding: 7px 9px;
+
+    text-align: center !important;
+    line-height: 1.35;
+
+    white-space: normal !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+    hyphens: none !important;
+  }
+
+  /*
+   * Ensure button text inside spans is also protected.
+   */
+  .mgmt-shell
+    .mgmt-main
+    table
+    td
+    :is(
+      button,
+      a[role="button"],
+      a[class*="button"],
+      a[class*="action"],
+      .wsm-row-action,
+      .sales-small-action,
+      .av-smart-expand-btn
+    )
+    :is(span, strong, b, small) {
+    white-space: normal !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+    hyphens: none !important;
+  }
+
+  /*
+   * A two-word Details label can wrap between words.
+   * Neither word can split into individual letters.
+   */
+  .mgmt-shell .mgmt-main table td .av-smart-expand-btn span {
+    display: inline-block;
+    max-width: 7.5ch;
+
+    white-space: normal !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+    hyphens: none !important;
+  }
+
+  /*
+   * Keep button icons their original size.
+   */
+  .mgmt-shell .mgmt-main table td :is(button, a) > svg {
+    flex-shrink: 0;
+  }
+
+  /*
+   * Action groups must not squash buttons
+   * below the width of their longest word.
+   */
+  .mgmt-shell
+    .mgmt-main
+    table
+    td
+    :is(.wsm-row-actions, .sales-actions, .av-record-actions) {
+    display: flex;
+    flex-wrap: wrap;
+
+    align-items: center;
+    justify-content: center;
+
+    gap: 6px;
+
+    min-width: min-content;
+    max-width: none;
+  }
+
+  /*
+   * Also protect buttons outside tables
+   * in the Management page headers and toolbars.
+   */
+  .mgmt-shell
+    .mgmt-main
+    :is(
+      .wsm-top-actions,
+      .wsm-table-tools,
+      .sales-header-actions,
+      .install-history__head
+    )
+    :is(button, a) {
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+    hyphens: none !important;
+  }
+}
+
+/* =========================================================
+   4. MOBILE TABLES
+
+   Preserve the compact phone table layout.
+   Do not convert actual tables into record cards.
+========================================================= */
+
+@media (max-width: 760px) {
+  .mgmt-shell
+    .mgmt-main
+    :is(
+      .responsive-table,
+      .wsm-overflow,
+      .sales-table-scroll,
+      .mgmt-table-scroll,
+      .table-scroll,
+      .staff-table-wrap
+    ) {
+    display: block;
+
+    box-sizing: border-box;
+    min-width: 0;
+    max-width: 100%;
+
+    overflow-x: auto !important;
+    overscroll-behavior-x: contain;
+
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .mgmt-shell .mgmt-main table:not(.av-smart-table) {
+    display: table !important;
+
+    width: 100% !important;
+    min-width: 560px !important;
+
+    border-collapse: collapse !important;
+    table-layout: auto;
+  }
+
+  .mgmt-shell .mgmt-main table:not(.av-smart-table) > thead {
+    display: table-header-group !important;
+  }
+
+  .mgmt-shell .mgmt-main table:not(.av-smart-table) > tbody {
+    display: table-row-group !important;
+    width: auto !important;
+  }
+
+  .mgmt-shell .mgmt-main table:not(.av-smart-table) tr {
+    display: table-row !important;
+
+    width: auto !important;
+    padding: 0 !important;
+
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+  }
+
+  .mgmt-shell .mgmt-main table:not(.av-smart-table) :is(th, td) {
+    display: table-cell !important;
+
+    width: auto !important;
+    min-width: 0 !important;
+
+    padding: 8px 6px !important;
+
+    border: 0 !important;
+    border-bottom: 1px solid #e4edf2 !important;
+
+    text-align: center !important;
+    vertical-align: middle !important;
+
+    font-size: 0.72rem !important;
+    line-height: 1.3;
+
+    white-space: normal !important;
+    overflow-wrap: normal !important;
+    word-break: normal !important;
+    hyphens: none !important;
+  }
+
+  .mgmt-shell .mgmt-main table:not(.av-smart-table) th {
+    background: #f0f7fa !important;
+    font-weight: 800;
+  }
+
+  .mgmt-shell .mgmt-main table:not(.av-smart-table) td::before {
+    content: none !important;
+    display: none !important;
+  }
+
+  /*
+   * Existing smart tables preserve their
+   * compact phone columns and Details action.
+   */
+  .mgmt-shell .mgmt-main .av-records-responsive table.av-smart-table {
+    table-layout: fixed !important;
+  }
+}
+
+/* =========================================================
+   5. CONSISTENT BLUE MANAGEMENT HEADERS
+
+   Completed Job History and Capacity Calculator
+   should match the Orders/Catalog blue design.
+========================================================= */
+
+.mgmt-shell .mgmt-main .install-history__head,
+.mgmt-shell .mgmt-main .capacity-page--management .capacity-page__header {
+  display: flex;
+  flex-wrap: wrap;
+
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 14px;
+
+  padding: clamp(18px, 3vw, 30px);
+  margin: 0 0 18px;
+
+  border: 1px solid rgba(136, 217, 242, 0.16);
+  border-radius: 18px;
+
+  background: linear-gradient(115deg, #0b263e, #135d78);
+
+  color: #fff;
+}
+
+.mgmt-shell .mgmt-main .install-history__head h1,
+.mgmt-shell .mgmt-main .capacity-page--management .capacity-page__header h1 {
+  margin: 8px 0 6px;
+
+  color: #fff;
+
+  font-size: clamp(1.45rem, 3vw, 2.2rem);
+  line-height: 1.2;
+}
+
+.mgmt-shell .mgmt-main .install-history__head p,
+.mgmt-shell .mgmt-main .capacity-page--management .capacity-page__header p {
+  margin: 0;
+  max-width: 720px;
+
+  color: #d0e5ed;
+  line-height: 1.55;
+}
+
+.mgmt-shell .mgmt-main .install-history__eyebrow,
+.mgmt-shell .mgmt-main .capacity-page--management .capacity-page__eyebrow {
+  color: #9fe7f1;
+
+  font-weight: 800;
+  letter-spacing: 0.09em;
+}
+
+.mgmt-shell .mgmt-main .install-history__head > button {
+  flex: 0 0 auto;
+
+  min-height: 40px;
+  padding: 9px 13px;
+
+  border-color: #c9dfeb;
+
+  background: #fff;
+  color: #125f81;
+
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+/* Keep the existing compact phone header sizing. */
+
+@media (max-width: 760px) {
+  .mgmt-shell .mgmt-main .install-history__head,
+  .mgmt-shell .mgmt-main .capacity-page--management .capacity-page__header {
+    padding: 14px;
+    gap: 10px;
+    border-radius: 13px;
+  }
+
+  .mgmt-shell .mgmt-main .install-history__head h1,
+  .mgmt-shell .mgmt-main .capacity-page--management .capacity-page__header h1 {
+    font-size: clamp(1.2rem, 4vw, 1.55rem);
+  }
+}
+/* Service Requests: smaller Request/# column on tablets */
+@media (min-width: 761px) and (max-width: 1180px) {
+  .mgmt-shell
+    .mgmt-main
+    .av-services-page
+    .sales-table
+    :is(th, td):first-child {
+    width: 42px !important;
+    max-width: 42px !important;
+  }
+}
+/* Service Requests: automatic column sizing on tablets */
+@media (min-width: 761px) and (max-width: 1180px) {
+  html
+    body
+    .mgmt-shell
+    .mgmt-main
+    .av-services-page
+    table.sales-table.av-smart-table {
+    table-layout: auto !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  /* Customer uses only the space its text needs */
+  html
+    body
+    .mgmt-shell
+    .mgmt-main
+    .av-services-page
+    .sales-table
+    :is(th, td):nth-child(2) {
+    width: 1% !important;
+    white-space: normal !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+  }
+}

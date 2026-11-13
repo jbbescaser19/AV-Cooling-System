@@ -18,23 +18,19 @@ import {
   MapPin,
   Lock,
   Home,
-  ArrowLeft,
-  Store,
   LogOut,
   Menu,
   X,
 } from "lucide-react";
 
 import api from "../../api/api.js";
-import RealtimeBridge from "../components/realtime/RealtimeBridge.jsx";
-import { clearSelectedCartKeys } from "../utils/cartSelection.js";
 import { logoutCustomer } from "../utils/authMock";
 import { clearPendingAction, clearDirectCheckout } from "../utils/purchaseFlow";
 
 import "../styles/customer/customer.css";
 import "../styles/customer/customer-notifications.css";
 import "../styles/customer/customer-navigation.css";
-import "../styles/customer/customer-back-to-store.css";
+import "../styles/customer/customer-snowflakes.css";
 
 const items = [
   ["profile", User, "Profile"],
@@ -136,7 +132,7 @@ export default function CustomerLayout() {
           setUnreadCount(Number(response.data.unreadCount || 0));
         }
       } catch {
-        // Navigation must still work if notifications fail.
+        // Notification failures must not prevent navigation.
       }
     }
 
@@ -145,13 +141,11 @@ export default function CustomerLayout() {
     const interval = window.setInterval(refreshUnread, 45000);
 
     window.addEventListener("av-notifications-changed", refreshUnread);
-    window.addEventListener("av-realtime-change", refreshUnread);
 
     return () => {
       active = false;
       window.clearInterval(interval);
       window.removeEventListener("av-notifications-changed", refreshUnread);
-      window.removeEventListener("av-realtime-change", refreshUnread);
     };
   }, []);
 
@@ -176,7 +170,6 @@ export default function CustomerLayout() {
       logoutCustomer();
       clearPendingAction();
       clearDirectCheckout();
-      clearSelectedCartKeys();
 
       setUnreadCount(0);
       setMenuOpen(false);
@@ -194,9 +187,6 @@ export default function CustomerLayout() {
 
   return (
     <div className="customer-shell customer-nav-shell">
-      <RealtimeBridge audience="customer" />
-
-      {/* MOBILE AND TABLET HEADER */}
       <header className="customer-mobile-topbar">
         <div className="customer-mobile-identity">
           <Link
@@ -245,7 +235,6 @@ export default function CustomerLayout() {
         />
       )}
 
-      {/* DESKTOP SIDEBAR / MOBILE DRAWER */}
       <aside
         id="customer-account-menu"
         ref={panelRef}
@@ -289,6 +278,7 @@ export default function CustomerLayout() {
               end={path === "profile"}
             >
               <Icon size={19} aria-hidden="true" />
+
               <span>{label}</span>
 
               {path === "notifications" && unreadCount > 0 && (
@@ -301,15 +291,6 @@ export default function CustomerLayout() {
               )}
             </NavLink>
           ))}
-
-          <Link
-            to="/"
-            className="customer-return-store-nav"
-            onClick={() => setMenuOpen(false)}
-          >
-            <Store size={19} aria-hidden="true" />
-            <span>Back to Store</span>
-          </Link>
         </nav>
 
         {logoutError && (
@@ -330,11 +311,6 @@ export default function CustomerLayout() {
       </aside>
 
       <main className="customer-main" id="customer-account-content">
-        <Link to="/" className="customer-return-store-link">
-          <ArrowLeft size={17} aria-hidden="true" />
-          <span>Back to Store</span>
-        </Link>
-
         <Outlet />
       </main>
     </div>
