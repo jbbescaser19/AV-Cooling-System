@@ -19,9 +19,15 @@ export async function transitionService(model, service, data, scheduleSQL) {
     }
   } else if (code === "SERVICE_RESCHEDULED") {
     requireStatus(status, code, "CONFIRMED");
+    // POS walk-in appointments were confirmed when created, without a
+    // separate acceptance event. Do not require a nonexistent event.
+    const confirmedPos =
+      Boolean(service.isPosWalkIn) && Boolean(service.hasAssignedServiceWork);
     if (
       !service.schedule ||
-      (!(await has("SERVICE_SCHEDULED")) && !(await has("SERVICE_ACCEPTED")))
+      (!confirmedPos &&
+        !(await has("SERVICE_SCHEDULED")) &&
+        !(await has("SERVICE_ACCEPTED")))
     ) {
       fail(
         "Confirm a future appointment before rescheduling this service.",
@@ -36,12 +42,19 @@ export async function transitionService(model, service, data, scheduleSQL) {
     }
   } else if (code === "SERVICE_STARTED") {
     requireStatus(status, code, "CONFIRMED");
+    // POS walk-ins are already CONFIRMED and scheduled at creation time,
+    // so they have no SERVICE_ACCEPTED event. A real assigned SERVICE job
+    // is the additional proof that this is a confirmed POS appointment.
+    const confirmedPos =
+      Boolean(service.isPosWalkIn) && Boolean(service.hasAssignedServiceWork);
     if (
       !service.schedule ||
-      (!(await has("SERVICE_SCHEDULED")) && !(await has("SERVICE_ACCEPTED")))
+      (!confirmedPos &&
+        !(await has("SERVICE_SCHEDULED")) &&
+        !(await has("SERVICE_ACCEPTED")))
     ) {
       fail(
-        "Accept the request and confirm an appointment before starting.",
+        "Confirm an appointment and assign the technician team before starting.",
         409,
       );
     }

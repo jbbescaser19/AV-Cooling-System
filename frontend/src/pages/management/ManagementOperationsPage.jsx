@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Eye } from "lucide-react";
 import { createPortal } from "react-dom";
@@ -13,13 +13,14 @@ import {
   X,
 } from "lucide-react";
 import api from "../../../api/api.js";
-import useRealtimeRefresh from "../../hooks/useRealtimeRefresh.js";
+import { confirmAction } from "../../utils/confirmAction.jsx";
 import { getStaff } from "../../utils/authMock.js";
 import AvailabilityPicker from "../../components/scheduling/AvailabilityPicker";
 import TechnicianTeamPicker from "../../components/management/TechnicianTeamPicker";
 import SourceTeamPanel from "../../components/management/SourceTeamPanel";
 import ServiceActivityHistory from "../../components/management/ServiceActivityHistory.jsx";
 import ServicePaymentPanel from "../../components/management/ServicePaymentPanel.jsx";
+import ActionGuidance from "../../components/common/ActionGuidance.jsx";
 import "../../styles/management/workspace.css";
 import "../../styles/management/sales-live.css";
 import "../../styles/management/av-records.css";
@@ -74,12 +75,6 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [page, setPage] = useState(1);
   const [revision, setRevision] = useState(0);
-  const hasLoadedRef = useRef(false);
-
-  useRealtimeRefresh(
-    ["services", "schedules", "jobs", "payments"],
-    setRevision,
-  );
   const [event, setEvent] = useState("");
   const [schedule, setSchedule] = useState("");
   const [originalSchedule, setOriginalSchedule] = useState("");
@@ -97,6 +92,49 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
       ["ASSIGNED", "IN_PROGRESS"].includes(job.status) &&
       job.members?.length > 0,
   );
+
+  // Use exactly these conditions for both the disabled button and the guide.
+  // POS walk-in services may already be CONFIRMED, PAID and have a team.
+  const actionReasons =
+    selected && event
+      ? [
+          [
+            "SERVICE_ACCEPTED",
+            "SERVICE_SCHEDULED",
+            "SERVICE_RESCHEDULED",
+          ].includes(event) && !schedule
+            ? "Choose an available future appointment date and time."
+            : null,
+          event === "SERVICE_ACCEPTED" && technicianIds.length === 0
+            ? "Choose the technician team before confirming the appointment."
+            : null,
+          event === "SERVICE_RESCHEDULED" &&
+          schedule &&
+          schedule === originalSchedule
+            ? "Choose a different appointment time from the current schedule."
+            : null,
+          [
+            "SERVICE_DECLINED",
+            "SERVICE_CANCELLED",
+            "SERVICE_RESCHEDULED",
+          ].includes(event) && customerReason.trim().length < 5
+            ? "Enter a customer-visible reason (at least 5 characters)."
+            : null,
+          event === "SERVICE_CANCELLED" && selected.paymentStatus === "PAID"
+            ? "This service is paid. First return the funds and record the completed cash refund in Payment details above."
+            : null,
+          event === "SERVICE_STARTED" && !hasAssignedTeam
+            ? "An assigned technician team is required before starting service."
+            : null,
+          event === "SERVICE_STARTED" && !selected.schedule
+            ? "A confirmed service appointment is required before starting."
+            : null,
+          ["SERVICE_STARTED", "SERVICE_COMPLETED"].includes(event) &&
+          internalNote.trim().length < 10
+            ? "Write who reported the work and how it was confirmed in the private staff note (10+ characters)."
+            : null,
+        ].filter(Boolean)
+      : [];
 
   function close(force = false) {
     if (busy && !force) return;
@@ -123,15 +161,13 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
 
   useEffect(() => {
     const controller = new AbortController();
-    if (!hasLoadedRef.current) setLoading(true);
+    setLoading(true);
     setError("");
     api
       .get("/api/management/services", { signal: controller.signal })
       .then(({ data }) => {
-        if (!controller.signal.aborted) {
+        if (!controller.signal.aborted)
           setItems(Array.isArray(data.records) ? data.records : []);
-          hasLoadedRef.current = true;
-        }
       })
       .catch((requestError) => {
         if (!controller.signal.aborted)
@@ -210,15 +246,39 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
       );
       return;
     }
+    if (event === "SERVICE_ACCEPTED" && technicianIds.length === 0) {
+      setActionError(
+        "Select a technician team before confirming this service.",
+      );
+      return;
+    }
+    if (
+      ["SERVICE_STARTED", "SERVICE_COMPLETED"].includes(event) &&
+      internalNote.trim().length < 10
+    ) {
+      setActionError(
+        "For start or completion, enter who reported the work and how it was confirmed (10+ characters) in the private staff note.",
+      );
+      return;
+    }
     if (event === "SERVICE_STARTED" && !hasAssignedTeam) {
       setActionError("Assign a technician team before starting this service.");
+      return;
+    }
+    if (actionReasons.length > 0) {
+      setActionError(actionReasons[0]);
       return;
     }
     if (
       ["SERVICE_DECLINED", "SERVICE_CANCELLED", "SERVICE_COMPLETED"].includes(
         event,
       ) &&
-      !window.confirm(`${labels[event]} for service #${selected.id}?`)
+      !(await confirmAction({
+        title: labels[event],
+        message: `${labels[event]} for service #${selected.id}?${customerReason.trim() ? `\nCustomer-visible reason: ${customerReason.trim()}` : ""}`,
+        confirmText: labels[event],
+        danger: ["SERVICE_DECLINED", "SERVICE_CANCELLED"].includes(event),
+      }))
     )
       return;
 
@@ -648,7 +708,12 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
                         </small>
                       </label>
                       <label className="wsm-field">
-                        Internal staff note (optional)
+                        Internal staff note{" "}
+                        {["SERVICE_STARTED", "SERVICE_COMPLETED"].includes(
+                          event,
+                        )
+                          ? "(required for work progress)"
+                          : "(optional)"}
                         <textarea
                           maxLength={1000}
                           rows={3}
@@ -662,6 +727,11 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
                         </small>
                       </label>
                     </div>
+                    <ActionGuidance
+                      title="To confirm this update"
+                      reasons={actionReasons}
+                      readyText="Ready to confirm this service update."
+                    />
                     {actionError && (
                       <p className="wsm-error" role="alert">
                         {actionError}
@@ -689,9 +759,7 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
                     className="wsm-primary"
                     type="submit"
                     form="service-request-action-form"
-                    disabled={
-                      busy || (event === "SERVICE_STARTED" && !hasAssignedTeam)
-                    }
+                    disabled={busy || actionReasons.length > 0}
                   >
                     {busy
                       ? "Saving…"

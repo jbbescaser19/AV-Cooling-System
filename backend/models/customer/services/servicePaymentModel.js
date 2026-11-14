@@ -30,11 +30,13 @@ export function servicePaymentModel(db) {
         `SELECT sp.service_payment_id AS id,
         sr.service_request_id AS requestId, st.service_name AS service,
         sr.status AS serviceStatus, sp.method_code AS method,
-        sp.status, CAST(sp.amount AS CHAR) AS amount,
+        CASE WHEN rf.refund_id IS NOT NULL THEN 'REFUNDED' ELSE sp.status END AS status,
+        CAST(sp.amount AS CHAR) AS amount,
         sp.transfer_reference AS transferReference,
         sp.reference_submitted_at AS referenceSubmittedAt,
         sp.paid_at AS paidAt, sp.created_at AS createdAt
         FROM service_payments sp JOIN service_requests sr ON sr.service_request_id=sp.service_request_id
+        LEFT JOIN service_payment_refunds rf ON rf.service_payment_id=sp.service_payment_id
         JOIN service_types st ON st.service_type_id=sr.service_type_id
         JOIN customers c ON c.customer_id=sr.customer_id
         WHERE c.user_id=? AND sr.customer_deleted_at IS NULL

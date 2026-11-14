@@ -20,10 +20,17 @@ const ALL_TOPICS = Object.freeze([
 ]);
 
 const RULES = [
+  // A customer is created only after OTP verification succeeds.
+  [
+    /^\/api\/auth\/customer\/register\/verify\/?$/,
+    ["customers", "dashboard", "reports"],
+  ],
+
   [
     /\/webhooks\/paymongo|\/paymongo(?:\/|$)/,
     ["payments", "orders", "services", "notifications", "reports", "dashboard"],
   ],
+
   [
     /\/management\/orders(?:\/|$)|\/customer\/orders(?:\/|$)|\/sales\/orders(?:\/|$)|\/order-progress|\/order-events/,
     [
@@ -39,6 +46,7 @@ const RULES = [
       "cart",
     ],
   ],
+
   [
     /\/management\/services(?:\/|$)|\/customer\/services(?:\/|$)|\/customer\/account\/my-services(?:\/|$)|\/service-requests|\/service-events|\/walk-in-services/,
     [
@@ -51,10 +59,12 @@ const RULES = [
       "reports",
     ],
   ],
+
   [
     /\/management\/field-work(?:\/|$)|\/source-team|\/work-orders|\/technician|\/booking|\/schedule/,
     ["schedules", "jobs", "orders", "services", "dashboard", "notifications"],
   ],
+
   [
     /\/sales\/pos(?:\/|$)|\/facebook-requests/,
     [
@@ -69,24 +79,33 @@ const RULES = [
       "reports",
     ],
   ],
+
   [
     /\/service-payments|\/sales\/payments/,
     ["payments", "orders", "services", "dashboard", "notifications", "reports"],
   ],
+
   [
     /\/stock-movements|\/inventory|\/products|\/variants|\/categories|\/catalog/,
     ["inventory", "catalog", "cart", "dashboard", "orders"],
   ],
+
+  [/\/service-types(?:\/|$)/, ["services", "catalog", "dashboard"]],
+
   [/\/feedback/, ["feedback", "dashboard", "notifications"]],
+
   [/\/notifications/, ["notifications"]],
+
   [
     /\/customers|\/customer\/account\/addresses|\/customer\/account\/profile/,
     ["customers", "orders", "services", "notifications", "archive"],
   ],
+
   [
     /\/staff|\/audit-logs|\/archive/,
     ["staff", "customers", "archive", "dashboard", "jobs", "notifications"],
   ],
+
   [/\/cart/, ["cart", "inventory"]],
 ];
 
@@ -143,8 +162,14 @@ function allowedTopics(raw, audience) {
 }
 
 function eventTopics(encoded) {
+  if (Array.isArray(encoded)) {
+    return encoded;
+  }
+
   try {
-    return JSON.parse(encoded);
+    const value = JSON.parse(encoded);
+
+    return Array.isArray(value) ? value : ALL_TOPICS;
   } catch {
     return ALL_TOPICS;
   }
@@ -160,12 +185,14 @@ let errorCount = 0;
 /**
  * Notify clients only about actual business changes.
  *
- * An irrelevant topic becomes a checkpoint, allowing
- * EventSource to remember its last received event ID
+ * An irrelevant topic becomes a checkpoint,
+ * allowing EventSource to remember its last event ID
  * without refreshing unrelated pages.
  */
 function deliver(res, audience, rawTopics, eventId) {
-  if (res.destroyed || res.writableEnded) return;
+  if (res.destroyed || res.writableEnded) {
+    return;
+  }
 
   const topics = allowedTopics(rawTopics, audience);
 
@@ -181,7 +208,9 @@ function deliver(res, audience, rawTopics, eventId) {
 }
 
 async function checkForChanges() {
-  if (polling || clients.size === 0) return;
+  if (polling || clients.size === 0) {
+    return;
+  }
 
   polling = true;
 
@@ -204,7 +233,9 @@ async function checkForChanges() {
         }
       }
 
-      if (rows.length < 100) break;
+      if (rows.length < 100) {
+        break;
+      }
     }
 
     errorCount = 0;
@@ -220,12 +251,11 @@ async function checkForChanges() {
 }
 
 /**
- * Reconnect safely:
- *
  * Native EventSource remembers Last-Event-ID.
- * Replay only events missed during disconnection.
- * Do not broadcast an unnecessary ALL_TOPICS refresh
- * whenever someone opens or reconnects to the website.
+ *
+ * Replay only changes missed during disconnection.
+ * Never broadcast ALL_TOPICS simply because a user
+ * opened or reconnected to the application.
  */
 async function replayMissed(res, audience, fromId) {
   if (!fromId || res.destroyed || res.writableEnded) {
@@ -239,7 +269,9 @@ async function replayMissed(res, audience, fromId) {
   for (let batch = 0; batch < 5; batch += 1) {
     const rows = await realtimeEventModel(connectDB).since(lastSeenId, 100);
 
-    if (!rows.length) break;
+    if (!rows.length) {
+      break;
+    }
 
     for (const entry of rows) {
       lastSeenId = String(entry.id);
@@ -249,7 +281,9 @@ async function replayMissed(res, audience, fromId) {
       }
     }
 
-    if (rows.length < 100) break;
+    if (rows.length < 100) {
+      break;
+    }
 
     if (batch === 4) {
       hasMore = true;
@@ -257,8 +291,7 @@ async function replayMissed(res, audience, fromId) {
   }
 
   if (hasMore) {
-    // If many changes were missed, do just one
-    // catch-up refresh rather than hundreds.
+    // Many missed changes: perform one catch-up refresh.
     for (const topic of allowedTopics(ALL_TOPICS, audience)) {
       topics.add(topic);
     }
@@ -279,8 +312,7 @@ export async function subscribeRealtime(req, res, audience = "staff") {
     });
   }
 
-  // Each page fetches its initial data through normal APIs.
-  // A new SSE connection must not force another full refresh.
+  // A new connection must not force a full page refresh.
   if (!timer) {
     cursor = await realtimeEventModel(connectDB).latestId();
   }
@@ -312,8 +344,8 @@ export async function subscribeRealtime(req, res, audience = "staff") {
     }
   }, 20000);
 
-  // Preserve the existing two-minute SSE
-  // authentication renewal requirement.
+  // Preserve the existing two-minute
+  // SSE authentication renewal requirement.
   const expire = setTimeout(() => res.end(), 120000);
 
   const cleanup = () => {

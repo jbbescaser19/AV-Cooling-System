@@ -1,0 +1,106 @@
+/* Shared notes and concern presentation for authorized Management detail dialogs.
+   Does not modify tables, dashboards or other pages. */
+.av-notes-section {
+  min-width: 0;
+  margin: 14px 0;
+  padding: 14px;
+  border: 1px solid #deebf2;
+  border-radius: 12px;
+  background: #fbfdff;
+  color: #1b3b50;
+}
+.av-notes-section > h3 {
+  margin: 0 0 10px;
+  font-size: 0.93rem;
+  font-weight: 750;
+  line-height: 1.35;
+  color: #193f58;
+}
+.av-notes-section__intro {
+  margin: 0 0 10px;
+  font-size: 0.78rem;
+  color: #4b6473;
+}
+.av-notes-field {
+  min-width: 0;
+  margin-top: 8px;
+  padding: 11px 12px;
+  border: 1px solid #e1ebf0;
+  border-radius: 9px;
+  background: #f2f8fb;
+}
+.av-notes-field__label {
+  display: block;
+  margin: 0 0 5px;
+  font-size: 0.76rem;
+  font-weight: 750;
+  color: #30566a;
+}
+.av-notes-field p,
+.av-notes-plain,
+.av-notes-timeline p {
+  margin: 0;
+  color: #183d55;
+  font-size: 0.83rem;
+  font-weight: 500;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.av-notes-field small,
+.av-notes-section > small {
+  display: block;
+  margin-top: 7px;
+  font-size: 0.71rem;
+  line-height: 1.45;
+  color: #597585;
+}
+.av-notes-timeline {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+.av-notes-timeline li {
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid #e1ebf0;
+  border-radius: 9px;
+  background: #fff;
+}
+.av-notes-timeline__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 5px;
+}
+.av-notes-timeline__header strong {
+  color: #1c506b;
+  font-size: 0.79rem;
+}
+.av-notes-timeline__header time {
+  color: #627c8c;
+  font-size: 0.72rem;
+  text-align: right;
+}
+.av-record-modal__field .av-notes-plain {
+  display: block;
+}
+@media (max-width: 650px) {
+  .av-notes-section {
+    margin: 10px 0;
+    padding: 10px;
+  }
+  .av-notes-field {
+    padding: 9px 10px;
+  }
+  .av-notes-timeline__header {
+    flex-direction: column;
+    gap: 3px;
+  }
+  .av-notes-timeline__header time {
+    text-align: left;
+  }
+}

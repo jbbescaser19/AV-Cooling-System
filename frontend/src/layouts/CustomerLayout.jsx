@@ -18,6 +18,8 @@ import {
   MapPin,
   Lock,
   Home,
+  ArrowLeft,
+  Store,
   LogOut,
   Menu,
   X,
@@ -31,6 +33,7 @@ import "../styles/customer/customer.css";
 import "../styles/customer/customer-notifications.css";
 import "../styles/customer/customer-navigation.css";
 import "../styles/customer/customer-snowflakes.css";
+import "../styles/customer/customer-back-to-store.css";
 
 const items = [
   ["profile", User, "Profile"],
@@ -64,10 +67,12 @@ export default function CustomerLayout() {
         location.pathname.startsWith(`/account/${path}/`),
     )?.[2] || "My Account";
 
+  // Close the menu whenever the customer changes pages.
   useEffect(() => {
     setMenuOpen(false);
   }, [location.pathname]);
 
+  // Keyboard accessibility and background scroll locking.
   useEffect(() => {
     if (!menuOpen) return undefined;
 
@@ -119,6 +124,7 @@ export default function CustomerLayout() {
     };
   }, [menuOpen]);
 
+  // Keep existing unread notification behavior.
   useEffect(() => {
     let active = true;
 
@@ -131,8 +137,20 @@ export default function CustomerLayout() {
         if (active) {
           setUnreadCount(Number(response.data.unreadCount || 0));
         }
-      } catch {
-        // Notification failures must not prevent navigation.
+      } catch (error) {
+        if (!active) return;
+        if ([401, 403].includes(error.response?.status)) {
+          // A failed access-token refresh means the customer session
+          // really ended. Do not keep polling with a rejected cookie.
+          setUnreadCount(0);
+          navigate("/login", {
+            replace: true,
+            state: {
+              message: "Your session has ended. Please log in again.",
+            },
+          });
+        }
+        // Temporary network problems never force a logout.
       }
     }
 
@@ -147,7 +165,7 @@ export default function CustomerLayout() {
       window.clearInterval(interval);
       window.removeEventListener("av-notifications-changed", refreshUnread);
     };
-  }, []);
+  }, [navigate]);
 
   function closeMenu() {
     setMenuOpen(false);
@@ -187,6 +205,8 @@ export default function CustomerLayout() {
 
   return (
     <div className="customer-shell customer-nav-shell">
+      {/* MOBILE AND TABLET HEADER */}
+
       <header className="customer-mobile-topbar">
         <div className="customer-mobile-identity">
           <Link
@@ -226,6 +246,8 @@ export default function CustomerLayout() {
         </button>
       </header>
 
+      {/* DARK OVERLAY BEHIND THE OPEN MENU */}
+
       {menuOpen && (
         <button
           type="button"
@@ -234,6 +256,11 @@ export default function CustomerLayout() {
           onClick={closeMenu}
         />
       )}
+
+      {/* ACCOUNT NAVIGATION
+          Desktop: visible sidebar.
+          Mobile/tablet: slide-out menu.
+      */}
 
       <aside
         id="customer-account-menu"
@@ -245,10 +272,14 @@ export default function CustomerLayout() {
         role={menuOpen ? "dialog" : undefined}
         aria-modal={menuOpen ? true : undefined}
       >
+        {/* DESKTOP BRAND */}
+
         <Link to="/" className="customer-home">
           <Home size={18} aria-hidden="true" />
           <span>AV Cooling</span>
         </Link>
+
+        {/* MOBILE MENU HEADER */}
 
         <div className="customer-drawer-heading">
           <div>
@@ -268,6 +299,8 @@ export default function CustomerLayout() {
         </div>
 
         <h2>My Account</h2>
+
+        {/* NAVIGATION LINKS */}
 
         <nav aria-label="Customer account navigation">
           {items.map(([path, Icon, label]) => (
@@ -291,13 +324,25 @@ export default function CustomerLayout() {
               )}
             </NavLink>
           ))}
+          <Link
+            to="/"
+            className="customer-return-store-nav"
+            onClick={() => setMenuOpen(false)}
+          >
+            <Store size={19} aria-hidden="true" />
+            <span>Back to Shop</span>
+          </Link>
         </nav>
+
+        {/* LOGOUT ERROR */}
 
         {logoutError && (
           <p role="alert" className="customer-logout-error">
             {logoutError}
           </p>
         )}
+
+        {/* LOG OUT */}
 
         <button
           type="button"
@@ -306,11 +351,18 @@ export default function CustomerLayout() {
           disabled={loggingOut}
         >
           <LogOut size={19} aria-hidden="true" />
+
           <span>{loggingOut ? "Logging out..." : "Log Out"}</span>
         </button>
       </aside>
 
+      {/* EXISTING ACCOUNT PAGE CONTENT */}
+
       <main className="customer-main" id="customer-account-content">
+        <Link to="/" className="customer-return-store-link">
+          <ArrowLeft size={17} aria-hidden="true" />
+          <span>Back to Shop</span>
+        </Link>
         <Outlet />
       </main>
     </div>

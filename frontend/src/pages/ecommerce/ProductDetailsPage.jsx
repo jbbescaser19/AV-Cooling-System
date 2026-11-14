@@ -15,6 +15,7 @@ import ProductPurchaseDialog from "../../components/ecommerce/ProductPurchaseDia
 
 import useStorefrontCatalog from "../../hooks/useStorefrontCatalog";
 import api from "../../../api/api.js";
+import { showActionNotice } from "../../utils/confirmAction.jsx";
 
 import { addCartItem } from "../../utils/cartStore";
 
@@ -47,7 +48,6 @@ export default function ProductDetailsPage() {
   const [purchaseMode, setPurchaseMode] = useState(null);
 
   const [added, setAdded] = useState(false);
-  const [productError, setProductError] = useState("");
 
   const [failedImageSrc, setFailedImageSrc] = useState("");
 
@@ -84,12 +84,14 @@ export default function ProductDetailsPage() {
 
   const handleAddToCart = ({ variant: selectedVariant, quantity }) => {
     try {
-      setProductError("");
       addCartItem(product, selectedVariant, quantity);
       setPurchaseMode(null);
       setAdded(true);
     } catch (error) {
-      setProductError(error.message || "This horsepower is unavailable.");
+      void showActionNotice({
+        title: "Cannot add to cart",
+        message: error.message || "This horsepower is unavailable.",
+      });
     }
   };
 
@@ -111,21 +113,16 @@ export default function ProductDetailsPage() {
         setPurchaseMode(null);
         navigate("/login");
       } else {
-        setProductError(
-          error.response?.data?.message ||
-            "Unable to verify your account. Please try again.",
-        );
+        await showActionNotice({
+          title: "Account verification unavailable",
+          message: "Unable to verify your account. Please try again.",
+        });
       }
     }
   };
 
   return (
     <>
-      {productError && (
-        <div role="alert" className="product-inline-error">
-          {productError}
-        </div>
-      )}
       <section className="page-shell">
         <div className="container">
           <div className="page-intro">

@@ -190,3 +190,98 @@
     flex: 1 1 145px;
   }
 }
+
+/* Refund record and explicit, verifiable manual-refund confirmation. */
+.service-payment-panel__refund-record,
+.service-payment-panel__refund-form {
+  display: grid;
+  min-width: 0;
+  gap: 11px;
+  padding: clamp(12px, 2vw, 16px);
+  border: 1px solid #c9dfe9;
+  border-radius: 12px;
+  background: #fff;
+}
+.service-payment-panel__refund-form h4 {
+  margin: 0;
+  color: #234860;
+  font-size: 0.95rem;
+}
+.service-payment-panel__refund-form p,
+.service-payment-panel__refund-record p,
+.service-payment-panel__refund-record small {
+  margin: 5px 0 0;
+  color: #526e80;
+  font-size: 0.83rem;
+  line-height: 1.5;
+}
+.service-payment-panel__refund-form .wsm-field {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+  color: #20465b;
+  font-size: 0.83rem;
+  font-weight: 700;
+}
+.service-payment-panel__refund-form input:not([type="checkbox"]),
+.service-payment-panel__refund-form textarea {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid #bdcedc;
+  border-radius: 9px;
+  background: #fff;
+  color: #1a4156;
+  font: inherit;
+  font-weight: 500;
+}
+.service-payment-panel__refund-form .av-cash-confirm-row {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: flex-start !important;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid #c9dfe9;
+  background: #f1f8fb;
+}
+.service-payment-panel__refund-form .av-cash-confirm-row input {
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+  margin: 2px 0 0;
+}
+.service-payment-panel__refund-form > button {
+  justify-self: start;
+}
+.service-payment-panel__refund-details {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+  margin: 0;
+}
+.service-payment-panel__refund-details > div {
+  min-width: 0;
+  padding: 9px;
+  border-radius: 8px;
+  background: #f3f8fb;
+}
+.service-payment-panel__refund-details dt {
+  font-size: 0.73rem;
+  color: #536f82;
+}
+.service-payment-panel__refund-details dd {
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+  font-size: 0.83rem;
+  font-weight: 700;
+}
+@media (max-width: 560px) {
+  .service-payment-panel__refund-details {
+    grid-template-columns: 1fr;
+  }
+  .service-payment-panel__refund-form > button {
+    width: 100%;
+  }
+}

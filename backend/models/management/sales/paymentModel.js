@@ -30,6 +30,11 @@ export function paymentModel(db) {
     async payments() {
       const [rows] =
         await db.execute(`SELECT pay.payment_id AS id, o.order_number AS orderNumber,
+                    CONCAT('AV-', YEAR(o.ordered_at), '-',
+                      CASE WHEN o.order_id < 1000000
+                        THEN LPAD(o.order_id, 6, '0')
+                        ELSE CAST(o.order_id AS CHAR)
+                      END) AS displayOrderNumber,
                     o.order_channel AS channel, o.order_status AS orderStatus,
                     o.recipient_name AS customer, pay.payment_status AS status,
                     pm.code AS method, CAST(pay.amount AS CHAR) AS amount,

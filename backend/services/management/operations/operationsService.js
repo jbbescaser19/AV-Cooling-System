@@ -3,6 +3,8 @@ import { paymongoModel } from "../../../models/payments/paymongoModel.js";
 
 import { auditLogModel } from "../../../models/management/administration/auditLogModel.js";
 
+import { serviceRefundModel } from "../../../models/management/sales/serviceRefundModel.js";
+
 import { servicePaymentModel } from "../../../models/customer/services/servicePaymentModel.js";
 
 import {
@@ -62,19 +64,19 @@ async function addNotificationForEvent(
 ) {
   const [title, description] = EVENT_LABELS[data.eventCode];
 
-  // Only the customer-visible reason is included.
   const visibleNote = data.note ? ` Reason from store: ${data.note}` : "";
 
-  // Confirmation includes the appointment reserved at checkout. Rescheduling
-  // uses the newly selected appointment instead of the previous one.
   const savedSchedule =
     kind === "ORDER" && data.eventCode === "ORDER_ACCEPTED"
       ? record.schedule
       : null;
+
   const effectiveSchedule = data.schedule || savedSchedule;
+
   const eventScheduleSQL =
     scheduleSQL ||
     (savedSchedule ? `${savedSchedule.replace("T", " ")}:00` : null);
+
   const dateNote = effectiveSchedule
     ? ` Date/time (Philippines): ${effectiveSchedule.replace("T", " at ")}.`
     : "";
@@ -85,13 +87,8 @@ async function addNotificationForEvent(
     recordId: record.id,
     eventCode: data.eventCode,
     staffId: staff.id,
-
-    // Public/customer-visible reason.
     note: data.note || null,
-
-    // Private; not included in customer notifications.
     internalNote: kind === "SERVICE" ? data.internalNote || null : null,
-
     schedule: eventScheduleSQL,
   });
 
@@ -126,6 +123,7 @@ export async function applyManagementEvent(kind, reference, staff, rawInput) {
   }
 
   assertStaffRole(staff, data.eventCode);
+
   if (
     kind === "SERVICE" &&
     ["SERVICE_STARTED", "SERVICE_COMPLETED"].includes(data.eventCode) &&
@@ -214,9 +212,7 @@ export async function applyManagementEvent(kind, reference, staff, rawInput) {
       };
     }
 
-    // Never cancel an order/service while a payable PayMongo link exists.
-    // First reconcile or expire the provider session through an authorized
-    // merchant process. Otherwise the customer could pay a cancelled record.
+    // Keep the existing PayMongo cancellation protection.
     if (
       [
         "ORDER_DECLINED",
@@ -232,8 +228,24 @@ export async function applyManagementEvent(kind, reference, staff, rawInput) {
       );
     }
 
-    // Field work must be assigned before it can start.
     const jobModel = confirmationWorkOrderModel(connection);
+
+    // NEW: Team selection is required during confirmation.
+    // Pickup-only orders are exempt.
+    if (["ORDER_ACCEPTED", "SERVICE_ACCEPTED"].includes(data.eventCode)) {
+      const source =
+        kind === "ORDER" ? await jobModel.orderSource(record.id) : null;
+
+      const requiresTeam =
+        kind === "SERVICE" ||
+        (source &&
+          (source.fulfillment === "DELIVERY" ||
+            Boolean(source.installationIncluded)));
+
+      if (requiresTeam && data.technicianIds.length === 0) {
+        fail("Choose a technician team before confirming the schedule.", 400);
+      }
+    }
 
     const workMilestones = {
       SERVICE_STARTED: ["SERVICE", "IN_PROGRESS"],
@@ -244,18 +256,19 @@ export async function applyManagementEvent(kind, reference, staff, rawInput) {
       INSTALLATION_COMPLETED: ["INSTALLATION", "COMPLETED"],
     };
 
-    // Confirm the customer's existing appointment, not a staff-selected replacement.
-    // Keep this in the same transaction as the order and field work.
     if (kind === "ORDER" && data.eventCode === "ORDER_ACCEPTED") {
       const source = await jobModel.orderSource(record.id);
+
       const fieldWorkRequired =
         source?.fulfillment === "DELIVERY" ||
         Boolean(source?.installationIncluded);
+
       if (fieldWorkRequired && !record.schedule) {
         fail(
           "This order has no saved appointment. Arrange a valid slot before confirming.",
         );
       }
+
       if (record.schedule) {
         await reserveAppointment(
           connection,
@@ -267,15 +280,14 @@ export async function applyManagementEvent(kind, reference, staff, rawInput) {
     }
 
     if (kind === "ORDER" && data.eventCode === "SCHEDULE_CHANGED") {
-      // A booked appointment can move before acceptance, or after acceptance
-      // only while related field jobs have not started. Keep both job schedules
-      // aligned with the replacement reservation.
       const jobs = await jobModel.workForSource("ORDER", record.id);
+
       if (jobs.some((job) => !["PENDING", "ASSIGNED"].includes(job.status))) {
         fail(
           "Delivery or installation has started. The appointment cannot be changed.",
         );
       }
+
       await validateAssignedTeamSchedule(
         connection,
         { order_id: record.id },
@@ -371,11 +383,12 @@ export async function applyManagementEvent(kind, reference, staff, rawInput) {
         const paymentModel = servicePaymentModel(connection);
 
         if (
-          (await paymentModel.paymentStatusForCancellation(record.id)) ===
-          "PAID"
+          await serviceRefundModel(connection).hasUnrefundedPaidPayment(
+            record.id,
+          )
         ) {
           fail(
-            "This service has a recorded payment. Handle the refund before cancelling.",
+            "This service has a paid payment without a verified refund. Return the funds and record the refund in Payment details before cancelling.",
             409,
           );
         }
@@ -396,8 +409,6 @@ export async function applyManagementEvent(kind, reference, staff, rawInput) {
       scheduleSQL,
     );
 
-    // Record the action in the same transaction.
-    // This ensures failed updates do not leave a false audit entry.
     if (kind === "SERVICE" || data.eventCode === "PAYMENT_CONFIRMED") {
       await auditLogModel(connection).audit(
         staff.id,
@@ -423,10 +434,6 @@ export async function applyManagementEvent(kind, reference, staff, rawInput) {
   }
 }
 
-/**
- * Management and assigned-technician activity access.
- * The customer API does not expose internalNote.
- */
 export async function getManagementServiceActivity(staff, rawId) {
   const id = Number(rawId);
 

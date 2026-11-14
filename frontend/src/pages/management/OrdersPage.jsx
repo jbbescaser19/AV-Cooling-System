@@ -12,12 +12,16 @@ import {
 } from "lucide-react";
 
 import api from "../../../api/api.js";
-import useRealtimeRefresh from "../../hooks/useRealtimeRefresh.js";
+import { confirmAction } from "../../utils/confirmAction.jsx";
 import SourceTeamPanel from "../../components/management/SourceTeamPanel";
+import TechnicianTeamPicker from "../../components/management/TechnicianTeamPicker.jsx";
+import ManagerOrderProgressPanel from "../../components/management/ManagerOrderProgressPanel.jsx";
+import OrderCashPaymentAction from "../../components/management/OrderCashPaymentAction.jsx";
 import { getStaff } from "../../utils/authMock";
 import "../../styles/management/sales-live.css";
 import "../../styles/management/av-records.css";
 import "../../styles/management/record-pagination.css";
+import "../../styles/management/note-visibility.css";
 
 const money = (value) =>
   new Intl.NumberFormat("en-PH", {
@@ -63,15 +67,22 @@ export default function OrdersPage() {
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [detailsError, setDetailsError] = useState("");
   const [note, setNote] = useState("");
+  const [confirmationTeam, setConfirmationTeam] = useState([]);
+  const [sourceJobs, setSourceJobs] = useState([]);
   const [searchParams, setSearchParams] = useSearchParams();
   const modalRef = useRef(null);
-  const hasLoadedRef = useRef(false);
-
-  useRealtimeRefresh(["orders", "payments", "jobs", "schedules"], setRefresh);
+  const loadedOrdersRef = useRef(false);
+  const lastDetailsIdRef = useRef(null);
+  const lastLiveSyncRef = useRef(Date.now());
 
   const rawOrderId = searchParams.get("orderId");
   const orderId =
     rawOrderId && /^[1-9]\d*$/.test(rawOrderId) ? Number(rawOrderId) : null;
+
+  useEffect(() => {
+    setConfirmationTeam([]);
+    setSourceJobs([]);
+  }, [orderId]);
 
   function closeDetails(force = false) {
     if (busy && !force) return;
@@ -90,9 +101,63 @@ export default function OrdersPage() {
     return () => window.clearTimeout(timer);
   }, [search]);
 
+  // Reconnect the Orders page to the shared SSE event emitted after checkout,
+  // status changes and payment updates. Keep a visible-tab fallback for a
+  // temporarily disconnected EventSource, without reloading the whole page.
+  useEffect(() => {
+    let pending = null;
+    const refreshOrders = (immediately = false) => {
+      if (document.visibilityState === "hidden" || pending !== null) return;
+      pending = window.setTimeout(
+        () => {
+          pending = null;
+          lastLiveSyncRef.current = Date.now();
+          setRefresh((current) => current + 1);
+        },
+        immediately ? 140 : 300,
+      );
+    };
+
+    const onRealtimeChange = (event) => {
+      const topics = event.detail?.topics;
+      if (
+        Array.isArray(topics) &&
+        topics.some((topic) =>
+          ["orders", "payments", "jobs", "schedules"].includes(topic),
+        )
+      ) {
+        refreshOrders(true);
+      }
+    };
+
+    const onReturn = () => {
+      if (Date.now() - lastLiveSyncRef.current >= 15000) {
+        refreshOrders(true);
+      }
+    };
+
+    const backup = window.setInterval(() => {
+      if (Date.now() - lastLiveSyncRef.current >= 30000) {
+        refreshOrders();
+      }
+    }, 30000);
+
+    window.addEventListener("av-realtime-change", onRealtimeChange);
+    window.addEventListener("focus", onReturn);
+    document.addEventListener("visibilitychange", onReturn);
+    return () => {
+      window.removeEventListener("av-realtime-change", onRealtimeChange);
+      window.removeEventListener("focus", onReturn);
+      document.removeEventListener("visibilitychange", onReturn);
+      window.clearInterval(backup);
+      if (pending !== null) window.clearTimeout(pending);
+    };
+  }, []);
+
   useEffect(() => {
     const controller = new AbortController();
-    if (!hasLoadedRef.current) setLoading(true);
+    // Subsequent SSE refreshes update the table quietly, not with a blink.
+    if (!loadedOrdersRef.current) setLoading(true);
     api
       .get("/api/management/sales/orders", {
         signal: controller.signal,
@@ -106,7 +171,8 @@ export default function OrdersPage() {
       .then(({ data }) => {
         if (!controller.signal.aborted) {
           setOrders(Array.isArray(data.orders) ? data.orders : []);
-          hasLoadedRef.current = true;
+          loadedOrdersRef.current = true;
+          lastLiveSyncRef.current = Date.now();
           setTotal(Number(data.total) || 0);
           setTotalPages(Math.max(1, Number(data.totalPages) || 1));
           setError("");
@@ -127,14 +193,20 @@ export default function OrdersPage() {
 
   useEffect(() => {
     if (!orderId || !Number.isSafeInteger(orderId)) {
+      lastDetailsIdRef.current = null;
       setDetails(null);
       setDetailsError("");
       return;
     }
     const controller = new AbortController();
-    setDetails(null);
+    const changingOrder = lastDetailsIdRef.current !== orderId;
+    lastDetailsIdRef.current = orderId;
+    if (changingOrder) {
+      setDetails(null);
+      setNote("");
+      setDetailsLoading(true);
+    }
     setDetailsError("");
-    setDetailsLoading(true);
     api
       .get(`/api/management/sales/orders/${orderId}`, {
         signal: controller.signal,
@@ -142,7 +214,6 @@ export default function OrdersPage() {
       .then(({ data }) => {
         if (!controller.signal.aborted) {
           setDetails(data.order || null);
-          setNote("");
         }
       })
       .catch((requestError) => {
@@ -212,13 +283,29 @@ export default function OrdersPage() {
       return;
     }
     if (
+      eventCode === "ORDER_ACCEPTED" &&
+      needsFieldWork &&
+      confirmationTeam.length === 0
+    ) {
+      setError("Select the technician team before confirming this order.");
+      return;
+    }
+    if (
       ["ORDER_CANCELLED_BY_STAFF", "ORDER_DECLINED"].includes(eventCode) &&
       reason.trim().length < 5
     ) {
       setError("Please enter a reason with at least 5 characters.");
       return;
     }
-    if (!window.confirm(`${label} for ${selected.reference}?`)) return;
+    const approved = await confirmAction({
+      title: label,
+      message: `${label} for ${selected.reference}?${reason ? `\nReason visible to customer: ${reason.trim()}` : ""}`,
+      confirmText: label,
+      danger: ["ORDER_DECLINED", "ORDER_CANCELLED_BY_STAFF"].includes(
+        eventCode,
+      ),
+    });
+    if (!approved) return;
     setBusy(true);
     setError("");
     setSuccess("");
@@ -229,14 +316,17 @@ export default function OrdersPage() {
           requestKey: crypto.randomUUID(),
           eventCode,
           schedule: null, // Use the appointment saved at checkout; never replace it here.
-          technicianIds: [], // Team is assigned separately after confirmation.
+          technicianIds:
+            eventCode === "ORDER_ACCEPTED" && needsFieldWork
+              ? confirmationTeam
+              : [],
           note: reason.trim(),
         },
       );
       if (!data.success) throw new Error("The order update was not confirmed.");
       setSuccess(
         eventCode === "ORDER_ACCEPTED"
-          ? `Order confirmed. ${data.workOrders?.length || 0} job(s) created. Management can assign the team before work begins.`
+          ? `Order confirmed with technician team assigned. ${data.workOrders?.length || 0} job(s) created.`
           : `${label} recorded for ${selected.reference}.`,
       );
       closeDetails(true);
@@ -522,6 +612,35 @@ export default function OrdersPage() {
                   <MapPin size={15} aria-hidden="true" />{" "}
                   <strong>Address:</strong> {details.address || "Not provided"}
                 </p>
+                <section
+                  className="av-notes-section"
+                  aria-label="Customer order instructions"
+                >
+                  <h3>Customer instructions</h3>
+                  <div className="av-notes-field">
+                    <span className="av-notes-field__label">
+                      Customer order notes
+                    </span>
+                    <p>
+                      {details.customerNotes?.trim() ||
+                        "No additional instructions provided."}
+                    </p>
+                    <small>
+                      From the customer · for the store staff and assigned team
+                    </small>
+                  </div>
+                  {details.additionalFeeReason?.trim() && (
+                    <div className="av-notes-field">
+                      <span className="av-notes-field__label">
+                        Additional fee reason
+                      </span>
+                      <p>{details.additionalFeeReason}</p>
+                      <small>
+                        Store record · for authorized management staff
+                      </small>
+                    </div>
+                  )}
+                </section>
                 <p>
                   <CalendarDays size={15} aria-hidden="true" />{" "}
                   <strong>Ordered:</strong> {showDate(details.createdAt)}
@@ -554,14 +673,58 @@ export default function OrdersPage() {
                     </div>
                   ))
                 )}
+                {details.activity?.length > 0 && (
+                  <section
+                    className="av-notes-section"
+                    aria-label="Order status and notes"
+                  >
+                    <h3>Order updates and reasons</h3>
+                    <p className="av-notes-section__intro">
+                      Recorded status changes and customer-visible reasons.
+                    </p>
+                    <ol className="av-notes-timeline">
+                      {details.activity.map((entry) => (
+                        <li key={entry.id}>
+                          <div className="av-notes-timeline__header">
+                            <strong>
+                              {String(entry.newStatus || "Update").replaceAll(
+                                "_",
+                                " ",
+                              )}
+                            </strong>
+                            <time>{showDate(entry.changedAt)}</time>
+                          </div>
+                          {entry.notes?.trim() && <p>{entry.notes}</p>}
+                        </li>
+                      ))}
+                    </ol>
+                  </section>
+                )}
                 {needsFieldWork &&
                   !["PENDING", "CANCELLED"].includes(details.status) && (
-                    <SourceTeamPanel
-                      key={`ORDER-${details.id}`}
-                      kind="ORDER"
-                      sourceId={details.id}
-                    />
+                    <>
+                      <SourceTeamPanel
+                        key={`ORDER-${details.id}`}
+                        kind="ORDER"
+                        sourceId={details.id}
+                        onJobsChange={setSourceJobs}
+                      />
+                      {canApprove && (
+                        <ManagerOrderProgressPanel
+                          order={details}
+                          jobs={sourceJobs}
+                          loading={false}
+                          onUpdated={() => setRefresh((count) => count + 1)}
+                        />
+                      )}
+                    </>
                   )}
+                {canApprove && (
+                  <OrderCashPaymentAction
+                    order={details}
+                    onConfirmed={() => setRefresh((count) => count + 1)}
+                  />
+                )}
                 {details.channel === "FACEBOOK" && (
                   <p className="sales-note">
                     Facebook cash collection stays under{" "}
@@ -600,10 +763,21 @@ export default function OrdersPage() {
                         time with the customer in the Booking Calendar first.
                       </p>
                     )}
+                    {needsFieldWork && canApprove && (
+                      <TechnicianTeamPicker
+                        value={confirmationTeam}
+                        onChange={setConfirmationTeam}
+                        disabled={busy}
+                      />
+                    )}
                     <button
                       className="sales-primary"
                       type="button"
-                      disabled={busy || (needsFieldWork && !details.schedule)}
+                      disabled={
+                        busy ||
+                        (needsFieldWork &&
+                          (!details.schedule || confirmationTeam.length === 0))
+                      }
                       onClick={() => apply(action[0], action[1])}
                     >
                       {busy ? "Saving…" : "Confirm order"}

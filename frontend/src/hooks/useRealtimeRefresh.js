@@ -1,60 +1,56 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 /**
- * Refresh only when SSE reports an actual business change.
+ * Refresh only when the server reports a change
+ * to one of the requested topics.
  *
- * Does not refresh when:
- * - Switching browser tabs
- * - Using Alt+Tab
- * - SSE reconnects
- * - SSE sends a heartbeat
- *
- * Example:
- * useRealtimeRefresh(["orders", "payments"], setRevision);
+ * Usage:
+ * useRealtimeRefresh(["inventory", "catalog"], setRevision);
  */
 export default function useRealtimeRefresh(topics, onRefresh) {
+  const callbackRef = useRef(onRefresh);
+  callbackRef.current = onRefresh;
+
+  // Prevent unnecessary event-listener replacement
+  // when a component supplies a new array each render.
   const topicKey = Array.isArray(topics)
     ? [...new Set(topics.map(String))].sort().join("|")
     : "";
 
   useEffect(() => {
-    const wantedTopics = new Set(topicKey.split("|").filter(Boolean));
+    const wanted = new Set(topicKey.split("|").filter(Boolean));
 
-    let pendingTimer = null;
+    let pending = null;
 
-    function handleBusinessChange(event) {
-      const changedTopics = event?.detail?.topics;
+    function onChange(event) {
+      const changed = event?.detail?.topics;
 
-      if (!Array.isArray(changedTopics) || changedTopics.length === 0) {
+      if (!Array.isArray(changed) || changed.length === 0) {
         return;
       }
 
-      if (!changedTopics.some((topic) => wantedTopics.has(topic))) {
+      if (!changed.some((topic) => wanted.has(topic))) {
         return;
       }
 
-      // Combine rapid SSE notifications into one refresh.
-      if (pendingTimer !== null) {
-        return;
-      }
+      if (pending !== null) return;
 
-      pendingTimer = window.setTimeout(() => {
-        pendingTimer = null;
+      // Combine notifications arriving close together.
+      pending = window.setTimeout(() => {
+        pending = null;
 
-        if (typeof onRefresh === "function") {
-          onRefresh((previous) => previous + 1);
-        }
+        callbackRef.current?.((previous) => previous + 1);
       }, 150);
     }
 
-    window.addEventListener("av-realtime-change", handleBusinessChange);
+    window.addEventListener("av-realtime-change", onChange);
 
     return () => {
-      window.removeEventListener("av-realtime-change", handleBusinessChange);
+      window.removeEventListener("av-realtime-change", onChange);
 
-      if (pendingTimer !== null) {
-        window.clearTimeout(pendingTimer);
+      if (pending !== null) {
+        window.clearTimeout(pending);
       }
     };
-  }, [topicKey, onRefresh]);
+  }, [topicKey]);
 }

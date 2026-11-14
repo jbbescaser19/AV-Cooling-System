@@ -13,8 +13,8 @@ import {
 import { useNavigate, useParams } from "react-router-dom";
 
 import api from "../../../api/api.js";
-import useRealtimeRefresh from "../../hooks/useRealtimeRefresh.js";
 import CustomerPageHeader from "../../components/customer/CustomerPageHeader";
+import useCustomerRealtimeRefresh from "../../hooks/useCustomerRealtimeRefresh.js";
 import CustomerStatusBadge from "../../components/customer/CustomerStatusBadge";
 
 import "../../styles/customer/customer-services.css";
@@ -105,7 +105,8 @@ export default function ServicesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [retryCount, setRetryCount] = useState(0);
-  useRealtimeRefresh(["services", "schedules", "payments"], setRetryCount);
+  const loadedRef = useRef(false);
+  const [syncError, setSyncError] = useState("");
   const [notice, setNotice] = useState("");
 
   const [selectedRequestId, setSelectedRequestId] = useState(serviceId ?? null);
@@ -119,12 +120,16 @@ export default function ServicesPage() {
     (service) => String(service.requestId) === String(selectedRequestId),
   );
 
+  useCustomerRealtimeRefresh(
+    ["services", "jobs", "schedules", "payments", "notifications"],
+    () => setRetryCount((value) => value + 1),
+  );
+
   useEffect(() => {
     const controller = new AbortController();
 
     async function fetchMyServices() {
-      setLoading(true);
-      setError("");
+      if (!loadedRef.current) setLoading(true);
 
       try {
         const response = await api.get(SERVICE_URL, {
@@ -140,16 +145,24 @@ export default function ServicesPage() {
         }
 
         setServices(response.data.services);
+        loadedRef.current = true;
+        setError("");
+        setSyncError("");
       } catch (requestError) {
         if (controller.signal.aborted) return;
-        setServices([]);
-        setError(
+        const detail =
           requestError.response?.status === 401
             ? "Please log in to view your service bookings."
             : requestError.response?.data?.message ||
-                requestError.message ||
-                "Unable to load your service bookings.",
-        );
+              requestError.message ||
+              "Unable to load your service bookings.";
+        if (loadedRef.current) {
+          setSyncError(
+            "Could not update service status. Check your connection or refresh.",
+          );
+        } else {
+          setError(detail);
+        }
       } finally {
         if (!controller.signal.aborted) setLoading(false);
       }
@@ -260,6 +273,11 @@ export default function ServicesPage() {
         title="Service Bookings"
         copy="View booking details, update pending requests, or cancel before work begins."
       />
+      {syncError && (
+        <p className="customer-service-locked-note" role="status">
+          {syncError}
+        </p>
+      )}
 
       {notice && (
         <p className="customer-service-notice" role="status">
@@ -321,7 +339,9 @@ export default function ServicesPage() {
               </div>
 
               <div className="customer-service-desktop-side">
-                <CustomerStatusBadge>{service.status}</CustomerStatusBadge>
+                <CustomerStatusBadge>
+                  {service.displayStatus || service.status}
+                </CustomerStatusBadge>
                 <div className="customer-service-desktop-buttons">
                   <button
                     type="button"
@@ -386,7 +406,9 @@ export default function ServicesPage() {
                 )}
               </div>
               <div className="customer-service-mobile-actions">
-                <CustomerStatusBadge>{service.status}</CustomerStatusBadge>
+                <CustomerStatusBadge>
+                  {service.displayStatus || service.status}
+                </CustomerStatusBadge>
                 <button
                   type="button"
                   className="customer-service-view-button"
@@ -452,7 +474,8 @@ export default function ServicesPage() {
                     <dt>Status</dt>
                     <dd>
                       <CustomerStatusBadge>
-                        {selectedService.status}
+                        {selectedService.displayStatus ||
+                          selectedService.status}
                       </CustomerStatusBadge>
                     </dd>
                   </div>
@@ -463,7 +486,13 @@ export default function ServicesPage() {
                     </div>
                   )}
                   <div>
-                    <dt>Preferred schedule</dt>
+                    <dt>
+                      {["SCHEDULED", "IN_PROGRESS", "COMPLETED"].includes(
+                        selectedService.displayStatus,
+                      )
+                        ? "Confirmed appointment"
+                        : "Preferred schedule"}
+                    </dt>
                     <dd>{formatSchedule(selectedService.preferredStart)}</dd>
                   </div>
                   <div>
@@ -488,14 +517,26 @@ export default function ServicesPage() {
                   )}
                   {selectedService.concern && (
                     <div>
-                      <dt>Concern</dt>
+                      <dt>
+                        Your concern (shared with service staff and assigned
+                        technicians)
+                      </dt>
                       <dd>{selectedService.concern}</dd>
                     </div>
                   )}
                   {selectedService.notes && (
                     <div>
-                      <dt>Additional notes</dt>
+                      <dt>
+                        Your additional notes (shared with service staff and
+                        assigned technicians)
+                      </dt>
                       <dd>{selectedService.notes}</dd>
+                    </div>
+                  )}
+                  {selectedService.staffMessage && (
+                    <div className="customer-service-store-update">
+                      <dt>Message from AV Cooling</dt>
+                      <dd>{selectedService.staffMessage}</dd>
                     </div>
                   )}
                   <div>

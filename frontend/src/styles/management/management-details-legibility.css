@@ -1,0 +1,90 @@
+/* Scoped Management detail and cash confirmation presentation. */
+.mgmt-shell .av-record-modal__fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.mgmt-shell .av-record-modal__field {
+  min-width: 0;
+  padding: 11px 13px;
+  background: #f6fafc;
+  border: 1px solid #e0eaf0;
+  border-radius: 10px;
+}
+.mgmt-shell .av-record-modal__field dt {
+  margin-bottom: 5px;
+  color: #526e80;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.mgmt-shell .av-record-modal__field dd {
+  margin: 0;
+  color: #173f57;
+  font-size: 0.86rem;
+  font-weight: 700;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+/* Checkbox and sentence always share a row on phone, tablet, desktop. */
+.mgmt-shell .av-cash-confirm-row,
+.mgmt-shell .service-payment-panel__checkbox.av-cash-confirm-row,
+.mgmt-shell .sales-checkline.av-cash-confirm-row {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: flex-start !important;
+  justify-content: flex-start !important;
+  gap: 10px !important;
+  width: 100%;
+  min-width: 0;
+  margin: 12px 0;
+  padding: 12px;
+  border: 1px solid #cde2ea;
+  border-radius: 10px;
+  background: #f1f8fb;
+  color: #224b60;
+  font-size: 0.82rem;
+  font-weight: 650;
+  line-height: 1.5;
+  cursor: pointer;
+}
+.mgmt-shell .av-cash-confirm-row input[type="checkbox"] {
+  display: block;
+  flex: 0 0 18px;
+  width: 18px !important;
+  height: 18px !important;
+  min-height: 18px !important;
+  margin: 2px 0 0 !important;
+  padding: 0 !important;
+  accent-color: #146d90;
+}
+.mgmt-shell .av-cash-confirm-row span {
+  display: inline !important;
+  flex: 1;
+  min-width: 0;
+}
+.mgmt-shell .service-request-dialog .wsm-form > p,
+.mgmt-shell .av-orders-modal > p {
+  margin: 0 0 9px;
+  color: #31546a;
+  font-size: 0.84rem;
+  line-height: 1.55;
+}
+.mgmt-shell .service-request-dialog .wsm-form > p strong,
+.mgmt-shell .av-orders-modal > p strong {
+  color: #163c54;
+  font-weight: 750;
+}
+@media (max-width: 680px) {
+  .mgmt-shell .av-record-modal__fields {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+  .mgmt-shell .av-record-modal__field {
+    padding: 10px 11px;
+  }
+  .mgmt-shell .av-cash-confirm-row {
+    padding: 10px;
+    font-size: 0.78rem;
+  }
+}

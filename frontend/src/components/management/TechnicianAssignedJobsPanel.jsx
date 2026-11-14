@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { createPortal } from "react-dom";
 import {
@@ -19,13 +19,14 @@ import {
 } from "lucide-react";
 
 import api from "../../../api/api.js";
-import useRealtimeRefresh from "../../hooks/useRealtimeRefresh.js";
+import { confirmAction } from "../../utils/confirmAction.jsx";
 import { getStaff } from "../../utils/authMock.js";
 import ServiceActivityHistory from "./ServiceActivityHistory.jsx";
 
 import "../../styles/management/technician-jobs.css";
 import "../../styles/management/combined-technician-jobs.css";
 import "../../styles/management/technician-job-detail-modal.css";
+import "../../styles/management/note-visibility.css";
 
 function groupAssignedJobs(rows) {
   const groups = new Map();
@@ -140,6 +141,15 @@ const typeTabs = [
   { key: "DELIVERY", label: "Delivery" },
 ];
 
+// Use the same AV reference shown on the Management Orders page.
+// Numeric order IDs are internal database IDs, not customer-facing codes.
+function jobReference(job) {
+  if (job.serviceRequestId) return `Service #${job.serviceRequestId}`;
+  return (
+    job.orderReference || job.orderNumber || `Order #${job.orderId || job.id}`
+  );
+}
+
 function wallClock(value) {
   if (!value) return "No appointment set";
   return `${String(value).replace("T", " at ").slice(0, 16)} (PH time)`;
@@ -156,17 +166,14 @@ export default function TechnicianAssignedJobsPanel({ limit = null }) {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [revision, setRevision] = useState(0);
-  const hasLoadedRef = useRef(false);
-
-  useRealtimeRefresh(["jobs", "schedules", "orders", "services"], setRevision);
-  const [statusFilter, setStatusFilter] = useState("PENDING");
+  const [statusFilter, setStatusFilter] = useState("ALL");
   const [typeFilter, setTypeFilter] = useState("ALL");
   const [page, setPage] = useState(1);
 
   useEffect(() => {
     if (!isTechnician) return undefined;
     const controller = new AbortController();
-    if (!hasLoadedRef.current) setLoading(true);
+    setLoading(true);
     api
       .get("/api/management/workspace/work-orders", {
         signal: controller.signal,
@@ -174,7 +181,6 @@ export default function TechnicianAssignedJobsPanel({ limit = null }) {
       .then(({ data }) => {
         if (!controller.signal.aborted) {
           setJobs(Array.isArray(data.items) ? data.items : []);
-          hasLoadedRef.current = true;
           setError("");
         }
       })
@@ -195,9 +201,30 @@ export default function TechnicianAssignedJobsPanel({ limit = null }) {
   useEffect(() => {
     if (!isTechnician) return undefined;
     const reload = () => setRevision((value) => value + 1);
+    const whenVisible = () => {
+      if (document.visibilityState === "visible") reload();
+    };
+    const interval = window.setInterval(whenVisible, 60000);
+    window.addEventListener("focus", whenVisible);
     window.addEventListener("av-management-updated", reload);
+
+    // Owner/Manager progress is saved on the server. Refresh this technician's
+    // authorized jobs when SSE reports a change, including changes from
+    // another device, so IN_PROGRESS immediately exposes Complete Service.
+    const onRealtime = (event) => {
+      if (
+        event.detail?.topics?.some((topic) =>
+          ["jobs", "orders", "services", "schedules"].includes(topic),
+        )
+      )
+        reload();
+    };
+    window.addEventListener("av-realtime-change", onRealtime);
     return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", whenVisible);
       window.removeEventListener("av-management-updated", reload);
+      window.removeEventListener("av-realtime-change", onRealtime);
     };
   }, [isTechnician]);
 
@@ -216,6 +243,10 @@ export default function TechnicianAssignedJobsPanel({ limit = null }) {
   }, [detailGroup]);
 
   const groups = useMemo(() => groupAssignedJobs(jobs), [jobs]);
+  // Details must follow the latest server response, not a stale group snapshot.
+  const currentDetailGroup = detailGroup
+    ? groups.find((group) => group.key === detailGroup.key) || detailGroup
+    : null;
   const counts = useMemo(() => {
     const next = {
       ALL: groups.length,
@@ -253,9 +284,11 @@ export default function TechnicianAssignedJobsPanel({ limit = null }) {
     }
     if (
       action.startsWith("START_") &&
-      !window.confirm(
-        `Start ${action.endsWith("SERVICE") ? "service" : "delivery"} for this customer?`,
-      )
+      !(await confirmAction({
+        title: "Start assigned work",
+        message: `Start ${action.endsWith("SERVICE") ? "service" : "delivery"} for this customer?`,
+        confirmText: "Start work",
+      }))
     ) {
       return;
     }
@@ -436,9 +469,7 @@ export default function TechnicianAssignedJobsPanel({ limit = null }) {
               : combined
                 ? "Delivery & Installation"
                 : "Delivery only";
-            const title = primary.serviceRequestId
-              ? `Service #${primary.serviceRequestId}`
-              : `Order #${primary.orderId}`;
+            const title = jobReference(primary);
             const startLabel = isService ? "Start Service" : "Start Delivery";
             const finishLabel = isService
               ? "Complete Service"
@@ -624,7 +655,7 @@ export default function TechnicianAssignedJobsPanel({ limit = null }) {
         </div>
       )}
 
-      {detailGroup &&
+      {currentDetailGroup &&
         createPortal(
           <div
             className="av-tech-detail-backdrop"
@@ -642,9 +673,7 @@ export default function TechnicianAssignedJobsPanel({ limit = null }) {
                 <div>
                   <small>ASSIGNED WORK</small>
                   <h2 id="av-tech-detail-heading">
-                    {detailGroup.jobs[0].serviceRequestId
-                      ? `Service #${detailGroup.jobs[0].serviceRequestId}`
-                      : `Order #${detailGroup.jobs[0].orderId || detailGroup.jobs[0].id}`}
+                    {jobReference(currentDetailGroup.jobs[0])}
                   </h2>
                 </div>
                 <button
@@ -659,21 +688,27 @@ export default function TechnicianAssignedJobsPanel({ limit = null }) {
               <div className="av-tech-detail-body">
                 <dl className="av-tech-detail-fields">
                   {[
-                    ["Customer", detailGroup.jobs[0].customer],
-                    ["Phone", detailGroup.jobs[0].phone],
+                    ["Customer", currentDetailGroup.jobs[0].customer],
+                    ["Phone", currentDetailGroup.jobs[0].phone],
                     [
                       "Scheduled",
-                      wallClock(detailGroup.jobs[0].scheduledStart),
+                      wallClock(currentDetailGroup.jobs[0].scheduledStart),
                     ],
-                    ["Address", detailGroup.jobs[0].address],
-                    ["Destination", detailGroup.jobs[0].destinationAddress],
-                    ["Team lead", detailGroup.jobs[0].teamLeader],
-                    ["Team members", detailGroup.jobs[0].teamMembers],
+                    ["Address", currentDetailGroup.jobs[0].address],
+                    [
+                      "Destination",
+                      currentDetailGroup.jobs[0].destinationAddress,
+                    ],
+                    ["Team lead", currentDetailGroup.jobs[0].teamLeader],
+                    ["Team members", currentDetailGroup.jobs[0].teamMembers],
                     [
                       "Job status",
-                      getProgress(detailGroup).status.replaceAll("_", " "),
+                      getProgress(currentDetailGroup).status.replaceAll(
+                        "_",
+                        " ",
+                      ),
                     ],
-                    ["Job type", detailGroup.jobs[0].workType],
+                    ["Job type", currentDetailGroup.jobs[0].workType],
                   ]
                     .filter(([, value]) => value)
                     .map(([label, value]) => (
@@ -683,9 +718,67 @@ export default function TechnicianAssignedJobsPanel({ limit = null }) {
                       </div>
                     ))}
                 </dl>
-                {detailGroup.jobs[0].serviceRequestId && (
+                <section
+                  className="av-notes-section"
+                  aria-label="Customer instructions for assigned job"
+                >
+                  <h3>Customer concern and instructions</h3>
+                  {currentDetailGroup.jobs[0].serviceRequestId ? (
+                    <>
+                      <div className="av-notes-field">
+                        <span className="av-notes-field__label">
+                          Customer concern
+                        </span>
+                        <p>
+                          {currentDetailGroup.jobs[0].serviceConcern?.trim() ||
+                            "No concern provided."}
+                        </p>
+                      </div>
+                      <div className="av-notes-field">
+                        <span className="av-notes-field__label">
+                          Customer notes
+                        </span>
+                        <p>
+                          {currentDetailGroup.jobs[0].serviceCustomerNotes?.trim() ||
+                            "No additional instructions."}
+                        </p>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="av-notes-field">
+                      <span className="av-notes-field__label">
+                        Customer order notes
+                      </span>
+                      <p>
+                        {currentDetailGroup.jobs[0].orderCustomerNotes?.trim() ||
+                          "No additional instructions."}
+                      </p>
+                    </div>
+                  )}
+                  <small>
+                    Only assigned technicians and authorized store staff can
+                    view this work information.
+                  </small>
+                </section>
+                {currentDetailGroup.jobs
+                  .filter((job) => job.completionNotes?.trim())
+                  .map((job) => (
+                    <section
+                      className="av-notes-section"
+                      key={`completion-${job.id}`}
+                    >
+                      <h3>
+                        {String(job.workType || "Work").replaceAll("_", " ")}{" "}
+                        completion summary
+                      </h3>
+                      <div className="av-notes-field">
+                        <p>{job.completionNotes}</p>
+                      </div>
+                    </section>
+                  ))}
+                {currentDetailGroup.jobs[0].serviceRequestId && (
                   <ServiceActivityHistory
-                    requestId={detailGroup.jobs[0].serviceRequestId}
+                    requestId={currentDetailGroup.jobs[0].serviceRequestId}
                   />
                 )}
               </div>

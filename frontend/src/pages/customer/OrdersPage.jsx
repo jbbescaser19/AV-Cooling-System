@@ -1,8 +1,4 @@
-import {
-  sanitizePersonName,
-  sanitizeContactNumber,
-} from "../../utils/fieldSanitizers.js";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   ChevronRight,
@@ -17,8 +13,8 @@ import {
   XCircle,
 } from "lucide-react";
 import api from "../../../api/api.js";
-import useRealtimeRefresh from "../../hooks/useRealtimeRefresh.js";
 import OrderDialog from "../../components/customer/OrderDialog";
+import useCustomerRealtimeRefresh from "../../hooks/useCustomerRealtimeRefresh.js";
 import CustomerPageHeader from "../../components/customer/CustomerPageHeader";
 import CustomerStatusBadge from "../../components/customer/CustomerStatusBadge";
 import SavedAddressSelector from "../../components/common/SavedAddressSelector";
@@ -72,7 +68,8 @@ export default function OrdersPage() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [retry, setRetry] = useState(0);
-  useRealtimeRefresh(["orders", "payments", "services"], setRetry);
+  const loadedRef = useRef(false);
+  const [syncError, setSyncError] = useState("");
   const [filter, setFilter] = useState("all");
   const [selectedNumber, setSelectedNumber] = useState(null);
   const [mode, setMode] = useState("details");
@@ -82,20 +79,34 @@ export default function OrdersPage() {
   const [actionError, setActionError] = useState("");
   const [saving, setSaving] = useState(false);
 
+  useCustomerRealtimeRefresh(
+    ["orders", "jobs", "services", "schedules", "payments", "notifications"],
+    () => setRetry((value) => value + 1),
+  );
+
   useEffect(() => {
     const controller = new AbortController();
-    setLoading(true);
-    setError("");
+    if (!loadedRef.current) setLoading(true);
+
     api
       .get("/api/customer/orders", { signal: controller.signal })
       .then((response) => {
-        if (!controller.signal.aborted) setOrders(response.data.orders || []);
+        if (controller.signal.aborted) return;
+        setOrders(response.data.orders || []);
+        loadedRef.current = true;
+        setError("");
+        setSyncError("");
       })
       .catch((requestError) => {
-        if (!controller.signal.aborted) {
-          setError(
-            requestError.response?.data?.message || "Unable to load orders.",
+        if (controller.signal.aborted) return;
+        const detail =
+          requestError.response?.data?.message || "Unable to load orders.";
+        if (loadedRef.current) {
+          setSyncError(
+            "Could not update order status. Check your connection or refresh.",
           );
+        } else {
+          setError(detail);
         }
       })
       .finally(() => {
@@ -214,6 +225,11 @@ export default function OrdersPage() {
         copy="View your purchases, update pending details, or cancel before processing."
       />
 
+      {syncError && (
+        <p className="order-notice" role="status">
+          {syncError}
+        </p>
+      )}
       {message && (
         <p className="order-notice" role="status">
           {message}
@@ -475,7 +491,9 @@ export default function OrdersPage() {
                   </div>
                   {selected.customerNotes && (
                     <div>
-                      <span>Notes</span>
+                      <span>
+                        Your order notes (visible to AV Cooling staff)
+                      </span>
                       <strong>{selected.customerNotes}</strong>
                     </div>
                   )}
@@ -519,7 +537,11 @@ export default function OrdersPage() {
                                 {entry.newStatus}
                               </CustomerStatusBadge>
                             )}
-                            {entry.notes && <span>{entry.notes}</span>}
+                            {entry.notes && (
+                              <span>
+                                <strong>Order update:</strong> {entry.notes}
+                              </span>
+                            )}
                           </div>
                           <small>{formatDate(entry.changedAt)}</small>
                         </li>
@@ -555,10 +577,7 @@ export default function OrdersPage() {
                       required
                       maxLength={150}
                       onChange={(e) =>
-                        setField(
-                          "recipientName",
-                          sanitizePersonName(e.target.value),
-                        )
+                        setField("recipientName", e.target.value)
                       }
                       disabled={saving}
                     />
@@ -575,10 +594,7 @@ export default function OrdersPage() {
                       pattern="[+0-9 ()-]{7,30}"
                       value={draft.contactNumber}
                       onChange={(e) =>
-                        setField(
-                          "contactNumber",
-                          sanitizeContactNumber(e.target.value),
-                        )
+                        setField("contactNumber", e.target.value)
                       }
                       disabled={saving}
                     />

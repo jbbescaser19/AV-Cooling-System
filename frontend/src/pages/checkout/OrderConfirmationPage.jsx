@@ -48,8 +48,11 @@ export default function OrderConfirmationPage() {
           {order && (
             <>
               <p>
-                Order <strong>{order.orderNumber}</strong> is saved in your
-                account.
+                Order{" "}
+                <strong>
+                  {order.displayOrderNumber || `Order #${order.orderId}`}
+                </strong>{" "}
+                is saved in your account.
               </p>
               <p className="muted">
                 Status: {order.status} · Payment: {order.paymentStatus}

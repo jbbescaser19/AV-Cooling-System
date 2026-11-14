@@ -1,37 +1,49 @@
 import { useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import api from "../../../api/api.js";
 
-export default function RealtimeBridge({ audience }) {
+/**
+ * Keep a single SSE connection for the currently viewed area.
+ * Private data is never sent over SSE; topics only ask existing pages
+ * to refetch through their authorized HTTP endpoints.
+ */
+export default function RealtimeBridge() {
+  const { pathname } = useLocation();
+  const audience = pathname.startsWith("/account")
+    ? "customer"
+    : pathname.startsWith("/management") &&
+        !pathname.startsWith("/management/login")
+      ? "staff"
+      : "public";
+
   useEffect(() => {
-    const audiences = ["public", "customer", "staff"];
+    if (typeof EventSource === "undefined") return undefined;
 
-    if (!audiences.includes(audience) || typeof EventSource === "undefined") {
-      return undefined;
-    }
-
-    const baseUrl = (
-      import.meta.env.VITE_API_URL || "http://localhost:3000"
-    ).replace(/\/$/, "");
-
-    let source = null;
+    let active = true;
+    let connection = null;
     let reconnectTimer = null;
-    let batchTimer = null;
-    let stopped = false;
-    let failures = 0;
+    let connecting = false;
+    let retryCount = 0;
 
-    const pending = new Set();
+    const base = String(api.defaults.baseURL || "").replace(/\/$/, "");
+    const sessionEndpoint =
+      audience === "customer"
+        ? "/api/auth/customer/session"
+        : "/api/management/auth/session";
 
-    function publishPending() {
-      if (
-        stopped ||
-        document.visibilityState === "hidden" ||
-        pending.size === 0
-      ) {
+    function onChange(message) {
+      let payload;
+      try {
+        payload = JSON.parse(message.data);
+      } catch {
         return;
       }
 
-      const topics = [...pending];
-      pending.clear();
+      const topics = Array.isArray(payload?.topics)
+        ? payload.topics.filter((topic) => typeof topic === "string")
+        : [];
+
+      if (!topics.length) return;
 
       window.dispatchEvent(
         new CustomEvent("av-realtime-change", {
@@ -39,211 +51,73 @@ export default function RealtimeBridge({ audience }) {
         }),
       );
 
-      if (audience === "staff") {
-        window.dispatchEvent(
-          new CustomEvent("av-management-updated", {
-            detail: {
-              topics,
-              realtime: true,
-            },
-          }),
-        );
-
-        if (topics.includes("notifications") || topics.includes("inventory")) {
-          window.dispatchEvent(
-            new Event("av-management-notifications-changed"),
-          );
-        }
+      if (audience === "staff" && topics.includes("notifications")) {
+        window.dispatchEvent(new Event("av-management-updated"));
       }
 
-      if (audience === "customer") {
-        window.dispatchEvent(
-          new CustomEvent("av-customer-updated", {
-            detail: { topics },
-          }),
-        );
-
-        if (topics.includes("notifications")) {
-          window.dispatchEvent(new Event("av-notifications-changed"));
-        }
-      }
-
-      if (topics.includes("catalog") || topics.includes("inventory")) {
-        window.dispatchEvent(new Event("av-catalog-updated"));
-      }
-
-      if (topics.includes("schedules")) {
-        window.dispatchEvent(new Event("av-schedules-updated"));
-      }
-    }
-
-    function enqueue(topics) {
-      for (const topic of topics) {
-        if (typeof topic === "string") {
-          pending.add(topic);
-        }
-      }
-
-      if (!batchTimer) {
-        batchTimer = window.setTimeout(() => {
-          batchTimer = null;
-          publishPending();
-        }, 300);
-      }
-    }
-
-    async function sessionIsValid() {
-      if (audience === "public") {
-        return true;
-      }
-
-      try {
-        const endpoint =
-          audience === "staff"
-            ? "/api/management/auth/session"
-            : "/api/auth/customer/session";
-
-        const response = await api.get(endpoint);
-
-        if (
-          response.data?.success === false ||
-          response.data?.authenticated === false
-        ) {
-          return false;
-        }
-
-        return true;
-      } catch (error) {
-        if (error.response?.status === 401 || error.response?.status === 403) {
-          return false;
-        }
-
-        return null;
+      if (audience === "customer" && topics.includes("notifications")) {
+        window.dispatchEvent(new Event("av-notifications-changed"));
       }
     }
 
     function scheduleReconnect() {
-      if (stopped || reconnectTimer) {
-        return;
-      }
-
-      const delay = Math.min(30000, 2000 * 2 ** Math.min(failures++, 4));
-
+      if (!active || reconnectTimer !== null) return;
+      const delay = Math.min(30000, 1500 * 2 ** Math.min(retryCount++, 4));
       reconnectTimer = window.setTimeout(() => {
         reconnectTimer = null;
-        void reconnect();
+        void connect();
       }, delay);
     }
 
-    async function reconnect() {
-      if (stopped) return;
+    async function connect() {
+      if (!active || connecting || connection) return;
+      connecting = true;
 
-      if (!navigator.onLine) {
-        scheduleReconnect();
-        return;
-      }
-
-      const valid = await sessionIsValid();
-
-      if (stopped) return;
-
-      if (valid === true) {
-        open();
-      } else if (valid === null) {
-        scheduleReconnect();
-      }
-    }
-
-    function open() {
-      if (stopped) return;
-
-      source?.close();
-
-      source = new EventSource(`${baseUrl}/api/realtime/${audience}`, {
-        withCredentials: true,
-      });
-
-      source.addEventListener("open", () => {
-        failures = 0;
-      });
-
-      source.addEventListener("change", (event) => {
-        try {
-          const data = JSON.parse(event.data);
-
-          if (Array.isArray(data?.topics)) {
-            enqueue(data.topics);
-          }
-        } catch {
-          // Ignore malformed events.
+      try {
+        // EventSource bypasses Axios refresh interceptors. Checking the
+        // session first gives the existing interceptor an opportunity to
+        // refresh an expired 15-minute access cookie with the 7-day cookie.
+        if (audience !== "public") {
+          await api.get(sessionEndpoint);
         }
-      });
 
-      source.onerror = () => {
-        source?.close();
-        source = null;
+        if (!active) return;
 
+        connection = new EventSource(`${base}/api/realtime/${audience}`, {
+          withCredentials: true,
+        });
+
+        connection.addEventListener("change", onChange);
+        connection.addEventListener("open", () => {
+          retryCount = 0;
+        });
+        connection.addEventListener("error", () => {
+          // A 401 can stop native EventSource from reconnecting.
+          // Recreate the stream only after validating the session again.
+          connection?.close();
+          connection = null;
+          scheduleReconnect();
+        });
+      } catch (error) {
+        if (!active) return;
+        if ([401, 403].includes(error.response?.status)) {
+          // The protected route handles the expired or invalid session.
+          // Do not keep making requests against a signed-out account.
+          return;
+        }
         scheduleReconnect();
-      };
-    }
-
-    function onVisible() {
-      if (document.visibilityState !== "visible") {
-        return;
-      }
-
-      publishPending();
-
-      enqueue(
-        audience === "public"
-          ? ["catalog", "schedules", "feedback"]
-          : [
-              "dashboard",
-              "orders",
-              "services",
-              "payments",
-              "schedules",
-              "jobs",
-              "notifications",
-              "inventory",
-              "catalog",
-              "cart",
-              "customers",
-              "staff",
-              "archive",
-              "reports",
-              "feedback",
-            ],
-      );
-
-      if (!source && !reconnectTimer) {
-        scheduleReconnect();
+      } finally {
+        connecting = false;
       }
     }
 
-    function onOnline() {
-      if (!source && !reconnectTimer) {
-        scheduleReconnect();
-      }
-    }
-
-    document.addEventListener("visibilitychange", onVisible);
-
-    window.addEventListener("online", onOnline);
-
-    open();
+    void connect();
 
     return () => {
-      stopped = true;
-
-      source?.close();
-
-      window.clearTimeout(reconnectTimer);
-      window.clearTimeout(batchTimer);
-
-      document.removeEventListener("visibilitychange", onVisible);
-
-      window.removeEventListener("online", onOnline);
+      active = false;
+      connection?.close();
+      connection = null;
+      if (reconnectTimer !== null) window.clearTimeout(reconnectTimer);
     };
   }, [audience]);
 

@@ -2,6 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AlertTriangle, Archive, Trash2, X } from "lucide-react";
 import api from "../../../api/api.js";
+import { getStaff } from "../../utils/authMock";
+import DeleteCustomerAccountAction from "./DeleteCustomerAccountAction.jsx";
+import DeleteStaffAccountAction from "./DeleteStaffAccountAction.jsx";
 import "../../styles/management/archive-record-actions.css";
 
 const ALLOWED_MODULES = new Set([
@@ -54,10 +57,9 @@ function nameFor(module, record) {
 }
 
 /**
- * Archive is deliberately separate from the generic workspace editor.
- * The backend is authoritative for authorization and safety checks.
- * No payments, orders, work history, staff accounts, or audit logs
- * are eligible for this action.
+ * Catalog archiving remains separate from account deletion.
+ * Customer and Staff account closure use dedicated Owner-only
+ * backend endpoints, confirmation previews, and password checks.
  */
 export default function ArchiveRecordAction({
   module,
@@ -71,7 +73,9 @@ export default function ArchiveRecordAction({
   const confirmRef = useRef(null);
   const triggerRef = useRef(null);
   const busyRef = useRef(false);
+
   busyRef.current = busy;
+
   const recordId = Number(record?.id);
 
   useEffect(() => {
@@ -86,13 +90,20 @@ export default function ArchiveRecordAction({
         event.preventDefault();
         setOpen(false);
       }
+
       if (event.key !== "Tab") return;
+
       const dialog = document.querySelector(".av-archive-confirm-dialog");
+
       if (!dialog) return;
+
       const controls = [...dialog.querySelectorAll("button:not(:disabled)")];
+
       if (controls.length === 0) return;
+
       const first = controls[0];
       const last = controls[controls.length - 1];
+
       if (event.shiftKey && document.activeElement === first) {
         event.preventDefault();
         last.focus();
@@ -101,7 +112,9 @@ export default function ArchiveRecordAction({
         first.focus();
       }
     }
+
     window.addEventListener("keydown", onDialogKeyDown);
+
     return () => {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", onDialogKeyDown);
@@ -109,12 +122,38 @@ export default function ArchiveRecordAction({
     };
   }, [open]);
 
+  // Restore Customer and Staff Delete actions.
+  // Only an Owner can use them.
+  const isOwner = canArchive && getStaff()?.role === "OWNER";
+
+  if (module === "customers") {
+    return isOwner ? (
+      <DeleteCustomerAccountAction
+        customer={record}
+        isOwner
+        onDeleted={onArchived}
+      />
+    ) : null;
+  }
+
+  if (module === "staff") {
+    return isOwner ? (
+      <DeleteStaffAccountAction staff={record} isOwner onDeleted={onArchived} />
+    ) : null;
+  }
+
+  // Preserve every existing catalog Archive action.
   if (!canArchive || !ALLOWED_MODULES.has(module)) return null;
-  if (!Number.isSafeInteger(recordId) || recordId < 1) return null;
+
+  if (!Number.isSafeInteger(recordId) || recordId < 1) {
+    return null;
+  }
 
   const type = LABELS[module];
   const label = nameFor(module, record);
+
   const archiveModule = module === "inventory" ? "variants" : module;
+
   const isFacebookIneligible =
     module === "facebook-requests" &&
     (String(record.status || "").toUpperCase() !== "CANCELLED" ||
@@ -126,16 +165,22 @@ export default function ArchiveRecordAction({
 
   async function confirmArchive() {
     if (busy || isFacebookIneligible) return;
+
     setBusy(true);
     setError("");
+
     try {
       const { data } = await api.post(
         `/api/management/workspace/archive/${encodeURIComponent(archiveModule)}/${recordId}`,
         module === "inventory" ? { origin: "inventory" } : {},
       );
-      if (data?.success !== true)
+
+      if (data?.success !== true) {
         throw new Error("Archiving was not confirmed by the server.");
+      }
+
       setOpen(false);
+
       onArchived?.(data.message || `${label} moved to Archive.`);
     } catch (requestError) {
       setError(
@@ -170,7 +215,9 @@ export default function ArchiveRecordAction({
           <div
             className="av-archive-confirm-backdrop"
             onMouseDown={(event) => {
-              if (event.currentTarget === event.target && !busy) setOpen(false);
+              if (event.currentTarget === event.target && !busy) {
+                setOpen(false);
+              }
             }}
           >
             <section
@@ -184,10 +231,12 @@ export default function ArchiveRecordAction({
                 <span className="av-archive-confirm-symbol">
                   <Archive size={19} aria-hidden="true" />
                 </span>
+
                 <div>
                   <small>AV COOLING · MANAGEMENT</small>
                   <h2 id="av-archive-confirm-heading">Move to Archive?</h2>
                 </div>
+
                 <button
                   type="button"
                   className="av-archive-confirm-dismiss"
@@ -198,6 +247,7 @@ export default function ArchiveRecordAction({
                   <X size={18} aria-hidden="true" />
                 </button>
               </div>
+
               <div className="av-archive-confirm-body">
                 <p id="av-archive-confirm-description">
                   The {type} <strong>{label}</strong> will disappear from active
@@ -205,22 +255,26 @@ export default function ArchiveRecordAction({
                   <strong>Management → Archive</strong>. It can be restored from
                   there.
                 </p>
+
                 <p className="av-archive-confirm-note">
                   <AlertTriangle size={17} aria-hidden="true" />
                   <span>{RULES[module]}</span>
                 </p>
+
                 {isFacebookIneligible && (
                   <p className="av-archive-confirm-error" role="alert">
                     Cancel this Facebook agreement first. Converted agreements
                     must stay linked to their saved orders or services.
                   </p>
                 )}
+
                 {error && (
                   <p className="av-archive-confirm-error" role="alert">
                     {error}
                   </p>
                 )}
               </div>
+
               <div className="av-archive-confirm-actions">
                 <button
                   type="button"
@@ -230,6 +284,7 @@ export default function ArchiveRecordAction({
                 >
                   Keep record
                 </button>
+
                 <button
                   ref={confirmRef}
                   type="button"

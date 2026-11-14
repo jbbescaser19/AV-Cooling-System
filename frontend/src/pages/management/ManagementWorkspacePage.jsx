@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 
 import api from "../../../api/api.js";
-import useRealtimeRefresh from "../../hooks/useRealtimeRefresh.js";
+import { confirmAction } from "../../utils/confirmAction.jsx";
 import AvailabilityPicker from "../../components/scheduling/AvailabilityPicker";
 import TechnicianTeamPicker from "../../components/management/TechnicianTeamPicker";
 import SourceTeamPanel from "../../components/management/SourceTeamPanel";
@@ -30,6 +30,7 @@ import { workspaceConfig } from "../../data/managementWorkspaceConfig.js";
 import "../../styles/management/workspace.css";
 import "../../styles/management/schedule-availability.css";
 import "../../styles/management/record-pagination.css";
+import "../../styles/management/note-visibility.css";
 
 function show(value, key) {
   if (value === null || value === undefined || value === "") return "—";
@@ -489,24 +490,33 @@ function Editor({
 
     if (
       module === "facebook-requests" &&
-      !window.confirm(
-        "Save this manually entered Messenger agreement? Check all customer details first.",
-      )
+      !(await confirmAction({
+        title: "Save Facebook agreement",
+        message:
+          "Save this manually entered Messenger agreement? Check all customer details first.",
+        confirmText: "Save agreement",
+      }))
     )
       return;
 
     if (
       !isNew &&
       ["customers", "staff", "facebook-requests"].includes(module) &&
-      !window.confirm("Confirm this management action?")
+      !(await confirmAction({
+        title: "Confirm management update",
+        message: "Confirm this management action?",
+        confirmText: "Save changes",
+      }))
     )
       return;
 
     if (
       isStockIn &&
-      !window.confirm(
-        `Add ${form.quantity} unit(s) to ${selectedInventory?.name || "the selected product"}?`,
-      )
+      !(await confirmAction({
+        title: "Add inventory stock",
+        message: `Add ${form.quantity} unit(s) to ${selectedInventory?.name || "the selected product"}?`,
+        confirmText: "Add stock",
+      }))
     )
       return;
 
@@ -755,30 +765,6 @@ export default function ManagementWorkspacePage({ module }) {
   const [items, setItems] = useState([]);
   const [options, setOptions] = useState({});
   const [loading, setLoading] = useState(true);
-  const lastLoadedModuleRef = useRef(null);
-
-  // The same page renders Catalog, Customers, and Administration modules.
-  // Only actual changes for the current module should invalidate its data.
-  const moduleTopic =
-    {
-      categories: ["catalog"],
-      products: ["catalog", "inventory"],
-      variants: ["catalog", "inventory"],
-      inventory: ["inventory"],
-      "stock-movements": ["inventory"],
-      "service-types": ["services"],
-      "service-requests": ["services", "schedules", "jobs"],
-      technicians: ["staff", "jobs", "schedules"],
-      schedules: ["schedules", "jobs"],
-      customers: ["customers"],
-      feedback: ["feedback"],
-      "facebook-requests": ["orders", "services"],
-      reports: ["reports", "orders", "payments", "services"],
-      notifications: ["notifications"],
-      "audit-logs": ["staff", "archive", "orders", "services", "payments"],
-      archive: ["archive"],
-      staff: ["staff"],
-    }[module] || [];
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [search, setSearch] = useState("");
@@ -791,7 +777,6 @@ export default function ManagementWorkspacePage({ module }) {
   const [editor, setEditor] = useState(null);
   const [teamSource, setTeamSource] = useState(null);
   const [reload, setReload] = useState(0);
-  useRealtimeRefresh(moduleTopic, setReload);
 
   const staff = getStaff();
   const mobilePrimary = config.columns[0]?.[0];
@@ -849,12 +834,7 @@ export default function ManagementWorkspacePage({ module }) {
 
   useEffect(() => {
     const controller = new AbortController();
-    const moduleChanged = lastLoadedModuleRef.current !== module;
-    if (moduleChanged) {
-      setLoading(true);
-      setItems([]);
-      setOptions({});
-    }
+    setLoading(true);
     setError("");
 
     api
@@ -865,12 +845,11 @@ export default function ManagementWorkspacePage({ module }) {
         if (!controller.signal.aborted) {
           setItems(data.items || []);
           setOptions(data.options || {});
-          lastLoadedModuleRef.current = module;
         }
       })
       .catch((requestError) => {
         if (!controller.signal.aborted) {
-          // Do not erase the last successful records on refresh failure.
+          setItems([]);
           setError(
             requestError.response?.data?.message ||
               "Could not load records from MySQL.",
@@ -1002,9 +981,12 @@ export default function ManagementWorkspacePage({ module }) {
   async function clearOffSchedule(item) {
     if (!ownerOrManager || item.status !== "OFF" || clearBusy) return;
     if (
-      !window.confirm(
-        `Clear the unavailability for ${item.technician || "this technician"} on ${item.date}? This keeps a database record as AVAILABLE.`,
-      )
+      !(await confirmAction({
+        title: "Clear technician unavailability",
+        message: `Clear the unavailability for ${item.technician || "this technician"} on ${item.date}? This keeps a database record as AVAILABLE.`,
+        confirmText: "Clear unavailability",
+        danger: true,
+      }))
     )
       return;
     setClearBusy(item.id);
@@ -1457,23 +1439,47 @@ export default function ManagementWorkspacePage({ module }) {
         <ManagementRecordDetailsModal
           title={`${config.title} details`}
           subtitle={`Record #${detailsRecord.id}`}
-          fields={config.columns.map(([field, label]) => ({
-            label,
-            value:
-              field === "conversationUrl" &&
-              /^https?:\/\//i.test(String(detailsRecord[field] || "")) ? (
-                <a
-                  href={detailsRecord[field]}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Open Messenger chat{" "}
-                  <ArrowUpRight size={14} aria-hidden="true" />
-                </a>
-              ) : (
-                show(detailsRecord[field], field)
-              ),
-          }))}
+          fields={[
+            ...config.columns.map(([field, label]) => ({
+              label,
+              value:
+                field === "conversationUrl" &&
+                /^https?:\/\//i.test(String(detailsRecord[field] || "")) ? (
+                  <a
+                    href={detailsRecord[field]}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Open Messenger chat{" "}
+                    <ArrowUpRight size={14} aria-hidden="true" />
+                  </a>
+                ) : (
+                  show(detailsRecord[field], field)
+                ),
+            })),
+            ...(module === "facebook-requests"
+              ? [
+                  {
+                    label: "Customer agreement notes",
+                    value: (
+                      <span className="av-notes-plain">
+                        {detailsRecord.notes?.trim() ||
+                          "No agreement notes recorded."}
+                      </span>
+                    ),
+                  },
+                  {
+                    label: "Private staff notes and cancellation reasons",
+                    value: (
+                      <span className="av-notes-plain">
+                        {detailsRecord.staffNotes?.trim() ||
+                          "No staff notes recorded."}
+                      </span>
+                    ),
+                  },
+                ]
+              : []),
+          ]}
           onClose={closeDetails}
         >
           {module === "schedules" &&

@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { CreditCard, Eye, RefreshCw, Search, ShieldCheck } from "lucide-react";
 import api from "../../../api/api.js";
-import useRealtimeRefresh from "../../hooks/useRealtimeRefresh.js";
 import ManagementRecordDetailsModal from "../../components/management/ManagementRecordDetailsModal.jsx";
 import "../../styles/management/sales-live.css";
 
@@ -21,9 +20,6 @@ export default function PaymentsPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [refresh, setRefresh] = useState(0);
-  const hasLoadedRef = useRef(false);
-
-  useRealtimeRefresh(["payments", "orders", "services"], setRefresh);
   const [selected, setSelected] = useState(null);
   const [detailsPayment, setDetailsPayment] = useState(null);
   const closeDetails = useCallback(() => setDetailsPayment(null), []);
@@ -32,13 +28,12 @@ export default function PaymentsPage() {
 
   useEffect(() => {
     const controller = new AbortController();
-    if (!hasLoadedRef.current) setLoading(true);
+    setLoading(true);
     api
       .get("/api/management/sales/payments", { signal: controller.signal })
       .then(({ data }) => {
         if (controller.signal.aborted) return;
         setPayments(data.payments || []);
-        hasLoadedRef.current = true;
         setError("");
       })
       .catch((err) => {
@@ -85,12 +80,6 @@ export default function PaymentsPage() {
   async function confirm(event) {
     event.preventDefault();
     if (!selected || !collected || busyId) return;
-    if (
-      !window.confirm(
-        `Confirm you physically collected ${money(selected.amount)} for ${selected.orderNumber}?`,
-      )
-    )
-      return;
     setBusyId(selected.id);
     setError("");
     try {
@@ -102,7 +91,7 @@ export default function PaymentsPage() {
       );
       if (!data.success) throw new Error("Payment confirmation was not saved.");
       setSuccess(
-        `Cash payment for ${selected.orderNumber} confirmed in MySQL.`,
+        `Cash payment for ${selected.displayOrderNumber || selected.orderNumber} confirmed in MySQL.`,
       );
       setSelected(null);
       setRefresh((n) => n + 1);
@@ -218,7 +207,9 @@ export default function PaymentsPage() {
                 {filtered.map((p) => (
                   <tr className="av-smart-record" key={p.id}>
                     <td data-mobile="primary">
-                      <strong>{p.orderNumber}</strong>
+                      <strong title={p.orderNumber}>
+                        {p.displayOrderNumber || p.orderNumber}
+                      </strong>
                     </td>
                     <td data-mobile="secondary">{p.customer}</td>
                     <td>{p.channel}</td>
@@ -290,9 +281,17 @@ export default function PaymentsPage() {
       {detailsPayment && (
         <ManagementRecordDetailsModal
           title="Payment Details"
-          subtitle={String(detailsPayment.orderNumber || "Payment record")}
+          subtitle={String(
+            detailsPayment.displayOrderNumber ||
+              detailsPayment.orderNumber ||
+              "Payment record",
+          )}
           fields={[
-            { label: "Order / Service", value: detailsPayment.orderNumber },
+            {
+              label: "Order / Service",
+              value:
+                detailsPayment.displayOrderNumber || detailsPayment.orderNumber,
+            },
             { label: "Customer", value: detailsPayment.customer },
             { label: "Channel", value: detailsPayment.channel },
             { label: "Method", value: detailsPayment.method },
@@ -350,7 +349,10 @@ export default function PaymentsPage() {
               <ShieldCheck size={22} /> Confirm actual cash collection
             </h2>
             <p>
-              <strong>{selected.orderNumber}</strong> · {selected.customer}
+              <strong>
+                {selected.displayOrderNumber || selected.orderNumber}
+              </strong>{" "}
+              · {selected.customer}
             </p>
             <p>
               Amount to confirm: <strong>{money(selected.amount)}</strong>
@@ -364,7 +366,7 @@ export default function PaymentsPage() {
                 onChange={(e) => setNote(e.target.value)}
               />
             </label>
-            <label className="sales-checkline">
+            <label className="sales-checkline av-cash-confirm-row">
               <input
                 type="checkbox"
                 checked={collected}

@@ -76,6 +76,11 @@ export function workOrderModel(db) {
         `SELECT
            w.work_order_id AS id,
            w.order_id AS orderId,
+           CONCAT('AV-', YEAR(o.ordered_at), '-',
+             CASE WHEN o.order_id < 1000000
+               THEN LPAD(o.order_id, 6, '0')
+               ELSE CAST(o.order_id AS CHAR)
+             END) AS orderReference,
            w.service_request_id AS serviceRequestId,
            w.work_type AS workType,
            w.status,
@@ -96,6 +101,10 @@ export function workOrderModel(db) {
              WHERE a1.work_order_id=w.work_order_id AND a1.status<>'CANCELLED') AS teamMembers,
            o.order_channel AS orderChannel,
            o.payment_status AS paymentStatus,
+           o.customer_notes AS orderCustomerNotes,
+           sr.customer_concern AS serviceConcern,
+           sr.customer_notes AS serviceCustomerNotes,
+           w.completion_notes AS completionNotes,
            EXISTS (
              SELECT 1 FROM work_orders i
              WHERE i.order_id = w.order_id

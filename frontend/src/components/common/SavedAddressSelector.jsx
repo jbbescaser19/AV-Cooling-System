@@ -8,6 +8,7 @@ export default function SavedAddressSelector({
   onChange,
   className = "",
   disabled = false,
+  autoSelectDefault = true,
   onLoadingChange,
 }) {
   const navigate = useNavigate();
@@ -56,6 +57,7 @@ export default function SavedAddressSelector({
 
         // Only auto-select when nothing was entered or chosen manually.
         if (
+          autoSelectDefault &&
           defaultAddress &&
           !userEdited.current &&
           !currentValue.current?.trim()
@@ -87,7 +89,7 @@ export default function SavedAddressSelector({
 
     fetchAddresses();
     return () => controller.abort();
-  }, [navigate, retry]);
+  }, [autoSelectDefault, navigate, retry]);
 
   function updateAddress(nextValue) {
     userEdited.current = true;

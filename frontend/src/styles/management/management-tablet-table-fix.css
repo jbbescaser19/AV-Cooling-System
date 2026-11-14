@@ -737,3 +737,23 @@
     overflow-wrap: normal !important;
   }
 }
+/* Service Requests: show the full Request heading on tablets */
+@media (min-width: 761px) and (max-width: 1180px) {
+  .mgmt-shell
+    .mgmt-main
+    .av-services-page
+    .sales-table
+    :is(th, td):first-child {
+    width: 60px !important;
+    min-width: 60px !important;
+    max-width: 60px !important;
+    padding-inline: 3px !important;
+  }
+
+  .mgmt-shell .mgmt-main .av-services-page .sales-table th:first-child {
+    font-size: 0.65rem !important;
+    letter-spacing: 0 !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
+  }
+}

@@ -29,6 +29,8 @@ import {
   confirmServiceCashController,
 } from "../../controllers/management/sales/paymentController.js";
 
+import { confirmServiceCashRefundController } from "../../controllers/management/sales/serviceRefundController.js";
+
 import { completedInstallationsController } from "../../controllers/management/services/installationHistoryController.js";
 
 const router = Router();
@@ -70,6 +72,12 @@ router.post(
   "/service-payments/:paymentId/confirm-cash",
   requireCustomerWriteOrigin,
   confirmServiceCashController,
+);
+
+router.post(
+  "/service-payments/:paymentId/confirm-refund",
+  requireCustomerWriteOrigin,
+  confirmServiceCashRefundController,
 );
 
 router.post(

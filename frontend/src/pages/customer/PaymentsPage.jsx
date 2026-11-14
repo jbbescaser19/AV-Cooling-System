@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CreditCard, RefreshCw, ShieldCheck } from "lucide-react";
 import api from "../../../api/api.js";
-import useRealtimeRefresh from "../../hooks/useRealtimeRefresh.js";
 import CustomerPageHeader from "../../components/customer/CustomerPageHeader.jsx";
+import useCustomerRealtimeRefresh from "../../hooks/useCustomerRealtimeRefresh.js";
 import CustomerStatusBadge from "../../components/customer/CustomerStatusBadge.jsx";
 import PayMongoAction from "../../components/payments/PayMongoAction.jsx";
 import { formatCustomerMoney } from "../../utils/customerAccountUtils.js";
@@ -23,11 +23,17 @@ export default function PaymentsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [refresh, setRefresh] = useState(0);
-  useRealtimeRefresh(["payments", "orders", "services"], setRefresh);
+  const loadedRef = useRef(false);
+  const [syncError, setSyncError] = useState("");
+
+  useCustomerRealtimeRefresh(
+    ["payments", "orders", "services", "jobs", "notifications"],
+    () => setRefresh((value) => value + 1),
+  );
 
   useEffect(() => {
     const controller = new AbortController();
-    setLoading(true);
+    if (!loadedRef.current) setLoading(true);
     Promise.all([
       api.get("/api/customer/orders", { signal: controller.signal }),
       api.get("/api/customer/services/payments", { signal: controller.signal }),
@@ -36,13 +42,21 @@ export default function PaymentsPage() {
         if (controller.signal.aborted) return;
         setOrders(orderData.data.orders || []);
         setServices(serviceData.data.payments || []);
+        loadedRef.current = true;
         setError("");
+        setSyncError("");
       })
       .catch((err) => {
-        if (!controller.signal.aborted)
+        if (controller.signal.aborted) return;
+        if (loadedRef.current) {
+          setSyncError(
+            "Could not update payment status. Check your connection or refresh.",
+          );
+        } else {
           setError(
             err.response?.data?.message || "Could not load payment records.",
           );
+        }
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false);
@@ -56,7 +70,7 @@ export default function PaymentsPage() {
         key: `order-${order.orderNumber}`,
         kind: "ORDER",
         identifier: order.orderNumber,
-        name: `Order ${order.orderNumber}`,
+        name: `Order ${order.displayOrderNumber || order.orderNumber}`,
         amount: order.paymentAmount ?? order.total,
         method: order.paymentCode,
         status: order.recordedPaymentStatus || order.paymentStatus,
@@ -107,6 +121,11 @@ export default function PaymentsPage() {
           <RefreshCw size={15} /> Refresh status
         </button>
       </div>
+      {syncError && (
+        <p role="status" className="customer-transfer-error">
+          {syncError}
+        </p>
+      )}
       {error && (
         <p role="alert" className="customer-transfer-error">
           {error}
@@ -137,7 +156,12 @@ export default function PaymentsPage() {
               <span>Amount {record.status === "PAID" ? "paid" : "due"}</span>
               <strong>{formatCustomerMoney(Number(record.amount || 0))}</strong>
             </div>
-            {record.status === "PAID" ? (
+            {record.status === "REFUNDED" ? (
+              <p className="customer-transfer-notice">
+                Refund recorded by AV Cooling. This service payment has been
+                returned; no additional payment is needed.
+              </p>
+            ) : record.status === "PAID" ? (
               <p className="customer-transfer-notice">
                 Payment confirmed. No more payment is needed.
               </p>

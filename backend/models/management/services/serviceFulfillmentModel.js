@@ -7,7 +7,8 @@ export function serviceRequestModel(db) {
                sr.service_request_id AS reference,
                sr.facebook_request_id AS facebookRequestId,
                sr.status,
-               COALESCE(sp.status, 'NO_RECORD') AS paymentStatus,
+               CASE WHEN rf.refund_id IS NOT NULL THEN 'REFUNDED'
+                 ELSE COALESCE(sp.status, 'NO_RECORD') END AS paymentStatus,
                sp.method_code AS paymentMethod,
                CAST(sp.amount AS DOUBLE) AS paymentAmount,
                COALESCE(u.name,sr.walk_in_customer_name,fb.customer_name,'Service customer') AS customer,
@@ -69,6 +70,8 @@ export function serviceRequestModel(db) {
                WHERE p2.service_request_id = sr.service_request_id
              )
     
+             LEFT JOIN service_payment_refunds rf
+               ON rf.service_payment_id=sp.service_payment_id
              ORDER BY sr.service_request_id DESC
              LIMIT 100`);
       return rows;
@@ -79,6 +82,13 @@ export function serviceRequestModel(db) {
                sr.service_request_id AS id,
                sr.status,
                c.user_id AS userId,
+               (sr.pos_request_key IS NOT NULL) AS isPosWalkIn,
+               EXISTS (
+                 SELECT 1 FROM work_orders w
+                 WHERE w.service_request_id = sr.service_request_id
+                   AND w.work_type = 'SERVICE'
+                   AND w.status IN ('ASSIGNED','IN_PROGRESS')
+               ) AS hasAssignedServiceWork,
     
                DATE_FORMAT(
                  sr.preferred_start,

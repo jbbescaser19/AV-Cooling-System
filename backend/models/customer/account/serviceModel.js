@@ -12,11 +12,54 @@ const fields = `
   sr.destination_address AS destinationAddress,
   sr.customer_concern AS concern,
   sr.customer_notes AS notes,
+  (
+    SELECT NULLIF(TRIM(fe.note), '')
+    FROM fulfillment_events AS fe
+    WHERE fe.event_kind = 'SERVICE'
+      AND fe.record_id = sr.service_request_id
+      AND fe.event_code IN (
+        'SERVICE_DECLINED',
+        'SERVICE_CANCELLED',
+        'SERVICE_RESCHEDULED',
+        'SERVICE_SCHEDULED',
+        'SERVICE_ACCEPTED'
+      )
+      AND NULLIF(TRIM(fe.note), '') IS NOT NULL
+    ORDER BY fe.event_id DESC
+    LIMIT 1
+  ) AS staffMessage,
+  (
+    SELECT fe.event_code
+    FROM fulfillment_events AS fe
+    WHERE fe.event_kind = 'SERVICE'
+      AND fe.record_id = sr.service_request_id
+      AND fe.event_code IN (
+        'SERVICE_DECLINED',
+        'SERVICE_CANCELLED',
+        'SERVICE_RESCHEDULED',
+        'SERVICE_SCHEDULED',
+        'SERVICE_ACCEPTED'
+      )
+      AND NULLIF(TRIM(fe.note), '') IS NOT NULL
+    ORDER BY fe.event_id DESC
+    LIMIT 1
+  ) AS staffMessageEvent,
   sr.aircon_source AS airconSource,
   sr.aircon_brand AS airconBrand,
   sr.aircon_model AS airconModel,
   CAST(sr.aircon_horsepower AS DOUBLE) AS airconHorsepower,
   sr.status,
+  CASE
+    WHEN sr.status = 'CONFIRMED' AND EXISTS (
+      SELECT 1 FROM work_orders AS active_job
+      WHERE active_job.service_request_id = sr.service_request_id
+        AND active_job.work_type = 'SERVICE'
+        AND active_job.status = 'IN_PROGRESS'
+    ) THEN 'IN_PROGRESS'
+    WHEN sr.status = 'CONFIRMED' AND sr.preferred_start IS NOT NULL
+      THEN 'SCHEDULED'
+    ELSE sr.status
+  END AS displayStatus,
   sr.customer_revision AS revision,
   DATE_FORMAT(
     sr.created_at,

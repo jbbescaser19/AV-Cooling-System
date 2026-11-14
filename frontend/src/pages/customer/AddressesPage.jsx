@@ -1,9 +1,8 @@
-import { confirmAction } from "../../utils/confirmAction.js";
 import { useEffect, useState } from "react";
 import { Check, Home, MapPin, Plus, Trash2, Building2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import api from "../../../api/api.js";
-import useRealtimeRefresh from "../../hooks/useRealtimeRefresh.js";
+import { confirmAction } from "../../utils/confirmAction.jsx";
 import CustomerDialog from "../../components/customer/CustomerDialog";
 import CustomerPageHeader from "../../components/customer/CustomerPageHeader";
 import "../../styles/customer/address-page.css";
@@ -23,7 +22,6 @@ export default function AddressesPage() {
   const [notice, setNotice] = useState("");
   const [formError, setFormError] = useState("");
   const [retry, setRetry] = useState(0);
-  useRealtimeRefresh(["customers"], setRetry);
 
   function showFailure(error) {
     if (error.response?.status === 401) {
@@ -93,12 +91,14 @@ export default function AddressesPage() {
   }
 
   async function remove(id) {
-    if (
-      !(await confirmAction(
-        "Remove this saved address? Existing orders will not be changed.",
-      ))
-    )
-      return;
+    const approved = await confirmAction({
+      title: "Remove saved address?",
+      message:
+        "This address will be removed from your saved list. Existing orders will not be changed.",
+      confirmText: "Remove address",
+      danger: true,
+    });
+    if (!approved) return;
     setSaving(true);
     setError("");
     setNotice("");
