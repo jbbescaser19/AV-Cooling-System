@@ -1,3 +1,5 @@
+import { formatNotificationOrderReferences } from "../../shared/notificationOrderReferenceModel.js";
+
 export function notificationModel(db) {
   return {
     async activeCustomer(userId) {
@@ -54,7 +56,7 @@ export function notificationModel(db) {
         [userId, limit, offset],
       );
 
-      return rows;
+      return formatNotificationOrderReferences(db, rows, userId);
     },
 
     async unreadCount(userId) {

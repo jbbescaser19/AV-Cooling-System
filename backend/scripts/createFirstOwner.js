@@ -7,6 +7,7 @@
 import process from "node:process";
 
 import bcrypt from "bcrypt";
+import { strongPassword } from "../validators/shared/passwordPolicy.js";
 
 import connectDB from "../utils/dbConn.js";
 
@@ -69,8 +70,10 @@ try {
     "New owner password (12+ characters): ",
   );
 
-  if (password.length < 12 || password.length > 128) {
-    throw new Error("Password must be 12–128 characters.");
+  const result = strongPassword.safeParse(password);
+
+  if (!result.success) {
+    throw new Error(result.error.issues[0].message);
   }
 
   const confirm = await readHiddenPassword("Repeat password: ");

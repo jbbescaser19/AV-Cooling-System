@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+
 import { AlertTriangle, ShieldAlert, Trash2, X } from "lucide-react";
+
 import api from "../../../api/api.js";
+
 import "../../styles/management/delete-customer-account.css";
 
 export default function DeleteCustomerAccountAction({
@@ -29,6 +32,7 @@ export default function DeleteCustomerAccountAction({
     if (!open) return undefined;
 
     const before = document.body.style.overflow;
+
     document.body.style.overflow = "hidden";
 
     dialogRef.current?.focus();
@@ -62,7 +66,9 @@ export default function DeleteCustomerAccountAction({
 
     return () => {
       document.body.style.overflow = before;
+
       window.removeEventListener("keydown", onKeyDown);
+
       triggerRef.current?.focus();
     };
   }, [open]);
@@ -119,22 +125,29 @@ export default function DeleteCustomerAccountAction({
       const { data } = await api.delete(
         `/api/management/workspace/customers/${id}`,
         {
-          data: { confirmation, password },
+          data: {
+            confirmation,
+            password,
+          },
         },
       );
 
       if (!data?.success) {
-        throw new Error("The server did not confirm account removal.");
+        throw new Error("The server did not confirm account archival.");
       }
 
+      setPassword("");
+      setConfirmation("");
       setOpen(false);
 
-      onDeleted?.(data.message || "Customer account deleted.");
+      onDeleted?.(data.message || "Customer account moved to Archive.");
+
+      window.dispatchEvent(new Event("av-management-updated"));
     } catch (err) {
       setError(
         err.response?.data?.message ||
           err.message ||
-          "Could not remove the account.",
+          "Could not archive this account.",
       );
     } finally {
       setDeleting(false);
@@ -180,8 +193,9 @@ export default function DeleteCustomerAccountAction({
 
                 <div>
                   <small>OWNER ONLY · CUSTOMER ACCOUNTS</small>
+
                   <h2 id="av-customer-delete-title">
-                    Delete customer account?
+                    Move customer to Archive?
                   </h2>
                 </div>
 
@@ -204,9 +218,10 @@ export default function DeleteCustomerAccountAction({
                     {preview?.customer?.email ? (
                       <> ({preview.customer.email})</>
                     ) : null}
-                    . The closure will appear in{" "}
+                    . The account will be moved to{" "}
                     <strong>Management → Archive → Customer Accounts</strong>.
-                    Login access cannot be restored.
+                    You can restore the account or permanently delete it from
+                    Archive.
                   </p>
 
                   {fetching && (
@@ -221,11 +236,13 @@ export default function DeleteCustomerAccountAction({
                       <div className="av-customer-delete-stats">
                         <div>
                           <strong>{preview.summary.ordersToCancel}</strong>
+
                           <span>Orders to cancel</span>
                         </div>
 
                         <div>
                           <strong>{preview.summary.servicesToCancel}</strong>
+
                           <span>Services to cancel</span>
                         </div>
                       </div>
@@ -239,11 +256,13 @@ export default function DeleteCustomerAccountAction({
 
                       <p className="av-customer-delete-caution">
                         <AlertTriangle size={18} aria-hidden="true" />
+
                         <span>
                           Eligible pending and confirmed work will be cancelled.
                           Reserved stock and booked slots will be released. The
-                          customer will no longer be able to log in. A
-                          cancellation summary will be saved in Archive.
+                          customer cannot log in while the account is archived.
+                          Cancelled orders and services will not reopen
+                          automatically when restored.
                         </span>
                       </p>
 
@@ -253,7 +272,8 @@ export default function DeleteCustomerAccountAction({
                           role="alert"
                         >
                           <strong>
-                            Deletion is blocked until these issues are resolved:
+                            Archiving is blocked until these issues are
+                            resolved:
                           </strong>
 
                           <ul>
@@ -328,9 +348,8 @@ export default function DeleteCustomerAccountAction({
                     }
                   >
                     <Trash2 size={16} aria-hidden="true" />
-                    {deleting
-                      ? "Deleting…"
-                      : "Delete Account & Cancel Pending Work"}
+
+                    {deleting ? "Archiving…" : "Move to Archive"}
                   </button>
                 </footer>
               </form>

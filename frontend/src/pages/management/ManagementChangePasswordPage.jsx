@@ -1,3 +1,5 @@
+import PasswordStrength from "../../components/auth/PasswordStrength.jsx";
+import { isStrongPassword } from "../../utils/passwordPolicy.js";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -28,8 +30,8 @@ export default function ManagementChangePasswordPage() {
 
     if (busy) return;
 
-    if (form.newPassword.length < 8) {
-      setError("Use at least eight characters.");
+    if (!isStrongPassword(form.newPassword)) {
+      setError("Your password must meet all requirements.");
       return;
     }
 
@@ -125,7 +127,7 @@ export default function ManagementChangePasswordPage() {
             required
             type="password"
             autoComplete="new-password"
-            minLength={8}
+            minLength={12}
             maxLength={72}
             value={form.newPassword}
             disabled={busy}
@@ -136,6 +138,7 @@ export default function ManagementChangePasswordPage() {
               }))
             }
           />
+            <PasswordStrength value={form.newPassword} />
         </label>
 
         <label>
@@ -144,7 +147,7 @@ export default function ManagementChangePasswordPage() {
             required
             type="password"
             autoComplete="new-password"
-            minLength={8}
+            minLength={12}
             maxLength={72}
             value={form.confirmPassword}
             disabled={busy}
@@ -157,7 +160,7 @@ export default function ManagementChangePasswordPage() {
           />
         </label>
 
-        <button type="submit" disabled={busy}>
+        <button type="submit" disabled={busy || !isStrongPassword(form.newPassword) || form.newPassword !== form.confirmPassword}>
           {busy ? "Updating…" : "Change password and sign out devices"}
         </button>
       </form>

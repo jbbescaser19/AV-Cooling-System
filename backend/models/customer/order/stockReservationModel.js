@@ -1,9 +1,10 @@
-/** Shared inventory reservation SQL; used by checkout and fulfillment. */
+/** Shared inventory reservation SQL. */
 export function stockReservationModel(db) {
   return {
     async create(orderId) {
       const [result] = await db.execute(
-        `INSERT INTO stock_reservations (order_id, status) VALUES (?, 'ACTIVE')`,
+        `INSERT INTO stock_reservations (order_id, status)
+         VALUES (?, 'ACTIVE')`,
         [orderId],
       );
       return result.insertId;
@@ -31,12 +32,39 @@ export function stockReservationModel(db) {
 
     async lockActive(orderId) {
       const [rows] = await db.execute(
-        `SELECT reservation_id AS id FROM stock_reservations
-         WHERE order_id = ? AND status = 'ACTIVE'
+        `SELECT reservation_id AS id
+         FROM stock_reservations
+         WHERE order_id=? AND status='ACTIVE'
          LIMIT 1 FOR UPDATE`,
         [orderId],
       );
       return rows[0]?.id || null;
+    },
+
+    async state(orderId) {
+      const [[row]] = await db.execute(
+        `SELECT status
+         FROM stock_reservations
+         WHERE order_id=? FOR UPDATE`,
+        [orderId],
+      );
+      return row?.status || null;
+    },
+
+    async legacyCashPos(orderId) {
+      const [[row]] = await db.execute(
+        `SELECT o.order_id FROM orders o
+         JOIN payment_methods pm
+           ON pm.payment_method_id=o.payment_method_id
+         WHERE o.order_id=?
+           AND o.order_channel='POS'
+           AND o.payment_status='PAID'
+           AND pm.code='CASH'
+           AND o.fulfillment_method='DELIVERY'
+           AND o.customer_notes='Cash paid; scheduled POS fulfillment'`,
+        [orderId],
+      );
+      return Boolean(row);
     },
 
     async items(reservationId) {
@@ -44,7 +72,7 @@ export function stockReservationModel(db) {
         `SELECT variant_id AS variantId,
                 reserved_quantity - released_quantity AS quantity
          FROM stock_reservation_items
-         WHERE reservation_id = ?
+         WHERE reservation_id=?
          ORDER BY variant_id FOR UPDATE`,
         [reservationId],
       );
@@ -55,7 +83,8 @@ export function stockReservationModel(db) {
       const [result] = await db.execute(
         `UPDATE inventory
          SET reserved_quantity = reserved_quantity - ?
-         WHERE variant_id = ? AND reserved_quantity >= ?`,
+         WHERE variant_id=?
+           AND reserved_quantity >= ?`,
         [quantity, variantId, quantity],
       );
       return result.affectedRows;
@@ -66,7 +95,7 @@ export function stockReservationModel(db) {
         `UPDATE inventory
          SET reserved_quantity = reserved_quantity - ?,
              on_hand_quantity = on_hand_quantity - ?
-         WHERE variant_id = ?
+         WHERE variant_id=?
            AND reserved_quantity >= ?
            AND on_hand_quantity >= ?`,
         [quantity, quantity, variantId, quantity, quantity],
@@ -79,16 +108,22 @@ export function stockReservationModel(db) {
         `INSERT INTO inventory_movements
            (variant_id, movement_type, quantity, created_by, note)
          VALUES (?, 'SALE', ?, ?, ?)`,
-        [variantId, -quantity, staffId, `Online order #${orderId} delivered`],
+        [
+          variantId,
+          -quantity,
+          staffId,
+          `Order #${orderId}: physical stock dispatched`,
+        ],
       );
     },
 
     async finish(reservationId, status) {
       const column = status === "RELEASED" ? "released_at" : "converted_at";
+
       const [result] = await db.execute(
         `UPDATE stock_reservations
-         SET status = ?, ${column} = CURRENT_TIMESTAMP
-         WHERE reservation_id = ? AND status = 'ACTIVE'`,
+         SET status=?, ${column}=CURRENT_TIMESTAMP
+         WHERE reservation_id=? AND status='ACTIVE'`,
         [status, reservationId],
       );
       return result.affectedRows;

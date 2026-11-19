@@ -1,15 +1,16 @@
 import { useEffect, useState } from "react";
+
 import api from "../../../api/api.js";
 import { getStaff } from "../../utils/authMock.js";
+
 import TechnicianTeamPicker from "./TechnicianTeamPicker.jsx";
+
 import "../../styles/management/service-operations-panels.css";
 
-/** One crew for an order's delivery and installation.
- * Work orders remain separate to track distinct delivery/installation stages.
- */
 export default function SourceTeamPanel({
   kind,
   sourceId,
+  scheduledStart,
   refreshKey = 0,
   onJobsChange,
 }) {
@@ -17,24 +18,41 @@ export default function SourceTeamPanel({
   const [members, setMembers] = useState([]);
   const [editing, setEditing] = useState(false);
   const [selectedType, setSelectedType] = useState(null);
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
 
+  const [progressRevision, setProgressRevision] = useState(0);
+
+  useEffect(() => {
+    const refresh = () => setProgressRevision((n) => n + 1);
+
+    window.addEventListener("av-management-updated", refresh);
+
+    return () => window.removeEventListener("av-management-updated", refresh);
+  }, []);
+
   const canManage = ["OWNER", "MANAGER"].includes(getStaff()?.role);
+
   const combined =
     kind === "ORDER" &&
     jobs.some((job) => job.type === "DELIVERY") &&
     jobs.some((job) => job.type === "INSTALLATION");
+
   const combinedJobs = combined
     ? jobs.filter((job) => ["DELIVERY", "INSTALLATION"].includes(job.type))
     : [];
+
   const hasStarted = combinedJobs.some((job) =>
     ["IN_PROGRESS", "COMPLETED"].includes(job.status),
   );
+
   const leadJob =
     combinedJobs.find((job) => job.members?.length) || combinedJobs[0];
+
   const mismatched =
     combined &&
     combinedJobs.some(
@@ -49,16 +67,21 @@ export default function SourceTeamPanel({
 
   useEffect(() => {
     if (!sourceId || !canManage) return undefined;
+
     const controller = new AbortController();
+
     setLoading(true);
     setError("");
+
     api
       .get(`/api/management/field-work/${kind}/${sourceId}`, {
         signal: controller.signal,
       })
       .then(({ data }) => {
         if (controller.signal.aborted) return;
+
         const next = Array.isArray(data.jobs) ? data.jobs : [];
+
         setJobs(next);
         onJobsChange?.(next);
       })
@@ -71,10 +94,13 @@ export default function SourceTeamPanel({
         }
       })
       .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
       });
+
     return () => controller.abort();
-  }, [kind, sourceId, refreshKey, canManage, onJobsChange]);
+  }, [kind, sourceId, refreshKey, progressRevision, canManage, onJobsChange]);
 
   if (!canManage) {
     return (
@@ -86,7 +112,9 @@ export default function SourceTeamPanel({
 
   function beginEdit(type = null, job = null) {
     setSelectedType(type);
+
     setMembers((job?.members || []).map((member) => Number(member.id)));
+
     setEditing(true);
     setError("");
     setNotice("");
@@ -97,27 +125,39 @@ export default function SourceTeamPanel({
       setError("Select a team leader and at least one technician.");
       return;
     }
+
     setSaving(true);
     setError("");
     setNotice("");
+
     try {
-      // Combined delivery + installation: one team update changes BOTH jobs.
       const body = { technicianIds: members };
-      if (!combined && selectedType) body.workType = selectedType;
+
+      if (!combined && selectedType) {
+        body.workType = selectedType;
+      }
+
       const { data } = await api.patch(
         `/api/management/field-work/${kind}/${sourceId}`,
         body,
       );
-      if (!data.success) throw new Error("Assignment was not saved.");
+
+      if (!data.success) {
+        throw new Error("Assignment was not saved.");
+      }
+
       const updated = Array.isArray(data.jobs) ? data.jobs : [];
+
       setJobs(updated);
       onJobsChange?.(updated);
       setEditing(false);
+
       setNotice(
         combined
           ? "One crew saved for both delivery and installation."
           : "Technician team saved.",
       );
+
       window.dispatchEvent(new Event("av-management-updated"));
     } catch (requestError) {
       setError(
@@ -139,6 +179,7 @@ export default function SourceTeamPanel({
               ? "Delivery & installation team"
               : "Technician assignment"}
           </h3>
+
           <p>
             {combined
               ? "The same crew delivers the aircon and completes its installation. Assign only once."
@@ -148,9 +189,11 @@ export default function SourceTeamPanel({
       </div>
 
       {loading && <p role="status">Loading technician assignment…</p>}
+
       {!loading && jobs.length === 0 && (
         <div className="av-shared-team__job">
           <p>No field jobs have been created yet.</p>
+
           {!editing && (
             <button
               type="button"
@@ -170,6 +213,7 @@ export default function SourceTeamPanel({
               ? `Team ${leadJob.leader.name} (Team Leader)`
               : "No team assigned yet"}
           </strong>
+
           {leadJob?.members?.length > 1 && (
             <small>
               Team members:{" "}
@@ -179,12 +223,14 @@ export default function SourceTeamPanel({
                 .join(", ")}
             </small>
           )}
+
           {combinedJobs.map((job) => (
             <small key={job.id}>
               {job.type === "DELIVERY" ? "Delivery" : "Installation"}:{" "}
               {job.status.replaceAll("_", " ")}
             </small>
           ))}
+
           {mismatched && (
             <p className="wsm-error" role="alert">
               Older records have different teams assigned.{" "}
@@ -193,6 +239,7 @@ export default function SourceTeamPanel({
                 : "Save the shared team once to synchronize both assignments."}
             </p>
           )}
+
           {!editing && !hasStarted && (
             <button
               type="button"
@@ -204,6 +251,7 @@ export default function SourceTeamPanel({
                 : "Assign shared team"}
             </button>
           )}
+
           {hasStarted && (
             <small>
               The team cannot be changed after delivery or installation starts.
@@ -216,16 +264,19 @@ export default function SourceTeamPanel({
         !combined &&
         jobs.map((job) => {
           const locked = ["IN_PROGRESS", "COMPLETED"].includes(job.status);
+
           return (
             <div className="av-shared-team__job" key={job.id}>
               <strong>
                 {job.type} · {job.status.replaceAll("_", " ")}
               </strong>
+
               <span>
                 {job.leader
                   ? `Team ${job.leader.name} (Team Leader)`
                   : "No team assigned yet"}
               </span>
+
               {job.members?.length > 1 && (
                 <small>
                   Members:{" "}
@@ -235,6 +286,7 @@ export default function SourceTeamPanel({
                     .join(", ")}
                 </small>
               )}
+
               {!locked && !editing && (
                 <button
                   type="button"
@@ -244,6 +296,7 @@ export default function SourceTeamPanel({
                   {job.members?.length ? "Change team" : "Assign team"}
                 </button>
               )}
+
               {locked && (
                 <small>
                   A started or completed job's team cannot be changed.
@@ -260,11 +313,16 @@ export default function SourceTeamPanel({
               ? "Select one delivery & installation crew"
               : "Select a technician team"}
           </strong>
+
           <TechnicianTeamPicker
+            scheduledStart={scheduledStart}
+            kind={kind}
+            sourceId={sourceId}
             value={members}
             onChange={setMembers}
             disabled={saving}
           />
+
           <div className="av-shared-team__actions">
             <button
               type="button"
@@ -274,6 +332,7 @@ export default function SourceTeamPanel({
             >
               {saving ? "Saving…" : combined ? "Save shared team" : "Save team"}
             </button>
+
             <button
               type="button"
               className="wsm-secondary"
@@ -288,11 +347,13 @@ export default function SourceTeamPanel({
           </div>
         </div>
       )}
+
       {error && (
         <p className="wsm-error" role="alert">
           {error}
         </p>
       )}
+
       {notice && (
         <p className="wsm-success" role="status">
           {notice}

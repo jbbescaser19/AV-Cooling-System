@@ -13,7 +13,6 @@ import {
 } from "../../validators/management/workspaceValidator.js";
 
 import { analyzeFeedbackSentiment } from "../customer/feedback/sentimentAnalyzer.js";
-
 import { fail } from "./workspaceHelpers.js";
 
 import {
@@ -181,8 +180,6 @@ export async function listWorkspace(staff, module) {
       "facebook-requests",
     ].includes(module)
   ) {
-    // Read-only technician views must not expose
-    // unrelated order/service references.
     const readOnlyFieldView =
       (module === "schedules" || module === "work-orders") &&
       !["OWNER", "MANAGER"].includes(staff.role);
@@ -271,7 +268,7 @@ export async function updateWorkspace(staff, module, rawId, raw) {
       fail("Restore this record from Archive before editing it.", 409);
     }
 
-    const { result, converted } = await handler(
+    const { result, converted, alreadyRecorded } = await handler(
       model,
       staff,
       id,
@@ -283,7 +280,9 @@ export async function updateWorkspace(staff, module, rawId, raw) {
       fail("Record not found.", 404);
     }
 
-    await model.audit(staff.id, "UPDATE", module, id);
+    if (!alreadyRecorded) {
+      await model.audit(staff.id, "UPDATE", module, id);
+    }
 
     await connection.commit();
 

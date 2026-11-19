@@ -1,10 +1,7 @@
 import connectDB from "../../../utils/dbConn.js";
 import { paymongoModel } from "../../../models/payments/paymongoModel.js";
-
 import { auditLogModel } from "../../../models/management/administration/auditLogModel.js";
-
 import { serviceRefundModel } from "../../../models/management/sales/serviceRefundModel.js";
-
 import { servicePaymentModel } from "../../../models/customer/services/servicePaymentModel.js";
 
 import {
@@ -12,8 +9,12 @@ import {
   releaseAppointment,
 } from "../../scheduling/bookingScheduleService.js";
 
-import { operationsModel } from "../../../models/management/operations/operationsModel.js";
+import {
+  moveEarlyAppointment,
+  releaseCompletedAppointment,
+} from "../../scheduling/appointmentLifecycleService.js";
 
+import { operationsModel } from "../../../models/management/operations/operationsModel.js";
 import { createCustomerNotification } from "../../customer/notification/notificationService.js";
 
 import {
@@ -24,11 +25,8 @@ import {
 } from "../../../constants/management/fulfillmentEvents.js";
 
 import { eventSchema } from "../../../validators/management/operations/eventValidator.js";
-
 import { fail, scheduleToSQL, assertStaffRole } from "./eventHelpers.js";
-
 import { transitionOrder } from "../sales/orderEventService.js";
-
 import { transitionService } from "../services/serviceEventService.js";
 
 import { confirmationWorkOrderModel } from "../../../models/management/services/confirmationWorkOrderModel.js";
@@ -42,13 +40,9 @@ import {
 export async function listManagementRecords(kind) {
   const model = operationsModel(connectDB);
 
-  if (kind === "ORDER") {
-    return model.listOrders();
-  }
+  if (kind === "ORDER") return model.listOrders();
 
-  if (kind === "SERVICE") {
-    return model.listServices();
-  }
+  if (kind === "SERVICE") return model.listServices();
 
   fail("Invalid record type.", 400);
 }
@@ -66,10 +60,11 @@ async function addNotificationForEvent(
 
   const visibleNote = data.note ? ` Reason from store: ${data.note}` : "";
 
-  const savedSchedule =
-    kind === "ORDER" && data.eventCode === "ORDER_ACCEPTED"
-      ? record.schedule
-      : null;
+  const savedSchedule = ["ORDER_ACCEPTED", "SERVICE_ACCEPTED"].includes(
+    data.eventCode,
+  )
+    ? record.schedule
+    : null;
 
   const effectiveSchedule = data.schedule || savedSchedule;
 
@@ -123,18 +118,6 @@ export async function applyManagementEvent(kind, reference, staff, rawInput) {
   }
 
   assertStaffRole(staff, data.eventCode);
-
-  if (
-    kind === "SERVICE" &&
-    ["SERVICE_STARTED", "SERVICE_COMPLETED"].includes(data.eventCode) &&
-    ["OWNER", "MANAGER"].includes(staff.role) &&
-    data.internalNote.trim().length < 10
-  ) {
-    fail(
-      "For a phone-reported start or completion, enter an internal note with the technician name and how the work was confirmed (10+ characters).",
-      400,
-    );
-  }
 
   const matchingKind =
     kind === "ORDER"
@@ -207,19 +190,18 @@ export async function applyManagementEvent(kind, reference, staff, rawInput) {
 
       await connection.commit();
 
-      return {
-        alreadyRecorded: true,
-      };
+      return { alreadyRecorded: true };
     }
 
-    // Keep the existing PayMongo cancellation protection.
+    const cancellationEvents = [
+      "ORDER_DECLINED",
+      "ORDER_CANCELLED_BY_STAFF",
+      "SERVICE_DECLINED",
+      "SERVICE_CANCELLED",
+    ];
+
     if (
-      [
-        "ORDER_DECLINED",
-        "ORDER_CANCELLED_BY_STAFF",
-        "SERVICE_DECLINED",
-        "SERVICE_CANCELLED",
-      ].includes(data.eventCode) &&
+      cancellationEvents.includes(data.eventCode) &&
       (await paymongoModel(connection).hasUnsettledCheckout(kind, record.id))
     ) {
       fail(
@@ -230,20 +212,33 @@ export async function applyManagementEvent(kind, reference, staff, rawInput) {
 
     const jobModel = confirmationWorkOrderModel(connection);
 
-    // NEW: Team selection is required during confirmation.
-    // Pickup-only orders are exempt.
-    if (["ORDER_ACCEPTED", "SERVICE_ACCEPTED"].includes(data.eventCode)) {
+    if (isConfirmation) {
       const source =
         kind === "ORDER" ? await jobModel.orderSource(record.id) : null;
 
       const requiresTeam =
         kind === "SERVICE" ||
-        (source &&
-          (source.fulfillment === "DELIVERY" ||
-            Boolean(source.installationIncluded)));
+        source?.fulfillment === "DELIVERY" ||
+        Boolean(source?.installationIncluded);
 
       if (requiresTeam && data.technicianIds.length === 0) {
         fail("Choose a technician team before confirming the schedule.", 400);
+      }
+
+      const effectiveSchedule = data.schedule || record.schedule;
+
+      if (requiresTeam && !effectiveSchedule) {
+        fail("Choose a valid appointment before confirming.", 409);
+      }
+
+      if (requiresTeam) {
+        await reserveAppointment(
+          connection,
+          kind,
+          record.id,
+          effectiveSchedule,
+          { confirmed: true },
+        );
       }
     }
 
@@ -255,29 +250,6 @@ export async function applyManagementEvent(kind, reference, staff, rawInput) {
       INSTALLATION_STARTED: ["INSTALLATION", "IN_PROGRESS"],
       INSTALLATION_COMPLETED: ["INSTALLATION", "COMPLETED"],
     };
-
-    if (kind === "ORDER" && data.eventCode === "ORDER_ACCEPTED") {
-      const source = await jobModel.orderSource(record.id);
-
-      const fieldWorkRequired =
-        source?.fulfillment === "DELIVERY" ||
-        Boolean(source?.installationIncluded);
-
-      if (fieldWorkRequired && !record.schedule) {
-        fail(
-          "This order has no saved appointment. Arrange a valid slot before confirming.",
-        );
-      }
-
-      if (record.schedule) {
-        await reserveAppointment(
-          connection,
-          "ORDER",
-          record.id,
-          record.schedule,
-        );
-      }
-    }
 
     if (kind === "ORDER" && data.eventCode === "SCHEDULE_CHANGED") {
       const jobs = await jobModel.workForSource("ORDER", record.id);
@@ -310,8 +282,35 @@ export async function applyManagementEvent(kind, reference, staff, rawInput) {
         (milestone[0] === "INSTALLATION" &&
           Boolean(fieldOrder?.installationIncluded)));
 
+    if (
+      requiresFieldTeam &&
+      (await model.hasEvent(kind, record.id, data.eventCode))
+    ) {
+      const job = await jobModel.activeWork(kind, record.id, milestone[0]);
+
+      const reached =
+        milestone[1] === "IN_PROGRESS"
+          ? ["IN_PROGRESS", "COMPLETED"].includes(job?.status)
+          : job?.status === "COMPLETED";
+
+      if (reached && record.status !== "CANCELLED") {
+        await connection.commit();
+
+        return { alreadyRecorded: true };
+      }
+    }
+
     if (requiresFieldTeam && milestone[1] === "IN_PROGRESS") {
       await jobModel.checkReadyForStart(kind, record.id, milestone[0]);
+
+      const moved = await moveEarlyAppointment(
+        connection,
+        kind,
+        record.id,
+        staff,
+      );
+
+      if (moved) record.schedule = moved;
     }
 
     if (kind === "ORDER") {
@@ -338,7 +337,7 @@ export async function applyManagementEvent(kind, reference, staff, rawInput) {
       );
     }
 
-    if (scheduleSQL) {
+    if (scheduleSQL && !isConfirmation) {
       await reserveAppointment(connection, kind, record.id, data.schedule);
 
       if (
@@ -349,17 +348,17 @@ export async function applyManagementEvent(kind, reference, staff, rawInput) {
           "SERVICE_RESCHEDULED",
         ].includes(data.eventCode)
       ) {
-        await confirmationWorkOrderModel(connection).rescheduleUnstarted(
-          kind,
-          record.id,
-          data.schedule,
-        );
+        await jobModel.rescheduleUnstarted(kind, record.id, data.schedule);
       }
+    }
+
+    if (milestone?.[1] === "COMPLETED") {
+      await releaseCompletedAppointment(connection, kind, record.id);
     }
 
     let workOrders = [];
 
-    if (["ORDER_ACCEPTED", "SERVICE_ACCEPTED"].includes(data.eventCode)) {
+    if (isConfirmation) {
       workOrders = await ensureConfirmedWorkOrders(
         connection,
         kind,
@@ -369,14 +368,7 @@ export async function applyManagementEvent(kind, reference, staff, rawInput) {
       );
     }
 
-    if (
-      [
-        "ORDER_DECLINED",
-        "ORDER_CANCELLED_BY_STAFF",
-        "SERVICE_DECLINED",
-        "SERVICE_CANCELLED",
-      ].includes(data.eventCode)
-    ) {
+    if (cancellationEvents.includes(data.eventCode)) {
       await cancelConfirmedWork(connection, kind, record.id);
 
       if (kind === "SERVICE") {
@@ -428,6 +420,7 @@ export async function applyManagementEvent(kind, reference, staff, rawInput) {
     };
   } catch (error) {
     await connection.rollback();
+
     throw error;
   } finally {
     connection.release();

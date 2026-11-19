@@ -1,0 +1,173 @@
+.av-global-action-error {
+  position: fixed;
+
+  inset-block-start: max(16px, env(safe-area-inset-top));
+
+  inset-inline: 0;
+
+  z-index: 2147483647;
+
+  width: min(560px, calc(100% - 28px));
+  max-height: 70dvh;
+
+  margin-inline: auto;
+  padding: 16px;
+
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px;
+
+  box-sizing: border-box;
+
+  background: #fff;
+  color: #7f1d1d;
+
+  border: 1px solid #ef9a9a;
+  border-left: 4px solid #b91c1c;
+  border-radius: 12px;
+
+  box-shadow: 0 12px 36px rgb(15 23 42 / 20%);
+
+  overflow-y: auto;
+}
+
+.av-global-action-error__icon {
+  margin-top: 2px;
+  color: #b91c1c;
+  flex-shrink: 0;
+}
+
+.av-global-action-error__content {
+  min-width: 0;
+}
+
+.av-global-action-error__content strong {
+  display: block;
+
+  margin-bottom: 5px;
+
+  font-size: 0.95rem;
+  font-weight: 750;
+  line-height: 1.4;
+}
+
+.av-global-action-error__content p {
+  margin: 0;
+
+  color: #7f1d1d;
+
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.6;
+
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.av-global-action-error__close {
+  display: grid;
+  place-items: center;
+
+  width: 32px;
+  height: 32px;
+
+  padding: 0;
+
+  color: #991b1b;
+  background: #fef2f2;
+
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+
+  cursor: pointer;
+}
+
+.av-global-action-error__close:hover {
+  background: #fee2e2;
+}
+
+.av-global-action-error__close:focus-visible {
+  outline: 2px solid #b91c1c;
+  outline-offset: 3px;
+}
+
+/* Improve existing inline errors without changing normal content. */
+
+:root
+  :is(
+    .wsm-error,
+    .sales-error,
+    .auth-error,
+    .booking-manage__error,
+    .booking-picker__error,
+    .customer-service-action-error,
+    .customer-transfer-error,
+    .checkout-payment-error,
+    .form-error,
+    .order-error,
+    .notification-error,
+    .av-manager-progress__error,
+    .av-reschedule-modal__error,
+    .paymongo-action__error,
+    .service-alert--error,
+    .cart-message--error
+  ) {
+  box-sizing: border-box;
+
+  padding: 12px 14px;
+
+  max-width: 100%;
+
+  background: #fef2f2;
+  color: #991b1b;
+
+  border: 1px solid #fecaca;
+  border-left: 3px solid #dc2626;
+  border-radius: 8px;
+
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.55;
+
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+:root .pos-fee-fields__error {
+  color: #991b1b;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: normal;
+}
+
+.av-job-card__completion select,
+.av-job-card__completion textarea {
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
+
+  box-sizing: border-box;
+}
+
+@media (max-width: 600px) {
+  .av-global-action-error {
+    width: calc(100% - 20px);
+
+    padding: 12px;
+    gap: 8px;
+  }
+
+  .av-global-action-error__content strong {
+    font-size: 0.875rem;
+  }
+
+  .av-global-action-error__content p {
+    font-size: 0.8125rem;
+  }
+
+  .av-global-action-error__close {
+    width: 30px;
+    height: 30px;
+  }
+}

@@ -1,3 +1,7 @@
+import RecordCategoryFilters, {
+  field,
+  useRecordFilters,
+} from "../../components/common/RecordCategoryFilters.jsx";
 import { confirmAction } from "../../utils/confirmAction.js";
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
@@ -26,6 +30,12 @@ export default function ManagementNotificationsPage() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
 
+  const categories = useRecordFilters(records, [
+    field("type", "Notification types"),
+    field("read", "Read statuses", (r) =>
+      Number(r.isRead) ? "Read" : "Unread",
+    ),
+  ]);
   const reload = useCallback(async () => {
     const [all, overview] = await Promise.all([
       api.get(endpoint),
@@ -178,23 +188,28 @@ export default function ManagementNotificationsPage() {
         </section>
       )}
 
+      <RecordCategoryFilters filters={categories} />
       <div
         className="av-notification-center__list"
         aria-label="Saved notifications"
       >
         {loading ? (
           <p role="status">Loading notifications…</p>
-        ) : records.length === 0 ? (
+        ) : categories.filtered.length === 0 ? (
           <div className="av-notification-center__empty">
             <Bell size={26} />
-            <strong>No saved notifications</strong>
+            <strong>
+              {records.length
+                ? "No matching notifications"
+                : "No saved notifications"}
+            </strong>
             <p>
               New activity will appear here. Low-stock warnings are tracked
               separately.
             </p>
           </div>
         ) : (
-          records.map((item) => (
+          categories.filtered.map((item) => (
             <article
               className={`av-notification-center__item ${Number(item.isRead) ? "" : "is-unread"}`}
               key={item.id}

@@ -1,15 +1,22 @@
 import {
+  moveEarlyAppointment,
+  releaseCompletedAppointment,
+} from "../../scheduling/appointmentLifecycleService.js";
+
+import {
   reassignWorkOrderTeam,
   validateAssignedTeamSchedule,
 } from "./confirmationWorkOrderService.js";
+
+import { ensureOrderStockDispatched } from "../../customer/order/stockReservationService.js";
 import { recordServiceJobProgress } from "./workOrderProgressService.js";
 import { fail, localSQL, verifyTechnician } from "../workspaceHelpers.js";
 import { reserveAppointment } from "../../scheduling/bookingScheduleService.js";
 import { bookingScheduleModel } from "../../../models/scheduling/bookingScheduleModel.js";
 
 export async function createWorkOrders(model, staff, data, connection) {
-  let created;
   const scheduledStart = localSQL(data.scheduledStart);
+
   const source = (
     data.sourceType === "ORDER"
       ? await model.findOrder(data.sourceId)
@@ -47,8 +54,6 @@ export async function createWorkOrders(model, staff, data, connection) {
     await verifyTechnician(model, data.technicianId, data.scheduledStart);
   }
 
-  // A source appointment uses one reservation, even when the
-  // order has both delivery and installation jobs.
   const kind = data.sourceType === "ORDER" ? "ORDER" : "SERVICE";
 
   await reserveAppointment(
@@ -68,8 +73,10 @@ export async function createWorkOrders(model, staff, data, connection) {
 
   const newWork = await model.createWork({
     orderId: data.sourceType === "ORDER" ? data.sourceId : null,
+
     serviceRequestId:
       data.sourceType === "SERVICE_REQUEST" ? data.sourceId : null,
+
     workType: data.workType,
     scheduledStart,
     customer: source.customer,
@@ -77,7 +84,7 @@ export async function createWorkOrders(model, staff, data, connection) {
     address: source.address,
   });
 
-  created = newWork.insertId;
+  const created = newWork.insertId;
 
   await model.addWorkHistory(
     created,
@@ -89,7 +96,9 @@ export async function createWorkOrders(model, staff, data, connection) {
 
   if (data.technicianId) {
     await model.assignTechnician(created, data.technicianId, staff.id);
+
     await model.updateWork(created, "ASSIGNED", "");
+
     await model.addWorkHistory(
       created,
       "PENDING",
@@ -111,7 +120,7 @@ export async function updateWorkOrders(
   options = {},
 ) {
   let result;
-  let converted = null;
+  const converted = null;
 
   const work = (await model.lockWork(id))[0];
 
@@ -136,10 +145,18 @@ export async function updateWorkOrders(
     );
   }
 
-  // Online order progress must use the unified technician workflow.
-  // The older individual-job endpoint could change delivery without
-  // changing installation, the order status, or the stock reservation.
-  // Team assignment and rescheduling remain available as before.
+  if (
+    ["IN_PROGRESS", "COMPLETED"].includes(data.status) &&
+    (work.status === data.status ||
+      (data.status === "IN_PROGRESS" && work.status === "COMPLETED"))
+  ) {
+    return {
+      result: { affectedRows: 1 },
+      converted,
+      alreadyRecorded: true,
+    };
+  }
+
   if (
     work.order_id &&
     ["IN_PROGRESS", "COMPLETED", "CANCELLED"].includes(data.status) &&
@@ -157,7 +174,9 @@ export async function updateWorkOrders(
 
   const transitions = {
     PENDING: ["ASSIGNED", "CANCELLED", "RESCHEDULE"],
+
     ASSIGNED: ["REASSIGN", "IN_PROGRESS", "CANCELLED", "RESCHEDULE"],
+
     IN_PROGRESS: ["COMPLETED", "CANCELLED"],
     COMPLETED: [],
     CANCELLED: [],
@@ -183,7 +202,11 @@ export async function updateWorkOrders(
     data.technicianIds.length
   ) {
     await reassignWorkOrderTeam(connection, work, staff, data.technicianIds);
-    return { result: { affectedRows: 1 }, converted };
+
+    return {
+      result: { affectedRows: 1 },
+      converted,
+    };
   }
 
   if (data.status === "REASSIGN") {
@@ -202,12 +225,16 @@ export async function updateWorkOrders(
     }
 
     const day = data.scheduledStart || work.scheduledStartLocal;
+
     await verifyTechnician(model, data.technicianId, day, id);
 
     if (work.order_id) {
       await reassignWorkOrderTeam(connection, work, staff, [data.technicianId]);
 
-      return { result: { affectedRows: 1 }, converted };
+      return {
+        result: { affectedRows: 1 },
+        converted,
+      };
     }
 
     await model.assignTechnician(id, data.technicianId, staff.id);
@@ -236,6 +263,7 @@ export async function updateWorkOrders(
     }
 
     const kind = work.order_id ? "ORDER" : "SERVICE";
+
     const sourceId = work.order_id || work.service_request_id;
 
     if (sourceId) {
@@ -260,74 +288,74 @@ export async function updateWorkOrders(
       `Rescheduled for ${sqlDate}. ${data.notes}`,
     );
 
-    result = { affectedRows: 1 };
-
-    return { result, converted };
+    return {
+      result: { affectedRows: 1 },
+      converted,
+    };
   }
 
-  if (data.status === "COMPLETED" && work.order_id) {
-    const state = await model.orderFulfillmentState(work.order_id);
+  const appointmentKind = work.order_id ? "ORDER" : "SERVICE";
 
-    if (state?.channel === "FACEBOOK") {
-      if (work.work_type === "DELIVERY") {
-        if (state.paymentStatus !== "PAID") {
-          fail(
-            "Record the collected Facebook cash payment before marking delivery completed.",
-            409,
-          );
-        }
+  const appointmentId = work.order_id || work.service_request_id;
 
-        const reservations = await model.lockReservedUnits(work.order_id);
+  if (data.status === "IN_PROGRESS" && appointmentId) {
+    const moved = await moveEarlyAppointment(
+      connection,
+      appointmentKind,
+      appointmentId,
+      staff,
+    );
 
-        if (!reservations.length) {
-          fail(
-            "Cannot complete delivery without an active stock reservation.",
-            409,
-          );
-        }
-
-        for (const reservation of reservations) {
-          if (
-            (await model.deliverReservedVariant(
-              reservation.variantId,
-              reservation.quantity,
-            )) !== 1
-          ) {
-            fail("Reserved inventory changed. Refresh and retry.", 409);
-          }
-
-          await model.recordMovement(
-            reservation.variantId,
-            "SALE",
-            -reservation.quantity,
-            staff.id,
-            `Facebook order delivered; work order #${id}`,
-          );
-        }
-
-        if (
-          (await model.finishReservation(reservations[0].reservationId)) !== 1
-        ) {
-          fail("Stock reservation already processed.", 409);
-        }
-      } else if (
-        work.work_type === "INSTALLATION" &&
-        !(await model.deliveryCompleted(work.order_id))
-      ) {
-        fail("Record delivery completion before completing installation.", 409);
-      }
+    if (moved) {
+      work.scheduledStartLocal = moved;
     }
   }
 
-  // Keep start/report notes in the immutable work history; only completion
-  // summaries belong in the work order's completion_notes column.
+  if (work.order_id && ["IN_PROGRESS", "COMPLETED"].includes(data.status)) {
+    const state = await model.orderFulfillmentState(work.order_id);
+
+    if (
+      state?.channel === "POS" &&
+      state.paymentStatus !== "PAID" &&
+      !(state.paymentStatus === "PENDING" && state.paymentMethod === "CASH")
+    ) {
+      fail("Verify the POS online payment before dispatching products.", 409);
+    }
+
+    if (
+      state?.channel === "FACEBOOK" &&
+      data.status === "COMPLETED" &&
+      state.paymentStatus !== "PAID"
+    ) {
+      fail(
+        "Record the collected Facebook cash payment before completing delivery.",
+        409,
+      );
+    }
+
+    if (work.work_type === "DELIVERY") {
+      await ensureOrderStockDispatched(
+        connection,
+        work.order_id,
+        staff.id,
+        state?.channel === "POS" && state.paymentStatus === "PAID",
+      );
+    } else if (
+      state?.channel === "FACEBOOK" &&
+      work.work_type === "INSTALLATION" &&
+      data.status === "COMPLETED" &&
+      !(await model.deliveryCompleted(work.order_id))
+    ) {
+      fail("Record delivery completion before completing installation.", 409);
+    }
+  }
+
   result = await model.updateWork(
     id,
     data.status,
     data.status === "COMPLETED" ? data.notes : "",
   );
 
-  // Service requests must stay synchronized with technician activity.
   await recordServiceJobProgress(
     connection,
     work,
@@ -351,9 +379,17 @@ export async function updateWorkOrders(
       await model.facebookOrderStatus(work.order_id, "COMPLETED");
     }
 
-    if (state?.channel === "POS" && work.work_type === "INSTALLATION") {
+    if (state?.channel === "POS" && !options.coordinatedOrderProgress) {
       await model.completeScheduledPosOrder(work.order_id);
     }
+  }
+
+  if (data.status === "COMPLETED") {
+    await releaseCompletedAppointment(
+      connection,
+      appointmentKind,
+      appointmentId,
+    );
   }
 
   await model.addWorkHistory(
@@ -364,5 +400,8 @@ export async function updateWorkOrders(
     data.notes,
   );
 
-  return { result, converted };
+  return {
+    result,
+    converted,
+  };
 }

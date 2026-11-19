@@ -1,3 +1,4 @@
+/* AV CATEGORY FILTERS */
 /** Dedicated variant database queries. */
 export function variantModel(db) {
   const select = async (sql, values = []) => (await db.execute(sql, values))[0];
@@ -6,7 +7,7 @@ export function variantModel(db) {
   return {
     async listVariants(staffId) {
       return select(
-        `SELECT v.variant_id AS id,v.product_id AS productId,CONCAT(p.brand,' ',p.model,' · ',v.horsepower,' HP') AS name,v.horsepower,v.srp,v.promo_price AS promoPrice,v.status,COALESCE(i.on_hand_quantity,0) AS onHand,COALESCE(i.reserved_quantity,0) AS reserved FROM product_variants v JOIN products p ON p.product_id=v.product_id LEFT JOIN inventory i ON i.variant_id=v.variant_id ORDER BY v.variant_id DESC LIMIT 300`,
+        `SELECT v.variant_id AS id,v.product_id AS productId,p.brand AS brand,CONCAT(p.brand,' ',p.model,' · ',v.horsepower,' HP') AS name,v.horsepower,v.srp,v.promo_price AS promoPrice,v.status,COALESCE(i.on_hand_quantity,0) AS onHand,COALESCE(i.reserved_quantity,0) AS reserved FROM product_variants v JOIN products p ON p.product_id=v.product_id LEFT JOIN inventory i ON i.variant_id=v.variant_id ORDER BY v.variant_id DESC LIMIT 300`,
       );
     },
     createVariant(productId, data) {

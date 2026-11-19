@@ -1,9 +1,11 @@
 import connectDB from "../../../utils/dbConn.js";
 import { servicePaymentModel } from "../../../models/customer/services/servicePaymentModel.js";
+
 import {
-  reserveAppointment,
+  checkPreferredAppointment,
   releaseAppointment,
 } from "../../scheduling/bookingScheduleService.js";
+
 import { customerServiceModel } from "../../../models/customer/account/serviceModel.js";
 import { createCustomerNotification } from "../notification/notificationService.js";
 
@@ -19,6 +21,7 @@ function serviceError(message, status = 400) {
 
 async function getActiveCustomerId(model, userId) {
   const [customers] = await model.findCustomerByUserId(userId);
+
   const customer = customers[0];
 
   if (!customer) {
@@ -37,6 +40,7 @@ async function getActiveCustomerId(model, userId) {
 
 export async function getMyServicesService(userId) {
   const validatedUserId = validateCustomerUserId(userId);
+
   const connection = await connectDB.getConnection();
 
   try {
@@ -55,6 +59,7 @@ export async function getMyServicesService(userId) {
         ...service,
         canEdit: canChange,
         canCancel: canChange,
+
         canDelete: service.status === "CANCELLED" && !hasWorkOrder,
       };
     });
@@ -69,10 +74,12 @@ export async function changeMyServiceService(userId, requestId, action, input) {
   const change = validateServiceChange(requestId, action, input);
 
   const connection = await connectDB.getConnection();
+
   let transactionStarted = false;
 
   try {
     await connection.beginTransaction();
+
     transactionStarted = true;
 
     const model = customerServiceModel(connection);
@@ -119,6 +126,7 @@ export async function changeMyServiceService(userId, requestId, action, input) {
 
       if (change.action === "cancel") {
         const paymentModel = servicePaymentModel(connection);
+
         if (
           (await paymentModel.paymentStatusForCancellation(
             change.requestId,
@@ -129,9 +137,13 @@ export async function changeMyServiceService(userId, requestId, action, input) {
             409,
           );
         }
+
         await model.cancelRequest(customerId, change.requestId);
+
         await releaseAppointment(connection, "SERVICE", change.requestId);
+
         await paymentModel.cancelPending(change.requestId);
+
         await createCustomerNotification(
           connection,
           validatedUserId,
@@ -146,16 +158,20 @@ export async function changeMyServiceService(userId, requestId, action, input) {
           change.data.destinationAddress,
         );
 
-        await reserveAppointment(
+        // Move the booking atomically.
+        // A failed update preserves the original reservation.
+        await checkPreferredAppointment(
           connection,
           "SERVICE",
           change.requestId,
           change.data.preferredStart,
         );
+
         await model.updateRequest(customerId, change.requestId, {
           ...change.data,
           destinationAddress,
         });
+
         await createCustomerNotification(
           connection,
           validatedUserId,
@@ -168,6 +184,7 @@ export async function changeMyServiceService(userId, requestId, action, input) {
     }
 
     await connection.commit();
+
     transactionStarted = false;
 
     return {

@@ -5,11 +5,20 @@ import {
   requireStaffRole,
 } from "../../middleware/requireStaffAuth.js";
 
-import { getManagementDashboardController } from "../../controllers/management/dashboardController.js";
+import {
+  getManagementDashboardController,
+  getDashboardFinancialsController,
+} from "../../controllers/management/dashboardController.js";
 
 const router = Router();
 
 router.use(requireStaffAuth);
+
+router.get(
+  "/financials",
+  requireStaffRole("OWNER", "MANAGER"),
+  getDashboardFinancialsController,
+);
 
 router.get(
   "/",

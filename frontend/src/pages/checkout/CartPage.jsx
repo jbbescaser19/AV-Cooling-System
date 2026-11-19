@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
+
 import { Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
 
 import {
   getCart,
   removeCartItem,
   updateCartItemQuantity,
+  updateCartItemHorsepower,
 } from "../../utils/cartStore";
 
 import {
@@ -15,6 +17,7 @@ import {
 } from "../../utils/cartSelection.js";
 
 import { clearDirectCheckout } from "../../utils/purchaseFlow.js";
+
 import useStorefrontCatalog from "../../hooks/useStorefrontCatalog";
 import useRealtimeRefresh from "../../hooks/useRealtimeRefresh.js";
 
@@ -36,6 +39,7 @@ export default function CartPage() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [syncError, setSyncError] = useState("");
   const [reload, setReload] = useState(0);
   const [realtimeRevision, setRealtimeRevision] = useState(0);
@@ -46,11 +50,10 @@ export default function CartPage() {
 
   const [quantityDrafts, setQuantityDrafts] = useState({});
 
-  // Full loading should happen only on the first visit.
   const hasLoadedRef = useRef(false);
 
-  // Prevent older requests from overwriting newer cart edits.
   const mutationRevisionRef = useRef(0);
+  const mutationInFlightRef = useRef(false);
 
   useRealtimeRefresh(["inventory", "catalog", "cart"], setRealtimeRevision);
 
@@ -59,6 +62,11 @@ export default function CartPage() {
     status: stockStatus,
     refresh: refreshStock,
   } = useStorefrontCatalog();
+
+  const productMap = useMemo(
+    () => new Map(products.map((product) => [String(product.id), product])),
+    [products],
+  );
 
   const liveMap = useMemo(
     () =>
@@ -74,14 +82,17 @@ export default function CartPage() {
   );
 
   useEffect(() => {
+    if (mutationInFlightRef.current) return;
+
     let active = true;
 
     const revisionAtRequest = mutationRevisionRef.current;
 
     const isCurrent = () =>
-      active && revisionAtRequest === mutationRevisionRef.current;
+      active &&
+      revisionAtRequest === mutationRevisionRef.current &&
+      !mutationInFlightRef.current;
 
-    // Do not hide product cards during background refresh.
     if (!hasLoadedRef.current) {
       setLoading(true);
     }
@@ -114,12 +125,25 @@ export default function CartPage() {
   }, [reload, realtimeRevision]);
 
   const rows = cart.map((item) => {
-    const available = liveMap.get(`${item.productId}:${item.hp}`)?.stock;
+    const liveVariant = liveMap.get(`${item.productId}:${item.hp}`);
+
+    const available = liveVariant?.stock;
+
+    const product = productMap.get(String(item.productId));
 
     return {
       ...item,
+
       key: cartSelectionKey(item),
+
       available,
+
+      variants: product?.variants || [],
+
+      price:
+        stockStatus === "ready" && Number.isFinite(liveVariant?.price)
+          ? liveVariant.price
+          : item.price,
 
       blocked:
         stockStatus !== "ready" ||
@@ -150,11 +174,18 @@ export default function CartPage() {
 
   const totalCartCount = rows.reduce((sum, item) => sum + Number(item.qty), 0);
 
+  const hasUnsavedSelectedQuantity = selectedRows.some(
+    (item) =>
+      quantityDrafts[item.key] !== undefined &&
+      String(quantityDrafts[item.key]) !== String(item.qty),
+  );
+
   const selectionBlocked =
     stockStatus !== "ready" ||
     selectedRows.some((item) => item.blocked) ||
     selectedCount > 99 ||
     Boolean(syncError) ||
+    hasUnsavedSelectedQuantity ||
     busy ||
     loading;
 
@@ -164,11 +195,14 @@ export default function CartPage() {
     const values = new Set(next);
 
     setSelectedKeys(values);
+
     saveSelectedCartKeys([...values]);
   }
 
   function selectOne(item, checked) {
-    if (busy || (checked && item.blocked)) return;
+    if (busy || (checked && item.blocked)) {
+      return;
+    }
 
     const next = new Set(selectedKeys);
 
@@ -187,90 +221,145 @@ export default function CartPage() {
     updateSelection(allSelected ? [] : eligibleKeys);
   }
 
-  async function remove(item) {
-    if (busy) return;
+  function beginMutation() {
+    if (mutationInFlightRef.current) {
+      return false;
+    }
+
+    mutationInFlightRef.current = true;
+    mutationRevisionRef.current += 1;
 
     setBusy(true);
     setError("");
+    setNotice("");
 
+    return true;
+  }
+
+  function endMutation() {
     mutationRevisionRef.current += 1;
+    mutationInFlightRef.current = false;
+
+    setBusy(false);
+  }
+
+  function clearQuantityDrafts(...keys) {
+    setQuantityDrafts((previous) => {
+      const copy = { ...previous };
+
+      keys.forEach((key) => {
+        delete copy[key];
+      });
+
+      return copy;
+    });
+  }
+
+  function otherVariantQuantity(item, hp) {
+    return rows.reduce((sum, row) => {
+      if (row.productId !== item.productId || row.hp !== hp) {
+        return sum;
+      }
+
+      if (
+        row.key === item.key &&
+        Boolean(row.pendingSync) === Boolean(item.pendingSync)
+      ) {
+        return sum;
+      }
+
+      return sum + Number(row.qty);
+    }, 0);
+  }
+
+  function getVariantAvailability(item, variant) {
+    const stock = Number.isInteger(variant.stock) ? variant.stock : 0;
+
+    const otherQty = otherVariantQuantity(item, variant.hp);
+
+    return Math.max(0, stock - otherQty);
+  }
+
+  async function remove(item) {
+    if (busy || !beginMutation()) return;
 
     try {
       await removeCartItem(item, authenticated);
 
-      // Remove locally without reloading the entire cart.
       setCart((current) =>
-        current.filter((row) => cartSelectionKey(row) !== item.key),
+        current.filter(
+          (row) =>
+            !(
+              cartSelectionKey(row) === item.key &&
+              Boolean(row.pendingSync) === Boolean(item.pendingSync)
+            ),
+        ),
       );
 
       const next = new Set(selectedKeys);
+
       next.delete(item.key);
 
       updateSelection(next);
 
-      setQuantityDrafts((previous) => {
-        const copy = { ...previous };
-
-        delete copy[item.key];
-
-        return copy;
-      });
+      clearQuantityDrafts(item.key);
     } catch (err) {
       setError(
         err.response?.data?.message || err.message || "Could not remove item.",
       );
     } finally {
-      mutationRevisionRef.current += 1;
-      setBusy(false);
+      endMutation();
     }
   }
 
   async function changeQuantity(item, proposed) {
-    if (busy || stockStatus !== "ready") return;
+    if (busy || stockStatus !== "ready") {
+      return;
+    }
 
     const qty = Number(proposed);
 
     if (!Number.isInteger(qty) || qty < 1 || qty > 99) {
       setError("Quantity must be a whole number between 1 and 99.");
+
       return;
     }
 
     if (qty === Number(item.qty)) {
-      setQuantityDrafts((previous) => {
-        const copy = { ...previous };
+      clearQuantityDrafts(item.key);
+      return;
+    }
 
-        delete copy[item.key];
-
-        return copy;
-      });
+    if (totalCartCount - Number(item.qty) + qty > 99) {
+      setError("Your cart can hold at most 99 units in total.");
 
       return;
     }
 
-    setBusy(true);
-    setError("");
+    const available =
+      Number(item.available || 0) - otherVariantQuantity(item, item.hp);
 
-    mutationRevisionRef.current += 1;
+    if (qty > available) {
+      setError(`Only ${Math.max(0, available)} units are available.`);
+
+      return;
+    }
+
+    if (!beginMutation()) return;
 
     try {
-      // Backend still validates quantity and available stock.
-      await updateCartItemQuantity(item, authenticated, qty, item.available);
+      await updateCartItemQuantity(item, authenticated, qty, available);
 
-      // Update the saved quantity locally.
-      // No full-page loading screen or manual cart refetch.
       setCart((current) =>
         current.map((row) =>
-          cartSelectionKey(row) === item.key ? { ...row, qty } : row,
+          cartSelectionKey(row) === item.key &&
+          Boolean(row.pendingSync) === Boolean(item.pendingSync)
+            ? { ...row, qty }
+            : row,
         ),
       );
 
-      setQuantityDrafts((previous) => {
-        const copy = { ...previous };
-
-        delete copy[item.key];
-
-        return copy;
-      });
+      clearQuantityDrafts(item.key);
     } catch (err) {
       setError(
         err.response?.data?.message ||
@@ -278,8 +367,133 @@ export default function CartPage() {
           "Unable to update quantity.",
       );
     } finally {
-      mutationRevisionRef.current += 1;
-      setBusy(false);
+      endMutation();
+    }
+  }
+
+  async function changeHorsepower(item, nextHp) {
+    if (busy || stockStatus !== "ready" || nextHp === item.hp) {
+      return;
+    }
+
+    const draft = quantityDrafts[item.key];
+
+    if (draft !== undefined && String(draft) !== String(item.qty)) {
+      setError("Save your quantity before changing horsepower.");
+
+      return;
+    }
+
+    const product = productMap.get(String(item.productId));
+
+    const variant = product?.variants?.find((option) => option.hp === nextHp);
+
+    if (!variant) {
+      setError("This horsepower is no longer available.");
+
+      return;
+    }
+
+    const remainingStock = getVariantAvailability(item, variant);
+
+    if (remainingStock < Number(item.qty)) {
+      setError(
+        `Not enough available stock for ${nextHp}. Reduce the quantity or choose another horsepower.`,
+      );
+
+      return;
+    }
+
+    const targetKey = cartSelectionKey({
+      productId: item.productId,
+      hp: nextHp,
+    });
+
+    const targetItems = rows.filter((row) => row.key === targetKey);
+
+    const hasDifferentStorage = targetItems.some(
+      (row) => Boolean(row.pendingSync) !== Boolean(item.pendingSync),
+    );
+
+    if (hasDifferentStorage) {
+      setError("Retry cart sync before combining these items.");
+
+      return;
+    }
+
+    const existingTarget = targetItems[0];
+
+    const sourceSelected = selectedKeys.has(item.key);
+
+    const targetSelected = selectedKeys.has(targetKey);
+
+    if (!beginMutation()) return;
+
+    try {
+      const updatedItems = await updateCartItemHorsepower(
+        item,
+        authenticated,
+        product,
+        variant,
+      );
+
+      if (authenticated && !item.pendingSync) {
+        setCart((current) => [
+          ...updatedItems,
+          ...current.filter((row) => row.pendingSync),
+        ]);
+      } else if (authenticated) {
+        setCart((current) => [
+          ...current.filter((row) => !row.pendingSync),
+
+          ...updatedItems.map((row) => ({
+            ...row,
+            pendingSync: true,
+          })),
+        ]);
+      } else {
+        setCart(updatedItems);
+      }
+
+      const nextSelection = new Set(selectedKeys);
+
+      nextSelection.delete(item.key);
+      nextSelection.delete(targetKey);
+
+      // Preserve selection when changing an item.
+      // If a checked and unchecked item are combined,
+      // require the customer to select the merged item again.
+      if (existingTarget) {
+        if (sourceSelected && targetSelected) {
+          nextSelection.add(targetKey);
+        }
+      } else if (sourceSelected) {
+        nextSelection.add(targetKey);
+      }
+
+      updateSelection(nextSelection);
+
+      clearQuantityDrafts(item.key, targetKey);
+
+      if (existingTarget) {
+        setNotice(
+          sourceSelected !== targetSelected
+            ? `Changed to ${nextHp} and combined matching items. Please select the combined item again before checkout.`
+            : `Changed to ${nextHp} and combined matching items.`,
+        );
+      } else {
+        setNotice(`Horsepower updated to ${nextHp}.`);
+      }
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+          err.message ||
+          "Unable to change horsepower.",
+      );
+
+      refreshStock();
+    } finally {
+      endMutation();
     }
   }
 
@@ -303,8 +517,9 @@ export default function CartPage() {
             <h1 className="page-title">Your cart</h1>
 
             <p className="section-copy">
-              Check the products you want to buy now. Products you leave
-              unchecked will stay in your cart after checkout.
+              Check the products you want to buy now. You can change their
+              horsepower and quantity. Unchecked products will stay in your
+              cart.
             </p>
           </div>
         </div>
@@ -330,6 +545,15 @@ export default function CartPage() {
           </p>
         )}
 
+        {notice && !error && (
+          <p
+            className="surface cart-message cart-message--success"
+            role="status"
+          >
+            {notice}
+          </p>
+        )}
+
         {!loading && syncError && (
           <div
             className="surface cart-message cart-message--warning"
@@ -340,6 +564,7 @@ export default function CartPage() {
             <button
               type="button"
               className="btn btn-soft cart-retry"
+              disabled={busy}
               onClick={() => {
                 setReload((n) => n + 1);
                 refreshStock();
@@ -393,15 +618,29 @@ export default function CartPage() {
 
                     const draft = quantityDrafts[item.key] ?? String(item.qty);
 
+                    const hasQuantityDraft = String(draft) !== String(item.qty);
+
+                    const availableForItem = Math.max(
+                      0,
+                      Number(item.available || 0) -
+                        otherVariantQuantity(item, item.hp),
+                    );
+
                     const canIncrease =
                       !busy &&
                       stockStatus === "ready" &&
-                      Number(item.qty) < Number(item.available) &&
+                      Number(item.qty) < availableForItem &&
                       totalCartCount < 99;
+
+                    const hasCurrentVariant = item.variants.some(
+                      (variant) => variant.hp === item.hp,
+                    );
 
                     return (
                       <article
-                        key={item.key}
+                        key={
+                          item.pendingSync ? `${item.key}-pending` : item.key
+                        }
                         className={`surface cart-item cart-edit-item${
                           selected ? " cart-edit-item--selected" : ""
                         }`}
@@ -424,6 +663,7 @@ export default function CartPage() {
 
                             <span>
                               {item.brand ? `${item.brand} · ` : ""}
+
                               {item.hp}
                             </span>
                           </div>
@@ -442,20 +682,61 @@ export default function CartPage() {
 
                         <div className="cart-edit-form">
                           <div className="cart-edit-controls">
-                            <div className="cart-edit-field cart-edit-hp">
-                              <span>Availability</span>
+                            <label className="cart-edit-field cart-edit-hp">
+                              <span>Horsepower</span>
 
-                              <div className="form-control" aria-live="polite">
-                                {stockStatus !== "ready"
-                                  ? "Checking stock…"
-                                  : !Number.isInteger(item.available) ||
-                                      item.available === 0
-                                    ? "Out of stock"
-                                    : item.available < Number(item.qty)
-                                      ? `Only ${item.available} available`
-                                      : `${item.available} available`}
-                              </div>
-                            </div>
+                              <select
+                                className="form-control"
+                                aria-label={`Horsepower for ${item.name}`}
+                                value={item.hp}
+                                disabled={
+                                  busy ||
+                                  stockStatus !== "ready" ||
+                                  item.variants.length === 0 ||
+                                  hasQuantityDraft
+                                }
+                                onChange={(event) =>
+                                  void changeHorsepower(
+                                    item,
+                                    event.target.value,
+                                  )
+                                }
+                              >
+                                {!hasCurrentVariant && (
+                                  <option value={item.hp} disabled>
+                                    {item.hp} — Unavailable
+                                  </option>
+                                )}
+
+                                {item.variants.map((variant) => {
+                                  const isCurrent = variant.hp === item.hp;
+
+                                  const available = getVariantAvailability(
+                                    item,
+                                    variant,
+                                  );
+
+                                  const unavailable =
+                                    available < Number(item.qty);
+
+                                  return (
+                                    <option
+                                      key={variant.variantId ?? variant.hp}
+                                      value={variant.hp}
+                                      disabled={!isCurrent && unavailable}
+                                    >
+                                      {variant.hp}
+
+                                      {variant.stock === 0
+                                        ? " — Out of stock"
+                                        : unavailable
+                                          ? ` — ${available} left`
+                                          : ""}
+                                    </option>
+                                  );
+                                })}
+                              </select>
+                            </label>
 
                             <div className="cart-edit-field">
                               <span>Quantity</span>
@@ -488,6 +769,7 @@ export default function CartPage() {
                                   onChange={(event) =>
                                     setQuantityDrafts((previous) => ({
                                       ...previous,
+
                                       [item.key]: event.target.value,
                                     }))
                                   }
@@ -496,6 +778,10 @@ export default function CartPage() {
                                       event.preventDefault();
 
                                       void changeQuantity(item, draft);
+                                    }
+
+                                    if (event.key === "Escape") {
+                                      clearQuantityDrafts(item.key);
                                     }
                                   }}
                                 />
@@ -514,6 +800,30 @@ export default function CartPage() {
                             </div>
                           </div>
 
+                          <p
+                            className={`cart-edit-feedback${
+                              stockStatus === "ready" &&
+                              availableForItem < Number(item.qty)
+                                ? " cart-edit-feedback--error"
+                                : ""
+                            }`}
+                            role="status"
+                          >
+                            {stockStatus !== "ready"
+                              ? "Checking stock…"
+                              : availableForItem === 0
+                                ? "Out of stock"
+                                : availableForItem < Number(item.qty)
+                                  ? `Only ${availableForItem} available`
+                                  : `${availableForItem} units available`}
+                          </p>
+
+                          {hasQuantityDraft && (
+                            <p className="cart-edit-feedback">
+                              Save quantity before changing horsepower.
+                            </p>
+                          )}
+
                           <div className="cart-edit-footer">
                             <div className="cart-edit-pricing">
                               <span>{money(item.price)} per unit</span>
@@ -523,7 +833,7 @@ export default function CartPage() {
                               </strong>
                             </div>
 
-                            {String(draft) !== String(item.qty) && (
+                            {hasQuantityDraft && (
                               <button
                                 type="button"
                                 className="cart-edit-save"
@@ -537,8 +847,8 @@ export default function CartPage() {
 
                           {item.blocked && stockStatus === "ready" && (
                             <p className="cart-edit-feedback cart-edit-feedback--error">
-                              Not enough stock. Reduce quantity or leave this
-                              item unchecked.
+                              Not enough stock. Choose another horsepower,
+                              reduce quantity, or leave this item unchecked.
                             </p>
                           )}
                         </div>
@@ -582,8 +892,14 @@ export default function CartPage() {
 
                 {selectedRows.some((item) => item.blocked) && (
                   <p className="cart-summary-warning">
-                    One selected product is unavailable. Uncheck it or correct
-                    its quantity.
+                    One selected product is unavailable. Change its horsepower,
+                    correct its quantity, or uncheck it.
+                  </p>
+                )}
+
+                {hasUnsavedSelectedQuantity && (
+                  <p className="cart-summary-warning">
+                    Save your quantity changes before checkout.
                   </p>
                 )}
 

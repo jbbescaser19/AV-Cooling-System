@@ -1,0 +1,247 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<robot generator="Robot 7.5.1 (Python 3.13.17 on win32)" generated="2026-11-19T16:02:22.129232" rpa="false" schemaversion="5">
+<suite id="s1" name="Ecommerce" source="C:\Users\james bryan bescaser\OneDrive\Desktop\webproj\SPavcoolingsys\robot-tests\tests\ecommerce.robot">
+<test id="s1-t1" name="01 - Homepage" line="14">
+<kw name="Open Browser" owner="SeleniumLibrary" type="SETUP">
+<msg time="2026-11-19T16:02:23.027843" level="INFO">Opening browser 'chrome' to base url 'http://localhost:5173'.</msg>
+<arg>${BASE_URL}</arg>
+<arg>${BROWSER}</arg>
+<doc>Opens a new browser instance to the optional ``url``.</doc>
+<status status="PASS" start="2026-11-19T16:02:23.026846" elapsed="6.543168"/>
+</kw>
+<kw name="Go To" owner="SeleniumLibrary">
+<msg time="2026-11-19T16:02:29.573893" level="INFO">Opening url 'http://localhost:5173/'</msg>
+<arg>${BASE_URL}/</arg>
+<doc>Navigates the current browser window to the provided ``url``.</doc>
+<status status="PASS" start="2026-11-19T16:02:29.572983" elapsed="1.805865"/>
+</kw>
+<kw name="Wait Until Page Contains" owner="SeleniumLibrary">
+<arg>AV Cooling</arg>
+<arg>15s</arg>
+<doc>Waits until ``text`` appears on the current page.</doc>
+<status status="PASS" start="2026-11-19T16:02:31.380189" elapsed="0.217534"/>
+</kw>
+<kw name="Close Browser" owner="SeleniumLibrary" type="TEARDOWN">
+<doc>Closes the current browser.</doc>
+<status status="PASS" start="2026-11-19T16:02:31.598861" elapsed="2.955931"/>
+</kw>
+<status status="PASS" start="2026-11-19T16:02:23.023748" elapsed="11.531304"/>
+</test>
+<test id="s1-t2" name="02 - Shop" line="18">
+<kw name="Open Browser" owner="SeleniumLibrary" type="SETUP">
+<msg time="2026-11-19T16:02:34.557075" level="INFO">Opening browser 'chrome' to base url 'http://localhost:5173'.</msg>
+<arg>${BASE_URL}</arg>
+<arg>${BROWSER}</arg>
+<doc>Opens a new browser instance to the optional ``url``.</doc>
+<status status="PASS" start="2026-11-19T16:02:34.556694" elapsed="4.665874"/>
+</kw>
+<kw name="Check Public Page">
+<kw name="Go To" owner="SeleniumLibrary">
+<msg time="2026-11-19T16:02:39.235412" level="INFO">Opening url 'http://localhost:5173/shop'</msg>
+<arg>${BASE_URL}${path}</arg>
+<doc>Navigates the current browser window to the provided ``url``.</doc>
+<status status="PASS" start="2026-11-19T16:02:39.234567" elapsed="2.083757"/>
+</kw>
+<kw name="Wait Until Location Is" owner="SeleniumLibrary">
+<arg>${BASE_URL}${path}</arg>
+<arg>15s</arg>
+<doc>Waits until the current URL is ``expected``.</doc>
+<status status="PASS" start="2026-11-19T16:02:41.318807" elapsed="0.370265"/>
+</kw>
+<kw name="Wait Until Page Contains" owner="SeleniumLibrary">
+<arg>${expected_text}</arg>
+<arg>15s</arg>
+<doc>Waits until ``text`` appears on the current page.</doc>
+<status status="PASS" start="2026-11-19T16:02:41.689628" elapsed="0.051190"/>
+</kw>
+<arg>/shop</arg>
+<arg>Air-conditioning catalog</arg>
+<status status="PASS" start="2026-11-19T16:02:39.233168" elapsed="2.507981"/>
+</kw>
+<kw name="Close Browser" owner="SeleniumLibrary" type="TEARDOWN">
+<doc>Closes the current browser.</doc>
+<status status="PASS" start="2026-11-19T16:02:41.742313" elapsed="3.052794"/>
+</kw>
+<status status="PASS" start="2026-11-19T16:02:34.555717" elapsed="10.241483"/>
+</test>
+<test id="s1-t3" name="03 - Services" line="21">
+<kw name="Open Browser" owner="SeleniumLibrary" type="SETUP">
+<msg time="2026-11-19T16:02:44.806300" level="INFO">Opening browser 'chrome' to base url 'http://localhost:5173'.</msg>
+<arg>${BASE_URL}</arg>
+<arg>${BROWSER}</arg>
+<doc>Opens a new browser instance to the optional ``url``.</doc>
+<status status="PASS" start="2026-11-19T16:02:44.805538" elapsed="6.803144"/>
+</kw>
+<kw name="Check Public Page">
+<kw name="Go To" owner="SeleniumLibrary">
+<msg time="2026-11-19T16:02:51.615613" level="INFO">Opening url 'http://localhost:5173/services'</msg>
+<arg>${BASE_URL}${path}</arg>
+<doc>Navigates the current browser window to the provided ``url``.</doc>
+<status status="PASS" start="2026-11-19T16:02:51.615039" elapsed="1.236636"/>
+</kw>
+<kw name="Wait Until Location Is" owner="SeleniumLibrary">
+<arg>${BASE_URL}${path}</arg>
+<arg>15s</arg>
+<doc>Waits until the current URL is ``expected``.</doc>
+<status status="PASS" start="2026-11-19T16:02:52.852188" elapsed="0.108321"/>
+</kw>
+<kw name="Wait Until Page Contains" owner="SeleniumLibrary">
+<arg>${expected_text}</arg>
+<arg>15s</arg>
+<doc>Waits until ``text`` appears on the current page.</doc>
+<status status="PASS" start="2026-11-19T16:02:52.961067" elapsed="0.077332"/>
+</kw>
+<arg>/services</arg>
+<arg>Professional aircon service</arg>
+<status status="PASS" start="2026-11-19T16:02:51.613574" elapsed="1.425203"/>
+</kw>
+<kw name="Close Browser" owner="SeleniumLibrary" type="TEARDOWN">
+<doc>Closes the current browser.</doc>
+<status status="PASS" start="2026-11-19T16:02:53.040007" elapsed="2.700605"/>
+</kw>
+<status status="PASS" start="2026-11-19T16:02:44.799309" elapsed="10.941807"/>
+</test>
+<test id="s1-t4" name="04 - About Us" line="24">
+<kw name="Open Browser" owner="SeleniumLibrary" type="SETUP">
+<msg time="2026-11-19T16:02:55.746735" level="INFO">Opening browser 'chrome' to base url 'http://localhost:5173'.</msg>
+<arg>${BASE_URL}</arg>
+<arg>${BROWSER}</arg>
+<doc>Opens a new browser instance to the optional ``url``.</doc>
+<status status="PASS" start="2026-11-19T16:02:55.746317" elapsed="4.363446"/>
+</kw>
+<kw name="Check Public Page">
+<kw name="Go To" owner="SeleniumLibrary">
+<msg time="2026-11-19T16:03:00.115474" level="INFO">Opening url 'http://localhost:5173/about'</msg>
+<arg>${BASE_URL}${path}</arg>
+<doc>Navigates the current browser window to the provided ``url``.</doc>
+<status status="PASS" start="2026-11-19T16:03:00.114352" elapsed="1.423785"/>
+</kw>
+<kw name="Wait Until Location Is" owner="SeleniumLibrary">
+<arg>${BASE_URL}${path}</arg>
+<arg>15s</arg>
+<doc>Waits until the current URL is ``expected``.</doc>
+<status status="PASS" start="2026-11-19T16:03:01.538631" elapsed="0.074726"/>
+</kw>
+<kw name="Wait Until Page Contains" owner="SeleniumLibrary">
+<arg>${expected_text}</arg>
+<arg>15s</arg>
+<doc>Waits until ``text`` appears on the current page.</doc>
+<status status="PASS" start="2026-11-19T16:03:01.614036" elapsed="0.049717"/>
+</kw>
+<arg>/about</arg>
+<arg>AV Cooling System</arg>
+<status status="PASS" start="2026-11-19T16:03:00.112354" elapsed="1.551674"/>
+</kw>
+<kw name="Close Browser" owner="SeleniumLibrary" type="TEARDOWN">
+<doc>Closes the current browser.</doc>
+<status status="PASS" start="2026-11-19T16:03:01.664822" elapsed="2.630201"/>
+</kw>
+<status status="PASS" start="2026-11-19T16:02:55.745304" elapsed="8.550169"/>
+</test>
+<test id="s1-t5" name="05 - Contact Us" line="27">
+<kw name="Open Browser" owner="SeleniumLibrary" type="SETUP">
+<msg time="2026-11-19T16:03:04.298070" level="INFO">Opening browser 'chrome' to base url 'http://localhost:5173'.</msg>
+<arg>${BASE_URL}</arg>
+<arg>${BROWSER}</arg>
+<doc>Opens a new browser instance to the optional ``url``.</doc>
+<status status="PASS" start="2026-11-19T16:03:04.297551" elapsed="4.372763"/>
+</kw>
+<kw name="Go To" owner="SeleniumLibrary">
+<msg time="2026-11-19T16:03:08.691127" level="INFO">Opening url 'http://localhost:5173/contact'</msg>
+<arg>${BASE_URL}/contact</arg>
+<doc>Navigates the current browser window to the provided ``url``.</doc>
+<status status="PASS" start="2026-11-19T16:03:08.690499" elapsed="1.569135"/>
+</kw>
+<kw name="Wait Until Location Is" owner="SeleniumLibrary">
+<arg>${BASE_URL}/contact</arg>
+<arg>15s</arg>
+<doc>Waits until the current URL is ``expected``.</doc>
+<status status="PASS" start="2026-11-19T16:03:10.265253" elapsed="0.025412"/>
+</kw>
+<kw name="Page Should Contain Element" owner="SeleniumLibrary">
+<msg time="2026-11-19T16:03:10.321864" level="INFO">Current page contains element 'css:main'.</msg>
+<arg>css:main</arg>
+<doc>Verifies that element ``locator`` is found on the current page.</doc>
+<status status="PASS" start="2026-11-19T16:03:10.291518" elapsed="0.030601"/>
+</kw>
+<kw name="Close Browser" owner="SeleniumLibrary" type="TEARDOWN">
+<doc>Closes the current browser.</doc>
+<status status="PASS" start="2026-11-19T16:03:10.323338" elapsed="2.641824"/>
+</kw>
+<status status="PASS" start="2026-11-19T16:03:04.296472" elapsed="8.669179"/>
+</test>
+<test id="s1-t6" name="06 - Customer Reviews" line="32">
+<kw name="Open Browser" owner="SeleniumLibrary" type="SETUP">
+<msg time="2026-11-19T16:03:12.967239" level="INFO">Opening browser 'chrome' to base url 'http://localhost:5173'.</msg>
+<msg time="2026-11-19T16:03:14.077014" level="INFO">Cannot capture screenshot because no browser is open.</msg>
+<msg time="2026-11-19T16:03:14.077305" level="FAIL">WebDriverException: Message: Service C:\Users\james bryan bescaser\.cache\selenium\chromedriver\win64\157.0.8103.78\chromedriver.exe unexpectedly exited. Status code was: 3221225786
+</msg>
+<arg>${BASE_URL}</arg>
+<arg>${BROWSER}</arg>
+<doc>Opens a new browser instance to the optional ``url``.</doc>
+<status status="FAIL" start="2026-11-19T16:03:12.966997" elapsed="1.134476">WebDriverException: Message: Service C:\Users\james bryan bescaser\.cache\selenium\chromedriver\win64\157.0.8103.78\chromedriver.exe unexpectedly exited. Status code was: 3221225786
+</status>
+</kw>
+<kw name="Close Browser" owner="SeleniumLibrary" type="TEARDOWN">
+<doc>Closes the current browser.</doc>
+<status status="PASS" start="2026-11-19T16:03:14.102250" elapsed="0.000218"/>
+</kw>
+<status status="FAIL" start="2026-11-19T16:03:12.966412" elapsed="1.136366">Setup failed:
+WebDriverException: Message: Service C:\Users\james bryan bescaser\.cache\selenium\chromedriver\win64\157.0.8103.78\chromedriver.exe unexpectedly exited. Status code was: 3221225786
+</status>
+</test>
+<test id="s1-t7" name="07 - Shopping Cart" line="35">
+<kw name="Open Browser" owner="SeleniumLibrary" type="SETUP">
+<arg>${BASE_URL}</arg>
+<arg>${BROWSER}</arg>
+<doc>Opens a new browser instance to the optional ``url``.</doc>
+<status status="FAIL" start="2026-11-19T16:03:14.104736" elapsed="0.000332">Execution terminated by signal</status>
+</kw>
+<kw name="Close Browser" owner="SeleniumLibrary" type="TEARDOWN">
+<doc>Closes the current browser.</doc>
+<status status="PASS" start="2026-11-19T16:03:14.105579" elapsed="0.000175"/>
+</kw>
+<status status="FAIL" start="2026-11-19T16:03:14.103553" elapsed="0.002435">Setup failed:
+Execution terminated by signal</status>
+</test>
+<test id="s1-t8" name="08 - Customer Login" line="38">
+<tag>robot:exit</tag>
+<status status="FAIL" start="2026-11-19T16:03:14.106875" elapsed="0.000689">Test execution stopped due to a fatal error.</status>
+</test>
+<test id="s1-t9" name="09 - Customer Registration" line="42">
+<tag>robot:exit</tag>
+<status status="FAIL" start="2026-11-19T16:03:14.108296" elapsed="0.000884">Test execution stopped due to a fatal error.</status>
+</test>
+<test id="s1-t10" name="10 - Forgot Password" line="45">
+<tag>robot:exit</tag>
+<status status="FAIL" start="2026-11-19T16:03:14.109841" elapsed="0.000596">Test execution stopped due to a fatal error.</status>
+</test>
+<test id="s1-t11" name="11 - Checkout Requires Login" line="48">
+<tag>robot:exit</tag>
+<status status="FAIL" start="2026-11-19T16:03:14.110900" elapsed="0.000442">Test execution stopped due to a fatal error.</status>
+</test>
+<test id="s1-t12" name="12 - Customer Account Pages" line="52">
+<tag>robot:exit</tag>
+<status status="FAIL" start="2026-11-19T16:03:14.112110" elapsed="0.000591">Test execution stopped due to a fatal error.</status>
+</test>
+<test id="s1-t13" name="13 - Customer Capacity Calculator" line="63">
+<tag>robot:exit</tag>
+<status status="FAIL" start="2026-11-19T16:03:14.113173" elapsed="0.000425">Test execution stopped due to a fatal error.</status>
+</test>
+<doc>AV Cooling System Ecommerce Tests</doc>
+<status status="FAIL" start="2026-11-19T16:02:22.132348" elapsed="51.982368"/>
+</suite>
+<statistics>
+<total>
+<stat pass="5" fail="8" skip="0">All Tests</stat>
+</total>
+<tag>
+<stat info="combined" combined="NOT robot:exit" pass="5" fail="2" skip="0">NOT robot:exit</stat>
+</tag>
+<suite>
+<stat name="Ecommerce" id="s1" pass="5" fail="8" skip="0">Ecommerce</stat>
+</suite>
+</statistics>
+<errors>
+</errors>
+</robot>

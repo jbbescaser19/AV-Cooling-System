@@ -1,13 +1,11 @@
 import { z } from "zod";
+import { strongPassword } from "../../shared/passwordPolicy.js";
 
 const passwordChangeSchema = z
   .object({
     currentPassword: z.string().min(1, "Enter your current password.").max(128),
 
-    newPassword: z
-      .string()
-      .min(8, "Your new password must have at least 8 characters.")
-      .max(128, "Your new password must have no more than 128 characters."),
+    newPassword: strongPassword,
 
     confirmPassword: z.string().min(1, "Confirm your new password.").max(128),
 

@@ -1,37 +1,42 @@
 import { useCallback, useEffect, useState } from "react";
+
 import { useLocation, useNavigate } from "react-router-dom";
 
-import { services } from "../data/services";
 import api from "../../api/api.js";
+
 import { PENDING_ACTIONS, savePendingAction } from "../utils/purchaseFlow";
+
+import useServiceCatalog from "./useServiceCatalog.js";
 
 export default function useServiceRequestFlow(returnTo = "/services") {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const { services, status } = useServiceCatalog();
+
   const [selectedService, setSelectedService] = useState(null);
 
-  // Restore the requested service after the customer logs in.
+  // Restore the requested service after login.
   useEffect(() => {
+    const requested = location.state?.serviceRequestId;
+
+    if (!requested || status !== "ready") return;
+
     let cancelled = false;
 
-    const restoreService = async () => {
-      const requestedServiceId = location.state?.serviceRequestId;
-
-      if (!requestedServiceId) {
-        return;
-      }
-
+    const restore = async () => {
       try {
         await api.get("/api/auth/customer/session");
 
-        if (cancelled) {
-          return;
-        }
+        if (cancelled) return;
 
-        const service = services.find((item) => item.id === requestedServiceId);
+        const service = services.find(
+          (item) =>
+            String(item.id) === String(requested) ||
+            item.serviceType === String(requested),
+        );
 
-        if (service) {
+        if (service?.bookable) {
           setSelectedService(service);
         }
 
@@ -47,26 +52,25 @@ export default function useServiceRequestFlow(returnTo = "/services") {
           },
         );
       } catch (error) {
-        if (cancelled) {
-          return;
-        }
+        if (cancelled) return;
 
         if (error.response?.status === 401) {
           savePendingAction({
             type: PENDING_ACTIONS.REQUEST_SERVICE,
-            serviceId: requestedServiceId,
+            serviceId: requested,
             returnTo,
           });
 
-          navigate("/login", { replace: true });
-          return;
+          navigate("/login", {
+            replace: true,
+          });
+        } else {
+          console.error("Failed to restore service request:", error);
         }
-
-        console.error("Failed to restore service request:", error);
       }
     };
 
-    restoreService();
+    restore();
 
     return () => {
       cancelled = true;
@@ -78,13 +82,19 @@ export default function useServiceRequestFlow(returnTo = "/services") {
     location.state,
     navigate,
     returnTo,
+    services,
+    status,
   ]);
 
-  // Check the backend session before allowing a service request.
   const requestService = useCallback(
     async (service) => {
+      if (status !== "ready" || !service?.bookable) {
+        return;
+      }
+
       try {
         await api.get("/api/auth/customer/session");
+
         setSelectedService(service);
       } catch (error) {
         if (error.response?.status === 401) {
@@ -95,20 +105,19 @@ export default function useServiceRequestFlow(returnTo = "/services") {
           });
 
           navigate("/login");
-          return;
+        } else {
+          console.error("Failed to verify customer login:", error);
         }
-
-        console.error("Failed to verify customer login:", error);
       }
     },
-    [navigate, returnTo],
+    [navigate, returnTo, status],
   );
 
-  const closeServiceRequest = useCallback(() => {
-    setSelectedService(null);
-  }, []);
+  const closeServiceRequest = useCallback(() => setSelectedService(null), []);
 
   return {
+    services,
+    status,
     selectedService,
     requestService,
     closeServiceRequest,

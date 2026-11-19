@@ -1,3 +1,4 @@
+/* AV CATEGORY FILTERS */
 /**
  * All management order, service,
  * and fulfillment-event SQL lives here.
@@ -74,6 +75,7 @@ export function operationsModel(db) {
         `SELECT
            sr.service_request_id AS id,
            sr.service_request_id AS reference,
+           st.service_name AS serviceName,
            sr.facebook_request_id AS facebookRequestId,
            sr.status,
            COALESCE(u.name,fb.customer_name,'Facebook customer') AS customer,

@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+
 import { AlertTriangle, ShieldAlert, Trash2, X } from "lucide-react";
+
 import api from "../../../api/api.js";
+
 import "../../styles/management/delete-customer-account.css";
 
 export default function DeleteStaffAccountAction({
@@ -29,6 +32,7 @@ export default function DeleteStaffAccountAction({
     if (!open) return undefined;
 
     const oldOverflow = document.body.style.overflow;
+
     document.body.style.overflow = "hidden";
 
     dialogRef.current?.focus();
@@ -62,7 +66,9 @@ export default function DeleteStaffAccountAction({
 
     return () => {
       document.body.style.overflow = oldOverflow;
+
       window.removeEventListener("keydown", handleKey);
+
       buttonRef.current?.focus();
     };
   }, [open]);
@@ -119,22 +125,29 @@ export default function DeleteStaffAccountAction({
       const { data } = await api.delete(
         `/api/management/workspace/staff/${id}`,
         {
-          data: { confirmation, password },
+          data: {
+            confirmation,
+            password,
+          },
         },
       );
 
       if (!data?.success) {
-        throw new Error("Staff deletion was not confirmed.");
+        throw new Error("Staff archival was not confirmed.");
       }
 
+      setPassword("");
+      setConfirmation("");
       setOpen(false);
 
-      onDeleted?.(data.message || "Staff account deleted.");
+      onDeleted?.(data.message || "Staff account moved to Archive.");
+
+      window.dispatchEvent(new Event("av-management-updated"));
     } catch (err) {
       setError(
         err.response?.data?.message ||
           err.message ||
-          "Could not delete account.",
+          "Could not archive account.",
       );
     } finally {
       setBusy(false);
@@ -178,7 +191,10 @@ export default function DeleteStaffAccountAction({
 
                 <div>
                   <small>OWNER ONLY · STAFF ACCOUNTS</small>
-                  <h2 id="staff-delete-title">Delete staff account?</h2>
+
+                  <h2 id="staff-delete-title">
+                    Move staff account to Archive?
+                  </h2>
                 </div>
 
                 <button
@@ -196,18 +212,22 @@ export default function DeleteStaffAccountAction({
                 <div className="av-customer-delete-content">
                   <p>
                     <strong>{staff.name}</strong> will lose Management access
-                    and all active sessions. Historical audit, payments, and
-                    work records will remain. The closure will appear in{" "}
-                    <strong>Management → Archive → Staff Accounts</strong> and
-                    cannot be restored.
+                    and all active sessions.
+                  </p>
+
+                  <p>
+                    The account will be moved to{" "}
+                    <strong>Management → Archive → Staff Accounts</strong>. You
+                    can restore or permanently delete the account from there.
                   </p>
 
                   <p className="av-customer-delete-caution">
                     <AlertTriangle size={18} />
+
                     <span>
-                      Existing customer orders and services will not be
-                      cancelled when removing a staff account. Technician jobs
-                      must be reassigned first.
+                      Existing customer orders, payments, services and audit
+                      records will be preserved. Active technician jobs must be
+                      reassigned first.
                     </span>
                   </p>
 
@@ -215,7 +235,8 @@ export default function DeleteStaffAccountAction({
 
                   {preview && !preview.canDelete && (
                     <div className="av-customer-delete-blockers" role="alert">
-                      <strong>Cannot delete yet:</strong>
+                      <strong>Cannot archive yet:</strong>
+
                       <ul>
                         {preview.blockers.map((blocker, index) => (
                           <li key={index}>{blocker}</li>
@@ -284,7 +305,8 @@ export default function DeleteStaffAccountAction({
                     }
                   >
                     <Trash2 size={16} />
-                    {busy ? "Deleting…" : "Delete Staff Account"}
+
+                    {busy ? "Archiving…" : "Move to Archive"}
                   </button>
                 </footer>
               </form>

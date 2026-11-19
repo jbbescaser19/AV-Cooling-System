@@ -1,3 +1,7 @@
+import RecordCategoryFilters, {
+  field,
+  useRecordFilters,
+} from "../../components/common/RecordCategoryFilters.jsx";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
@@ -115,17 +119,30 @@ export default function OrdersPage() {
     return () => controller.abort();
   }, [retry]);
 
+  const categories = useRecordFilters(orders, [
+    field("orderStatus", "Order statuses", (r) => r.status),
+    field(
+      "paymentStatus",
+      "Payment statuses",
+      (r) => r.recordedPaymentStatus || r.paymentStatus,
+    ),
+    field(
+      "fulfillment",
+      "Fulfillment types",
+      (r) => r.fulfillmentMethod || r.fulfillment,
+    ),
+  ]);
   const selected = orders.find((order) => order.orderNumber === selectedNumber);
   const filtered = useMemo(
     () =>
-      orders.filter((order) => {
+      categories.filtered.filter((order) => {
         if (filter === "completed") return order.status === "COMPLETED";
         if (filter === "cancelled") return order.status === "CANCELLED";
         if (filter === "active")
           return !["COMPLETED", "CANCELLED"].includes(order.status);
         return true;
       }),
-    [filter, orders],
+    [filter, categories.filtered],
   );
 
   function openOrder(order) {
@@ -273,6 +290,7 @@ export default function OrdersPage() {
             ))}
           </div>
 
+          <RecordCategoryFilters filters={categories} />
           {filtered.length === 0 ? (
             <div className="surface order-empty">
               <ShoppingBag size={25} aria-hidden="true" />

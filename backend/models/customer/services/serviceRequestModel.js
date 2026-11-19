@@ -20,14 +20,15 @@ export function serviceRequestModel(db) {
     findActiveServices() {
       return db.execute(
         `SELECT
-           service_type_id AS serviceTypeId,
-           service_code AS serviceType,
-           service_name AS serviceName,
-           base_price AS basePrice
-         FROM service_types
-         WHERE status = 'ACTIVE'
-           AND service_code IS NOT NULL
-         ORDER BY service_name`,
+       service_type_id AS serviceTypeId,
+       service_code AS serviceType,
+       service_name AS serviceName,
+       description,
+       base_price AS basePrice
+     FROM service_types
+     WHERE status = 'ACTIVE'
+       AND service_code IS NOT NULL
+     ORDER BY service_name`,
       );
     },
 

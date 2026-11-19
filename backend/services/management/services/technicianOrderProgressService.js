@@ -10,11 +10,6 @@ const fail = (message, status = 409) => {
   throw Object.assign(new Error(message), { status });
 };
 
-/**
- * One action for delivery + installation.
- * Separate work orders are retained for inventory, history, and auditing.
- * All database changes share one transaction.
- */
 export async function changeTechnicianOrderProgress(staff, rawId, raw) {
   if (!staff?.id || !["OWNER", "MANAGER", "TECHNICIAN"].includes(staff.role)) {
     fail("Only authorized field staff can update order work.", 403);
@@ -23,14 +18,6 @@ export async function changeTechnicianOrderProgress(staff, rawId, raw) {
   const { orderId, action, notes, onBehalfReason } =
     validateTechnicianOrderProgress(rawId, raw);
 
-  // Managers can record a technician's phone report, but must identify its source.
-  // The actor is the logged-in Manager/Owner in work and order history.
-  if (["OWNER", "MANAGER"].includes(staff.role) && onBehalfReason.length < 10) {
-    fail(
-      "Explain who reported this job update and how it was verified (at least 10 characters).",
-      400,
-    );
-  }
   if (staff.role === "TECHNICIAN" && onBehalfReason) {
     fail(
       "Only management can record an update on behalf of a technician.",
@@ -44,6 +31,7 @@ export async function changeTechnicianOrderProgress(staff, rawId, raw) {
     await connection.beginTransaction();
 
     const progress = technicianOrderProgressModel(connection);
+
     const workspace = workspaceModel(connection);
 
     const order = await progress.lockOrder(orderId);
@@ -52,13 +40,18 @@ export async function changeTechnicianOrderProgress(staff, rawId, raw) {
       fail("Order not found.", 404);
     }
 
-    if (!["CONFIRMED", "SCHEDULED", "IN_PROGRESS"].includes(order.status)) {
+    if (
+      !["CONFIRMED", "SCHEDULED", "IN_PROGRESS", "COMPLETED"].includes(
+        order.status,
+      )
+    ) {
       fail("This order is not ready for technician progress.");
     }
 
     const jobs = await progress.lockActiveJobs(orderId);
 
     const delivery = jobs.find((job) => job.type === "DELIVERY");
+
     const installation = jobs.find((job) => job.type === "INSTALLATION");
 
     if (!delivery && !installation) {
@@ -118,8 +111,34 @@ export async function changeTechnicianOrderProgress(staff, rawId, raw) {
     const starting = action.startsWith("START_");
     const target = starting ? "IN_PROGRESS" : "COMPLETED";
 
-    // Keep completed delivery intact.
-    // Advance only the jobs that actually need the next status.
+    const alreadyReached = selectedJobs.every((job) =>
+      starting
+        ? ["IN_PROGRESS", "COMPLETED"].includes(job.status)
+        : job.status === "COMPLETED",
+    );
+
+    const allCompleted = selectedJobs.every(
+      (job) => job.status === "COMPLETED",
+    );
+
+    if (
+      alreadyReached &&
+      ((allCompleted && order.status === "COMPLETED") ||
+        (!allCompleted && starting && order.status === "IN_PROGRESS"))
+    ) {
+      await connection.commit();
+
+      return {
+        alreadyRecorded: true,
+        message: "Job progress already recorded.",
+        status: order.status,
+      };
+    }
+
+    if (order.status === "COMPLETED" || alreadyReached) {
+      fail("Order and job stages disagree. Management must review the record.");
+    }
+
     let jobsToUpdate;
 
     if (delivery && installation) {
@@ -166,18 +185,14 @@ export async function changeTechnicianOrderProgress(staff, rawId, raw) {
       );
     }
 
-    // Older online orders may have completed delivery without stock-out.
-    // Reconcile the existing recorded delivery once.
-    // The reservation service safely skips already-converted stock.
     if (order.channel === "ONLINE" && delivery?.status === "COMPLETED") {
       await fulfillOrderReservation(connection, orderId, staff.id);
     }
 
-    const actorNote = onBehalfReason
-      ? `Recorded by ${staff.role} ${staff.id} on technician report: ${onBehalfReason}`
-      : "Recorded by assigned technician";
+    const actorNote =
+      `Recorded by ${staff.role} ${staff.id}` +
+      (onBehalfReason ? `: ${onBehalfReason}` : "");
 
-    // Update only unfinished work orders.
     for (const job of jobsToUpdate) {
       const { result } = await updateWorkOrders(
         workspace,
@@ -198,7 +213,6 @@ export async function changeTechnicianOrderProgress(staff, rawId, raw) {
         fail("The work order changed. Refresh and try again.");
       }
 
-      // Convert reserved stock when delivery is actually completed.
       if (
         target === "COMPLETED" &&
         job.type === "DELIVERY" &&

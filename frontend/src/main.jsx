@@ -4,11 +4,13 @@ import { BrowserRouter } from "react-router-dom";
 
 import App from "./App";
 import RealtimeBridge from "./components/realtime/RealtimeBridge.jsx";
+import GlobalActionError from "./components/common/GlobalActionError.jsx";
 
 import "./styles/variables.css";
 import "./styles/global.css";
 import "./styles/ecommerce/pages.css";
 import "./styles/shared/action-buttons.css";
+
 import "./styles/management/notification-technician-compact.css";
 import "./styles/management/mobile-density.css";
 import "./styles/management/desktop-layout-on-mobile.css";
@@ -16,12 +18,15 @@ import "./styles/management/all-columns-mobile.css";
 import "./styles/management/management-tablet-table-fix.css";
 import "./styles/management/management-details-legibility.css";
 
+import "./styles/shared/action-errors.css";
+
 const routerBase = import.meta.env.BASE_URL.replace(/\/$/, "") || "/";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <BrowserRouter basename={routerBase}>
       <RealtimeBridge />
+      <GlobalActionError />
       <App />
     </BrowserRouter>
   </React.StrictMode>,

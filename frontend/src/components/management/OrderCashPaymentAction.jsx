@@ -1,8 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { ShieldCheck } from "lucide-react";
+
 import api from "../../../api/api.js";
+
 import { confirmAction } from "../../utils/confirmAction.jsx";
+
+import CashRefundForm from "./CashRefundForm.jsx";
+import PriceAdjustmentPanel from "./PriceAdjustmentPanel.jsx";
+import OrderReschedulePanel from "./OrderReschedulePanel.jsx";
 
 const money = (value) =>
   new Intl.NumberFormat("en-PH", {
@@ -10,155 +16,224 @@ const money = (value) =>
     currency: "PHP",
   }).format(Number(value) || 0);
 
-/**
- * Optional manual cash verification from Order Details.
- * Uses the same endpoint as Management -> Payments.
- * No payment is ever marked paid just because an order was confirmed.
- */
 export default function OrderCashPaymentAction({ order, onConfirmed }) {
-  const [payment, setPayment] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
   const [collected, setCollected] = useState(false);
+  const [released, setReleased] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [revision, setRevision] = useState(0);
 
-  const orderNumber = order?.orderNumber;
-  const pending = order?.paymentStatus === "PENDING";
-  const eligibleStatus = [
-    "CONFIRMED",
-    "SCHEDULED",
-    "IN_PROGRESS",
-    "COMPLETED",
-  ].includes(order?.status);
+  const lock = useRef(false);
+
+  const payment = order?.payment;
+
+  const pickup = order?.channel === "POS" && order?.fulfillment === "PICKUP";
+
+  const eligible =
+    payment?.method === "CASH" &&
+    payment?.status === "PENDING" &&
+    order?.paymentStatus === "PENDING" &&
+    ["ONLINE", "FACEBOOK", "POS"].includes(order?.channel) &&
+    ["CONFIRMED", "SCHEDULED", "IN_PROGRESS", "COMPLETED"].includes(
+      order?.status,
+    );
 
   useEffect(() => {
     setCollected(false);
-    setNotice("");
+    setReleased(false);
     setError("");
-    setPayment(null);
-    if (!orderNumber || !pending || !eligibleStatus) {
-      setLoading(false);
-      return undefined;
-    }
-
-    const controller = new AbortController();
-    setLoading(true);
-    api
-      .get("/api/management/sales/payments", {
-        signal: controller.signal,
-      })
-      .then(({ data }) => {
-        if (controller.signal.aborted) return;
-        const found = (data.payments || []).find(
-          (entry) =>
-            entry.orderNumber === orderNumber &&
-            entry.status === "PENDING" &&
-            entry.method === "CASH" &&
-            ["ONLINE", "FACEBOOK"].includes(entry.channel),
-        );
-        setPayment(found || null);
-      })
-      .catch((requestError) => {
-        if (!controller.signal.aborted) {
-          setError(
-            requestError.response?.data?.message ||
-              "Unable to check the cash payment record.",
-          );
-        }
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
-      });
-    return () => controller.abort();
-  }, [orderNumber, pending, eligibleStatus, revision]);
-
-  if (!orderNumber || !pending || !eligibleStatus) return null;
+    setNotice("");
+  }, [order?.id]);
 
   async function confirmCash(event) {
     event.preventDefault();
-    if (!payment || !collected || busy) return;
 
-    const approved = await confirmAction({
-      title: "Confirm cash collection",
-      message: `Confirm that you physically received ${money(payment.amount)} for order ${orderNumber}. This will record the payment as PAID.`,
-      confirmText: "Record as PAID",
-    });
-    if (!approved) return;
+    if (!eligible || !collected || (pickup && !released) || lock.current) {
+      return;
+    }
+
+    lock.current = true;
+
     setBusy(true);
     setError("");
+
     try {
+      const approved = await confirmAction({
+        title: "Confirm cash collection",
+
+        message:
+          `Confirm that you physically received ${money(payment.amount)} ` +
+          `for ${order.reference}. ` +
+          (pickup ? "The products have also been handed over." : ""),
+
+        confirmText: "Record as PAID",
+      });
+
+      if (!approved) return;
+
       const { data } = await api.post(
         `/api/management/sales/payments/${payment.id}/confirm-cash`,
         {
           cashCollected: true,
+          pickupReleased: pickup && released,
           note: "Cash physically received and verified by management.",
         },
       );
-      if (!data.success) throw new Error("Payment was not confirmed.");
+
+      if (!data.success) {
+        throw new Error("Payment was not confirmed.");
+      }
+
       setCollected(false);
-      setPayment(null);
+      setReleased(false);
       setNotice("Cash received and recorded as PAID.");
+
       onConfirmed?.();
+
       window.dispatchEvent(new Event("av-management-updated"));
-    } catch (requestError) {
+    } catch (err) {
       setError(
-        requestError.response?.data?.message ||
-          requestError.message ||
-          "Cash payment confirmation failed.",
+        err.response?.data?.message ||
+          err.message ||
+          "Cash confirmation failed.",
       );
     } finally {
+      lock.current = false;
       setBusy(false);
     }
   }
 
+  if (!order?.id) return null;
+
   return (
-    <section className="sales-step" aria-label="Optional cash confirmation">
-      <h3>Confirm cash payment (optional)</h3>
-      <p className="sales-note">
-        Confirm here only after physically receiving the cash. You can also
-        confirm it from <Link to="/management/payments">Payments</Link>.
-        Starting work does not automatically mark the payment as paid.
-      </p>
-      {loading ? (
-        <p role="status">Checking cash payment…</p>
-      ) : payment ? (
-        <form onSubmit={confirmCash}>
-          <label className="av-cash-confirm-row">
-            <input
-              type="checkbox"
-              checked={collected}
-              onChange={(event) => setCollected(event.target.checked)}
-              disabled={busy}
-            />{" "}
-            I physically received and counted {money(payment.amount)} in cash.
-          </label>
-          <button
-            className="sales-primary"
-            type="submit"
-            disabled={busy || !collected}
-          >
-            <ShieldCheck size={16} aria-hidden="true" />
-            {busy ? "Saving…" : "Confirm Cash"}
-          </button>
-        </form>
-      ) : !notice && !error ? (
-        <p className="sales-note">
-          No eligible pending cash payment was found here. Check the Payments
-          page for the complete payment record.
-        </p>
-      ) : null}
-      {error && (
-        <p className="sales-error" role="alert">
-          {error}
-        </p>
-      )}
-      {notice && (
-        <p className="sales-success" role="status">
-          {notice}
-        </p>
-      )}
-    </section>
+    <>
+      <PriceAdjustmentPanel
+        kind="ORDER"
+        recordId={order.id}
+        refreshKey={`${order.status}:${order.paymentStatus}:${order.total}`}
+        onUpdated={onConfirmed}
+      />
+
+      <OrderReschedulePanel
+        key={order.id}
+        order={order}
+        onUpdated={onConfirmed}
+      />
+
+      <section className="sales-step" aria-label="Order payment details">
+        <h3>Payment details</h3>
+
+        {payment && (
+          <>
+            <div className="sales-totals">
+              <span>Payment method</span>
+              <strong>{payment.method}</strong>
+            </div>
+
+            <div className="sales-totals">
+              <span>Payment status</span>
+              <strong>{payment.status}</strong>
+            </div>
+
+            <div className="sales-totals">
+              <span>Amount</span>
+              <strong>{money(payment.amount)}</strong>
+            </div>
+          </>
+        )}
+
+        {eligible && (
+          <form onSubmit={confirmCash} className="wsm-form">
+            <label className="av-cash-confirm-row">
+              <input
+                type="checkbox"
+                checked={collected}
+                disabled={busy}
+                onChange={(e) => setCollected(e.target.checked)}
+              />
+
+              <span>
+                I physically received and counted {money(payment.amount)} in
+                cash.
+              </span>
+            </label>
+
+            {pickup && (
+              <label className="av-cash-confirm-row">
+                <input
+                  type="checkbox"
+                  checked={released}
+                  disabled={busy}
+                  onChange={(e) => setReleased(e.target.checked)}
+                />
+
+                <span>The products were handed over to the customer.</span>
+              </label>
+            )}
+
+            <button
+              className="sales-primary"
+              type="submit"
+              disabled={busy || !collected || (pickup && !released)}
+            >
+              <ShieldCheck size={16} />
+
+              {busy ? "Saving…" : "Confirm Cash"}
+            </button>
+          </form>
+        )}
+
+        {Number(payment?.canRefund) === 1 && payment.status === "PAID" && (
+          <CashRefundForm
+            key={payment.id}
+            kind="ORDER"
+            payment={payment}
+            onRefunded={(data) => {
+              setNotice(data.message);
+              onConfirmed?.();
+            }}
+          />
+        )}
+
+        {payment?.status === "REFUNDED" && (
+          <div role="status">
+            <p>
+              Refund reference: <strong>{payment.refundReference}</strong>
+            </p>
+
+            <p>Reason: {payment.refundReason}</p>
+          </div>
+        )}
+
+        {payment?.status === "PAID" && Number(payment.canRefund) !== 1 && (
+          <p className="sales-note">
+            This payment is not eligible for a pre-dispatch cash cancellation
+            refund. Management must reconcile completed work, stock returns or
+            online payments separately.
+          </p>
+        )}
+
+        {!payment && (
+          <p className="sales-note">
+            No single matching payment record. Review this transaction in
+            Payments.
+          </p>
+        )}
+
+        {error && (
+          <p role="alert" className="sales-error">
+            {error}
+          </p>
+        )}
+
+        {notice && (
+          <p role="status" className="sales-success">
+            {notice}
+          </p>
+        )}
+
+        <Link to="/management/payments">View all payments</Link>
+      </section>
+    </>
   );
 }

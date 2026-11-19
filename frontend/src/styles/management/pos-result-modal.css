@@ -1,0 +1,136 @@
+.av-pos-result {
+  width: min(480px, calc(100% - 24px));
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  box-sizing: border-box;
+  border: 1px solid #dbe4ee;
+  border-radius: 16px;
+  padding: 20px;
+  color: #183047;
+  background: #fff;
+  box-shadow: 0 20px 60px #0f172a40;
+}
+
+.av-pos-result::backdrop {
+  background: #0f172a85;
+}
+
+.av-pos-result__header {
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.av-pos-result__header svg {
+  color: #15803d;
+}
+
+.av-pos-result__header h2 {
+  font-size: 1.25rem;
+  margin: 8px 0 4px;
+}
+
+.av-pos-result__header p {
+  font-size: 0.85rem;
+  margin: 0;
+  color: #526579;
+}
+
+.av-pos-result__reference {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  background: #f1f6fb;
+  border-radius: 10px;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.av-pos-result__reference strong {
+  font-size: 1.15rem;
+  letter-spacing: 0.02em;
+}
+
+.av-pos-result__reference button {
+  justify-self: center;
+}
+
+.av-pos-result__facts {
+  display: grid;
+  gap: 6px;
+  font-size: 0.85rem;
+  margin: 14px 0;
+}
+
+.av-pos-result__facts div {
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.av-pos-result__facts dt {
+  color: #526579;
+}
+
+.av-pos-result__facts dd {
+  margin: 0;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.av-pos-result__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.pos-reason-field {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.pos-reason-field select,
+.pos-reason-field input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+@media (max-width: 480px) {
+  .av-pos-result {
+    padding: 14px;
+  }
+
+  .av-pos-result__reference strong {
+    font-size: 1rem;
+  }
+}
+
+@media print {
+  body:has(.av-pos-result[open]) * {
+    visibility: hidden;
+  }
+
+  body:has(.av-pos-result[open]) .av-pos-result,
+  body:has(.av-pos-result[open]) .av-pos-result * {
+    visibility: visible;
+  }
+
+  .av-pos-result[open] {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    max-height: none;
+    width: 100%;
+    box-shadow: none;
+    border: 0;
+    overflow: visible;
+  }
+
+  .av-pos-result__actions,
+  .av-pos-result__reference button {
+    display: none !important;
+  }
+}

@@ -1,13 +1,24 @@
-import { services } from "../../data/services";
+import RecordCategoryFilters, {
+  field,
+  useRecordFilters,
+} from "../../components/common/RecordCategoryFilters.jsx";
 import ServiceRequestDialog from "../../components/service/ServiceRequestDialog";
 import useServiceRequestFlow from "../../hooks/useServiceRequestFlow";
 import "../../styles/ecommerce/pages.css";
 import "../../styles/ecommerce/services.css";
 
 export default function ServicesPage() {
-  const { selectedService, requestService, closeServiceRequest } =
-    useServiceRequestFlow("/services");
+  const {
+    services,
+    status,
+    selectedService,
+    requestService,
+    closeServiceRequest,
+  } = useServiceRequestFlow("/services");
 
+  const categories = useRecordFilters(services, [
+    field("name", "Service types"),
+  ]);
   return (
     <>
       <section className="page-shell">
@@ -24,17 +35,31 @@ export default function ServicesPage() {
           </div>
 
           <div className="services-scroll-hint" aria-hidden="true">
-            <span>Browse all six services</span>
+            <span>Explore our available services</span>
             <span>Swipe for more →</span>
           </div>
 
+          {status === "loading" && <p role="status">Loading services…</p>}
+          {status === "error" && (
+            <p role="alert">
+              Unable to verify available services. Trying again automatically.
+            </p>
+          )}
+          {status === "ready" && !services.length && (
+            <p>No services available at the moment.</p>
+          )}
+
+          <RecordCategoryFilters filters={categories} />
+          {status === "ready" &&
+            services.length > 0 &&
+            !categories.filtered.length && <p>No matching services.</p>}
           <div
             className="services-list-grid"
             role="region"
             aria-label="Available air conditioning services"
             tabIndex={0}
           >
-            {services.map((service) => {
+            {categories.filtered.map((service) => {
               const Icon = service.icon;
 
               return (
@@ -45,9 +70,12 @@ export default function ServicesPage() {
                   <button
                     className="btn btn-dark"
                     type="button"
+                    disabled={status !== "ready" || !service.bookable}
                     onClick={() => requestService(service)}
                   >
-                    Request Service
+                    {service.bookable
+                      ? "Request Service"
+                      : "Booking unavailable"}
                   </button>
                 </article>
               );

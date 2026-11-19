@@ -4,12 +4,9 @@ import {
 } from "../../utils/fieldSanitizers.js";
 import { confirmAction } from "../../utils/confirmAction.js";
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
 import {
   CalendarCheck,
-  CheckCircle2,
   ClipboardList,
-  CreditCard,
   MapPin,
   RefreshCw,
   UserRound,
@@ -23,8 +20,10 @@ import AvailabilityPicker from "../scheduling/AvailabilityPicker.jsx";
 import TechnicianTeamPicker from "./TechnicianTeamPicker.jsx";
 import ReturningCustomerSearch from "./ReturningCustomerSearch.jsx";
 import ActionGuidance from "../common/ActionGuidance.jsx";
-import PayMongoAction from "../payments/PayMongoAction.jsx";
+import POSReasonField from "./POSReasonField.jsx";
+import POSResultModal from "./POSResultModal.jsx";
 import { getStaff } from "../../utils/authMock.js";
+
 import "../../styles/management/pos-enhancements.css";
 import "../../styles/management/pos-relocation.css";
 import "../../styles/management/pos-customer-fees.css";
@@ -38,6 +37,7 @@ const money = (value) =>
 
 export default function POSWalkInService() {
   const requestKey = useRef(crypto.randomUUID());
+
   const canAssign = ["OWNER", "MANAGER"].includes(getStaff()?.role);
 
   const [services, setServices] = useState([]);
@@ -51,6 +51,14 @@ export default function POSWalkInService() {
 
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
+  const [discount, setDiscount] = useState("0");
+  const [discountReason, setDiscountReason] = useState("");
+  const [payLater, setPayLater] = useState(false);
+  const [cashReceived, setCashReceived] = useState("");
+  const [cashVerified, setCashVerified] = useState(false);
+
+  const submitLock = useRef(false);
+
   const [additionalFee, setAdditionalFee] = useState("0");
   const [additionalFeeReason, setAdditionalFeeReason] = useState("");
   const [serviceTypeId, setServiceTypeId] = useState("");
@@ -67,6 +75,7 @@ export default function POSWalkInService() {
 
   useEffect(() => {
     const controller = new AbortController();
+
     setLoading(true);
     setError("");
 
@@ -77,6 +86,7 @@ export default function POSWalkInService() {
       .then(({ data }) => {
         if (!controller.signal.aborted) {
           setServices(Array.isArray(data.items) ? data.items : []);
+
           setPaymentMethods(
             Array.isArray(data.paymentMethods) ? data.paymentMethods : ["CASH"],
           );
@@ -91,7 +101,9 @@ export default function POSWalkInService() {
         }
       })
       .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
       });
 
     return () => controller.abort();
@@ -113,6 +125,7 @@ export default function POSWalkInService() {
     : null;
 
   const fee = Number(additionalFee) || 0;
+
   const feeValid =
     Number.isFinite(Number(additionalFee)) &&
     fee >= 0 &&
@@ -120,32 +133,80 @@ export default function POSWalkInService() {
     (fee === 0
       ? !additionalFeeReason.trim()
       : additionalFeeReason.trim().length >= 5);
+
   const phoneValid =
     (customerPhone.match(/\d/g) || []).length >= 7 &&
     /^[+0-9()\s-]+$/.test(customerPhone.trim());
+
+  const reduction = Number(discount) || 0;
+
+  const cashNow = paymentCode === "CASH" && !payLater;
+
+  const cash = Number(cashReceived) || 0;
+
+  const hpValid =
+    airconHorsepower.trim() !== "" &&
+    Number.isFinite(Number(airconHorsepower)) &&
+    Number(airconHorsepower) >= 0.5 &&
+    Number(airconHorsepower) <= 10;
+
+  const discountValid =
+    quotedPrice !== null &&
+    Number.isFinite(Number(discount)) &&
+    reduction >= 0 &&
+    reduction < Number(quotedPrice) &&
+    (reduction ? discountReason.trim().length >= 5 : !discountReason.trim());
+
   const bookingTotal =
     quotedPrice === null
       ? null
-      : Math.round((Number(quotedPrice) + fee) * 100) / 100;
+      : Math.round((Number(quotedPrice) + fee - reduction) * 100) / 100;
+
+  const change = Math.max(
+    0,
+    Math.round((cash - (bookingTotal || 0)) * 100) / 100,
+  );
+
+  useEffect(() => {
+    setCashVerified(false);
+  }, [bookingTotal, cashReceived, paymentCode, payLater]);
 
   const bookingReasons = [
+    !hpValid ? "Enter the required horsepower (0.5–10 HP)." : null,
+
+    selected && !discountValid
+      ? "Enter a valid discount and reason, or leave both empty."
+      : null,
+
+    cashNow && (bookingTotal === null || cash < bookingTotal || !cashVerified)
+      ? "Enter and verify the full cash payment, or choose Pay Later."
+      : null,
+
     loading ? "Active services are still loading." : null,
+
     !selected ? "Choose the service requested by the customer." : null,
+
     !paymentMethods.includes(paymentCode)
       ? "Choose an available payment method."
       : null,
+
     customerName.trim().length < 2
       ? "Enter or select the customer's name."
       : null,
+
     !phoneValid ? "Enter a valid contact number to reach the customer." : null,
+
     serviceAddress.trim().length < 5 ? "Enter the service address." : null,
+
     isRelocation &&
     (destinationAddress.trim().length < 5 ||
       destinationAddress.trim().toLowerCase() ===
         serviceAddress.trim().toLowerCase())
       ? "Enter a different destination address for relocation."
       : null,
+
     !scheduledStart ? "Choose an available appointment." : null,
+
     !feeValid
       ? "Enter a valid extra fee and reason, or leave both at zero/empty."
       : null,
@@ -153,30 +214,28 @@ export default function POSWalkInService() {
 
   async function book(event) {
     event.preventDefault();
-    if (
-      saving ||
-      loading ||
-      !selected ||
-      !paymentMethods.includes(paymentCode) ||
-      !scheduledStart ||
-      quotedPrice === null ||
-      !phoneValid ||
-      !feeValid ||
-      (isRelocation &&
-        (destinationAddress.trim().length < 5 ||
-          destinationAddress.trim() === serviceAddress.trim()))
-    )
-      return;
 
-    if (
-      !(await confirmAction(
-        `Book ${selected.name} for ${customerName.trim()}? Payment will remain pending.`,
-      ))
-    ) {
+    if (saving || submitLock.current || bookingReasons.length) {
       return;
     }
 
+    submitLock.current = true;
     setSaving(true);
+
+    if (
+      !(await confirmAction(
+        `Book ${selected.name} for ${customerName.trim()}? ${
+          cashNow
+            ? `Confirm ${money(cash)} cash was received.`
+            : "Payment will remain pending."
+        }`,
+      ))
+    ) {
+      submitLock.current = false;
+      setSaving(false);
+      return;
+    }
+
     setError("");
     setSaved(null);
 
@@ -185,22 +244,41 @@ export default function POSWalkInService() {
         "/api/management/sales/walk-in-services",
         {
           requestKey: requestKey.current,
+
           customerName: customerName.trim(),
           customerPhone: customerPhone.trim(),
+
           serviceTypeId: Number(serviceTypeId),
+
           paymentCode,
+          payLater,
+
+          cashReceived: cashNow ? Math.round(cash * 100) / 100 : null,
+
+          discount: Math.round(reduction * 100) / 100,
+          discountReason: discountReason.trim(),
+
           additionalFee: Math.round(fee * 100) / 100,
           additionalFeeReason: additionalFeeReason.trim(),
+
           serviceAddress: serviceAddress.trim(),
+
           destinationAddress: isRelocation ? destinationAddress.trim() : "",
+
           scheduledStart,
+
           concern: concern.trim(),
+
           airconBrand: airconBrand.trim(),
           airconModel: airconModel.trim(),
-          airconHorsepower: airconHorsepower ? Number(airconHorsepower) : null,
+
+          airconHorsepower: Number(airconHorsepower),
+
           technicianIds: canAssign ? technicianIds : [],
+
           copperFeet:
             selected.code === "reinstallation" ? Number(copperFeet) : 10,
+
           includeDismantling:
             selected.code === "reinstallation" && includeDismantling,
         },
@@ -211,10 +289,17 @@ export default function POSWalkInService() {
       }
 
       setSaved(data.booking);
+
       requestKey.current = crypto.randomUUID();
+
       setCustomerName("");
       setCustomerPhone("");
       setAdditionalFee("0");
+      setDiscount("0");
+      setDiscountReason("");
+      setPayLater(false);
+      setCashReceived("");
+      setCashVerified(false);
       setPaymentCode("CASH");
       setAdditionalFeeReason("");
       setServiceTypeId("");
@@ -237,6 +322,7 @@ export default function POSWalkInService() {
           "Booking failed.",
       );
     } finally {
+      submitLock.current = false;
       setSaving(false);
     }
   }
@@ -248,12 +334,15 @@ export default function POSWalkInService() {
           <span className="sales-kicker">
             <Wrench size={16} /> WALK-IN SERVICE
           </span>
+
           <h1>Book a walk-in service</h1>
+
           <p>
             Register the customer, choose a service, and reserve an
             appointment—all in one place.
           </p>
         </div>
+
         <button
           type="button"
           className="sales-refresh"
@@ -271,57 +360,12 @@ export default function POSWalkInService() {
       )}
 
       {saved && (
-        <section className="sales-panel pos-walkin-success" role="status">
-          <div className="pos-walkin-success__icon">
-            <CheckCircle2 size={23} />
-          </div>
-          <div className="pos-walkin-success__content">
-            <strong>Service #{saved.id} booked successfully</strong>
-            <p>
-              {saved.customer} · {saved.service} ·{" "}
-              {String(saved.scheduledStart || "").replace("T", " at ")}
-            </p>
-            <p>
-              Total service price: {money(saved.price)} · Payment:{" "}
-              <strong>{saved.paymentStatus || "PENDING"}</strong> · Team:{" "}
-              {String(saved.assignment || "PENDING_ASSIGNMENT").replaceAll(
-                "_",
-                " ",
-              )}
-            </p>
-            {Number(saved.additionalFee) > 0 && (
-              <p>
-                <strong>Additional fee:</strong> {money(saved.additionalFee)} ·{" "}
-                {saved.additionalFeeReason}
-              </p>
-            )}
-            {saved.destinationAddress && (
-              <p>
-                <strong>Pickup:</strong> {saved.pickupAddress || "—"} ·{" "}
-                <strong>Destination:</strong> {saved.destinationAddress}
-              </p>
-            )}
-            {saved.paymentStatus === "PENDING" &&
-              saved.paymentMethod !== "CASH" &&
-              saved.paymentId && (
-                <PayMongoAction
-                  kind="SERVICE"
-                  identifier={saved.paymentId}
-                  staff
-                />
-              )}
-            {canAssign ? (
-              <Link to={`/management/service-requests?requestId=${saved.id}`}>
-                Open in Service Requests
-              </Link>
-            ) : (
-              <p>
-                Saved for Manager review. Management will handle technician
-                assignment, service progress, and payment confirmation.
-              </p>
-            )}
-          </div>
-        </section>
+        <POSResultModal
+          kind="SERVICE"
+          record={saved}
+          canManage={canAssign}
+          onClose={() => setSaved(null)}
+        />
       )}
 
       <form className="pos-walkin-form" onSubmit={book}>
@@ -332,19 +376,25 @@ export default function POSWalkInService() {
                 <span className="pos-walkin-section-icon">
                   <UserRound size={19} />
                 </span>
+
                 <div>
                   <h2>Customer information</h2>
                   <p>Contact details for this walk-in request.</p>
                 </div>
               </div>
+
               <ReturningCustomerSearch
                 disabled={saving}
                 onSelect={(person) => {
                   setCustomerName(person.name);
                   setCustomerPhone(person.phone);
-                  if (person.address) setServiceAddress(person.address);
+
+                  if (person.address) {
+                    setServiceAddress(person.address);
+                  }
                 }}
               />
+
               <div className="pos-walkin-fields pos-walkin-fields--two">
                 <label className="pos-walkin-field">
                   Customer name <span className="pos-walkin-required">*</span>
@@ -362,6 +412,7 @@ export default function POSWalkInService() {
                   />
                   <small>Use letters only for customer names.</small>
                 </label>
+
                 <label className="pos-walkin-field">
                   Contact number <span className="pos-walkin-required">*</span>
                   <input
@@ -388,11 +439,17 @@ export default function POSWalkInService() {
                 <span className="pos-walkin-section-icon">
                   <Wrench size={19} />
                 </span>
+
                 <div>
                   <h2>Service and aircon details</h2>
-                  <p>Choose the service and identify the unit when known.</p>
+
+                  <p>
+                    Choose the service and enter the unit horsepower. Brand and
+                    model are optional.
+                  </p>
                 </div>
               </div>
+
               <div className="pos-walkin-fields pos-walkin-fields--two">
                 <label className="pos-walkin-field pos-walkin-field--full">
                   Service type <span className="pos-walkin-required">*</span>
@@ -410,6 +467,7 @@ export default function POSWalkInService() {
                         ? "Loading services…"
                         : "Select cleaning, repair, or another service"}
                     </option>
+
                     {services.map((service) => (
                       <option key={service.id} value={service.id}>
                         {service.name} · {money(service.price)}
@@ -417,10 +475,14 @@ export default function POSWalkInService() {
                     ))}
                   </select>
                 </label>
+
                 {selected?.code === "reinstallation" && (
                   <div
                     className="pos-walkin-field pos-walkin-field--full"
-                    style={{ display: "grid", gap: 12 }}
+                    style={{
+                      display: "grid",
+                      gap: 12,
+                    }}
                   >
                     <label className="pos-walkin-field">
                       Total copper pipe length (feet) · first 10 ft included
@@ -435,6 +497,7 @@ export default function POSWalkInService() {
                         onChange={(event) => setCopperFeet(event.target.value)}
                       />
                     </label>
+
                     <label
                       style={{
                         display: "flex",
@@ -450,16 +513,22 @@ export default function POSWalkInService() {
                         onChange={(event) =>
                           setIncludeDismantling(event.target.checked)
                         }
-                        style={{ width: 18, height: 18, flex: "0 0 auto" }}
+                        style={{
+                          width: 18,
+                          height: 18,
+                          flex: "0 0 auto",
+                        }}
                       />
                       Include dismantling (+ ₱2,000)
                     </label>
+
                     <small>
                       Reinstallation: ₱5,000 up to 10 ft, then ₱450 per
                       additional full foot.
                     </small>
                   </div>
                 )}
+
                 <label className="pos-walkin-field">
                   Aircon brand{" "}
                   <span className="pos-walkin-optional">Optional</span>
@@ -471,6 +540,7 @@ export default function POSWalkInService() {
                     onChange={(event) => setAirconBrand(event.target.value)}
                   />
                 </label>
+
                 <label className="pos-walkin-field">
                   Aircon model{" "}
                   <span className="pos-walkin-optional">Optional</span>
@@ -482,15 +552,16 @@ export default function POSWalkInService() {
                     onChange={(event) => setAirconModel(event.target.value)}
                   />
                 </label>
+
                 <label className="pos-walkin-field">
-                  Horsepower (HP){" "}
-                  <span className="pos-walkin-optional">Optional</span>
+                  Horsepower (HP) *
                   <input
                     type="number"
                     min="0.5"
                     max="10"
                     step="0.1"
                     placeholder="e.g. 1.5"
+                    required
                     value={airconHorsepower}
                     disabled={saving}
                     onChange={(event) =>
@@ -499,6 +570,7 @@ export default function POSWalkInService() {
                   />
                 </label>
               </div>
+
               {!loading && services.length === 0 && (
                 <p className="sales-error" role="status">
                   No active service types found. An Owner or Manager can enable
@@ -512,11 +584,14 @@ export default function POSWalkInService() {
                 <span className="pos-walkin-section-icon">
                   <MapPin size={19} />
                 </span>
+
                 <div>
                   <h2>Service location and request</h2>
+
                   <p>Where technicians will go and what the customer needs.</p>
                 </div>
               </div>
+
               <div className="pos-walkin-fields">
                 <label className="pos-walkin-field">
                   {isRelocation
@@ -538,6 +613,7 @@ export default function POSWalkInService() {
                     onChange={(event) => setServiceAddress(event.target.value)}
                   />
                 </label>
+
                 {isRelocation && (
                   <>
                     <label className="pos-walkin-field">
@@ -556,6 +632,7 @@ export default function POSWalkInService() {
                         }
                       />
                     </label>
+
                     <p className="pos-walkin-location-help">
                       Please confirm both addresses with the customer before
                       booking. The technician needs the pickup and the
@@ -563,6 +640,7 @@ export default function POSWalkInService() {
                     </p>
                   </>
                 )}
+
                 <label className="pos-walkin-field">
                   Customer concern / request{" "}
                   <span className="pos-walkin-optional">Optional</span>
@@ -588,11 +666,13 @@ export default function POSWalkInService() {
                 <span className="pos-walkin-section-icon">
                   <CalendarCheck size={19} />
                 </span>
+
                 <div>
                   <h2>Appointment</h2>
                   <p>Choose an available date and time.</p>
                 </div>
               </div>
+
               <div className="pos-walkin-schedule">
                 <AvailabilityPicker
                   label="Available service date and time"
@@ -609,13 +689,16 @@ export default function POSWalkInService() {
                   <span className="pos-walkin-section-icon">
                     <Users size={19} />
                   </span>
+
                   <div>
                     <h2>Technician assignment</h2>
                     <p>Select the assigned team if already known.</p>
                   </div>
                 </div>
+
                 <div className="pos-walkin-team">
                   <TechnicianTeamPicker
+                    scheduledStart={scheduledStart}
                     value={technicianIds}
                     onChange={setTechnicianIds}
                     disabled={saving}
@@ -629,6 +712,7 @@ export default function POSWalkInService() {
                 <span className="pos-walkin-section-icon">
                   <ClipboardList size={19} />
                 </span>
+
                 <div>
                   <h2>Booking summary</h2>
                   <p>Review before confirming.</p>
@@ -639,34 +723,73 @@ export default function POSWalkInService() {
                 <span>Selected service</span>
                 <strong>{selected?.name || "Not selected"}</strong>
               </div>
+
               {isRelocation && (
                 <>
                   <div className="pos-walkin-summary-row pos-walkin-address-row">
                     <span>Pickup from</span>
+
                     <strong>{serviceAddress.trim() || "Not entered"}</strong>
                   </div>
+
                   <div className="pos-walkin-summary-row pos-walkin-address-row">
                     <span>Install at</span>
+
                     <strong>
                       {destinationAddress.trim() || "Not entered"}
                     </strong>
                   </div>
                 </>
               )}
+
               <div className="pos-walkin-summary-row">
                 <span>Service price before extra fee</span>
+
                 <strong>
                   {quotedPrice === null ? "—" : money(quotedPrice)}
                 </strong>
               </div>
+
+              <div className="pos-fee-fields">
+                <label>
+                  Discount (₱)
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    max="9999999"
+                    value={discount}
+                    disabled={saving}
+                    onChange={(e) => {
+                      setDiscount(e.target.value);
+
+                      if (Number(e.target.value) <= 0) {
+                        setDiscountReason("");
+                      }
+                    }}
+                  />
+                </label>
+
+                {reduction > 0 && (
+                  <POSReasonField
+                    kind="discount"
+                    value={discountReason}
+                    onChange={setDiscountReason}
+                    disabled={saving}
+                  />
+                )}
+              </div>
+
               <div className="pos-fee-fields">
                 <div className="pos-fee-fields__heading">
                   <strong>Additional fee (optional)</strong>
+
                   <small>
                     Use for extra travel or agreed special work. Explain it to
                     the customer.
                   </small>
                 </div>
+
                 <label>
                   Additional fee (₱)
                   <input
@@ -678,28 +801,23 @@ export default function POSWalkInService() {
                     disabled={saving}
                     onChange={(event) => {
                       setAdditionalFee(event.target.value);
-                      if (Number(event.target.value) <= 0)
+
+                      if (Number(event.target.value) <= 0) {
                         setAdditionalFeeReason("");
+                      }
                     }}
                   />
                 </label>
+
                 {fee > 0 && (
-                  <label>
-                    Reason for extra fee (required)
-                    <input
-                      type="text"
-                      required
-                      minLength={5}
-                      maxLength={255}
-                      value={additionalFeeReason}
-                      disabled={saving}
-                      placeholder="e.g. Extra travel to a remote address"
-                      onChange={(event) =>
-                        setAdditionalFeeReason(event.target.value)
-                      }
-                    />
-                  </label>
+                  <POSReasonField
+                    kind="fee"
+                    value={additionalFeeReason}
+                    onChange={setAdditionalFeeReason}
+                    disabled={saving}
+                  />
                 )}
+
                 {!feeValid && (
                   <p className="pos-fee-fields__error">
                     Enter a valid fee and a reason (5+ characters), or leave
@@ -707,22 +825,64 @@ export default function POSWalkInService() {
                   </p>
                 )}
               </div>
+
               {fee > 0 && feeValid && (
                 <div className="pos-walkin-summary-row pos-fee-summary">
                   <span>Additional fee · {additionalFeeReason.trim()}</span>
+
                   <strong>{money(fee)}</strong>
                 </div>
               )}
+
+              {reduction > 0 && (
+                <div className="pos-walkin-summary-row">
+                  <span>Discount · {discountReason}</span>
+                  <strong>−{money(reduction)}</strong>
+                </div>
+              )}
+
               <div className="pos-walkin-summary-row">
                 <span>Total booking amount</span>
+
                 <strong>
                   {bookingTotal === null ? "—" : money(bookingTotal)}
                 </strong>
               </div>
+
+              <label className="pos-walkin-field">
+                Payment timing
+                <select
+                  value={payLater ? "LATER" : "NOW"}
+                  disabled={saving}
+                  onChange={(e) => {
+                    const later = e.target.value === "LATER";
+
+                    setPayLater(later);
+
+                    if (later) {
+                      setPaymentCode("CASH");
+                    }
+
+                    setCashReceived("");
+                    setCashVerified(false);
+                  }}
+                >
+                  <option value="NOW">Pay Now</option>
+
+                  <option
+                    value="LATER"
+                    disabled={!paymentMethods.includes("CASH")}
+                  >
+                    Pay Later (cash)
+                  </option>
+                </select>
+              </label>
+
               <label className="pos-walkin-field">
                 Payment method
                 <select
                   value={paymentCode}
+                  disabled={payLater || saving}
                   onChange={(event) => setPaymentCode(event.target.value)}
                 >
                   {paymentMethods.map((code) => (
@@ -736,40 +896,64 @@ export default function POSWalkInService() {
                   ))}
                 </select>
               </label>
-              <div className="pos-walkin-summary-row">
-                <span>Payment status</span>
-                <span className="pos-walkin-pending">
-                  <CreditCard size={14} /> Pending
-                </span>
-              </div>
+
+              {cashNow && (
+                <>
+                  <label className="pos-walkin-field">
+                    Cash received (₱)
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      required
+                      value={cashReceived}
+                      disabled={saving}
+                      onChange={(e) => {
+                        setCashReceived(e.target.value);
+                        setCashVerified(false);
+                      }}
+                    />
+                  </label>
+
+                  <div className="pos-walkin-summary-row">
+                    <span>Change to return</span>
+                    <strong>{money(change)}</strong>
+                  </div>
+
+                  <label className="sales-checkline">
+                    <input
+                      type="checkbox"
+                      checked={cashVerified}
+                      disabled={saving}
+                      onChange={(e) => setCashVerified(e.target.checked)}
+                    />
+
+                    <span>I physically received and counted the cash.</span>
+                  </label>
+                </>
+              )}
+
               <p className="pos-walkin-payment-note">
-                Booking remains pending. Cash is confirmed by authorized staff;
-                GCash and QR Ph payments are confirmed only by PayMongo's
-                verified notification. Final charges must be agreed before
-                paying online.
+                {cashNow
+                  ? "Payment is recorded as paid only after full cash is collected."
+                  : payLater
+                    ? "Payment remains pending until authorized staff confirm cash."
+                    : "Online payment remains pending until PayMongo verifies it."}
               </p>
+
               <ActionGuidance
                 title="Complete these before booking"
                 reasons={bookingReasons}
-                readyText="Ready to save the booking. Payment will remain pending."
+                readyText="Ready to confirm the booking."
               />
+
               <button
                 className="pos-book-submit"
                 type="submit"
-                disabled={
-                  saving ||
-                  loading ||
-                  !selected ||
-                  !paymentMethods.includes(paymentCode) ||
-                  !scheduledStart ||
-                  !phoneValid ||
-                  !feeValid ||
-                  (isRelocation &&
-                    (destinationAddress.trim().length < 5 ||
-                      destinationAddress.trim() === serviceAddress.trim()))
-                }
+                disabled={saving || bookingReasons.length > 0}
               >
                 <CalendarCheck size={18} />
+
                 {saving ? "Booking…" : "Confirm service booking"}
               </button>
             </section>

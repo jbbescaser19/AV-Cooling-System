@@ -1,4 +1,5 @@
 import connectDB from "../../utils/dbConn.js";
+
 import { realtimeEventModel } from "../../models/realtime/realtimeEventModel.js";
 
 const ALL_TOPICS = Object.freeze([
@@ -17,10 +18,10 @@ const ALL_TOPICS = Object.freeze([
   "archive",
   "reports",
   "cart",
+  "audit",
 ]);
 
 const RULES = [
-  // A customer is created only after OTP verification succeeds.
   [
     /^\/api\/auth\/customer\/register\/verify\/?$/,
     ["customers", "dashboard", "reports"],
@@ -132,11 +133,56 @@ export function changedTopics(path) {
 
   const matching = RULES.filter(([pattern]) => pattern.test(normalized));
 
-  if (matching.length) {
-    return [...new Set(matching.flatMap(([, topics]) => topics))];
+  const management = /^\/api\/management\//.test(normalized);
+
+  const business = /^\/api\/(?:management|customer)\//.test(normalized);
+
+  const topics = new Set(
+    matching.length
+      ? matching.flatMap(([, values]) => values)
+      : business
+        ? ALL_TOPICS
+        : [],
+  );
+
+  const add = (...values) => values.forEach((topic) => topics.add(topic));
+
+  if (management) {
+    add("audit");
   }
 
-  return /^\/api\/(?:management|customer)\//.test(normalized) ? ALL_TOPICS : [];
+  // Archive changes may affect products, service types,
+  // customers, staff, stock, schedules and reports.
+  if (/\/archive(?:\/|$)/.test(normalized)) {
+    add(...ALL_TOPICS);
+  }
+
+  if (/\/(?:staff|technicians)(?:\/|$)/.test(normalized)) {
+    add("staff", "schedules", "jobs", "dashboard");
+  }
+
+  if (/\/customers(?:\/|$)/.test(normalized)) {
+    add(
+      "customers",
+      "jobs",
+      "schedules",
+      "payments",
+      "inventory",
+      "catalog",
+      "dashboard",
+      "reports",
+    );
+  }
+
+  if (/\/sales\/pos(?:\/|$)|\/facebook-requests/.test(normalized)) {
+    add("jobs", "customers");
+  }
+
+  if (topics.has("feedback")) {
+    add("reports");
+  }
+
+  return [...topics];
 }
 
 export async function recordBusinessChange(path) {
@@ -183,10 +229,8 @@ let polling = false;
 let errorCount = 0;
 
 /**
- * Notify clients only about actual business changes.
- *
- * An irrelevant topic becomes a checkpoint,
- * allowing EventSource to remember its last event ID
+ * Send only permitted topic notifications.
+ * Checkpoints preserve the last event identifier
  * without refreshing unrelated pages.
  */
 function deliver(res, audience, rawTopics, eventId) {
@@ -223,9 +267,17 @@ async function checkForChanges() {
 
         const topics = eventTopics(entry.topics);
 
-        for (const [res, audience] of clients) {
+        for (const [res, client] of clients) {
           try {
-            deliver(res, audience, topics, cursor);
+            if (client.replaying) {
+              for (const topic of topics) {
+                client.pendingTopics.add(topic);
+              }
+
+              client.pendingId = cursor;
+            } else {
+              deliver(res, client.audience, topics, cursor);
+            }
           } catch {
             clients.delete(res);
             res.end();
@@ -251,18 +303,32 @@ async function checkForChanges() {
 }
 
 /**
- * Native EventSource remembers Last-Event-ID.
- *
- * Replay only changes missed during disconnection.
- * Never broadcast ALL_TOPICS simply because a user
- * opened or reconnected to the application.
+ * Replay changes missed during disconnection.
  */
 async function replayMissed(res, audience, fromId) {
   if (!fromId || res.destroyed || res.writableEnded) {
-    return;
+    return fromId;
+  }
+
+  const latest = await realtimeEventModel(connectDB).latestId();
+
+  if (BigInt(fromId) > BigInt(latest)) {
+    if (!res.destroyed && !res.writableEnded) {
+      res.write(
+        `id: ${latest}\n` +
+          `event: reset\n` +
+          `data: ${JSON.stringify({
+            topics: allowedTopics(ALL_TOPICS, audience),
+            cursor: latest,
+          })}\n\n`,
+      );
+    }
+
+    return latest;
   }
 
   const topics = new Set();
+
   let lastSeenId = fromId;
   let hasMore = false;
 
@@ -270,7 +336,19 @@ async function replayMissed(res, audience, fromId) {
     const rows = await realtimeEventModel(connectDB).since(lastSeenId, 100);
 
     if (!rows.length) {
+      if (batch === 0 && BigInt(latest) > BigInt(fromId)) {
+        hasMore = true;
+      }
+
       break;
+    }
+
+    // Recover if previous events have already
+    // been removed from the retained event log.
+    if (batch === 0 && BigInt(rows[0].id) > BigInt(fromId) + 1n) {
+      for (const topic of allowedTopics(ALL_TOPICS, audience)) {
+        topics.add(topic);
+      }
     }
 
     for (const entry of rows) {
@@ -291,7 +369,6 @@ async function replayMissed(res, audience, fromId) {
   }
 
   if (hasMore) {
-    // Many missed changes: perform one catch-up refresh.
     for (const topic of allowedTopics(ALL_TOPICS, audience)) {
       topics.add(topic);
     }
@@ -302,25 +379,34 @@ async function replayMissed(res, audience, fromId) {
   if (lastSeenId !== fromId && !res.destroyed && !res.writableEnded) {
     deliver(res, audience, [...topics], lastSeenId);
   }
+
+  return lastSeenId;
 }
 
 export async function subscribeRealtime(req, res, audience = "staff") {
   if (clients.size >= 300) {
     return res.status(503).json({
       success: false,
+
       message: "Live connection busy. Refresh manually if needed.",
     });
   }
 
-  // A new connection must not force a full page refresh.
   if (!timer) {
-    cursor = await realtimeEventModel(connectDB).latestId();
+    const latest = await realtimeEventModel(connectDB).latestId();
+
+    if (!timer) {
+      cursor = latest;
+    }
   }
 
   res.status(200).set({
     "Content-Type": "text/event-stream; charset=utf-8",
+
     "Cache-Control": "private, no-cache, no-transform",
+
     "X-Accel-Buffering": "no",
+
     Connection: "keep-alive",
   });
 
@@ -328,7 +414,24 @@ export async function subscribeRealtime(req, res, audience = "staff") {
 
   res.write(": connected\nretry: 3000\n\n");
 
-  clients.set(res, audience);
+  const requestedId = String(
+    req.get("Last-Event-ID") || req.query?.lastEventId || "",
+  ).trim();
+
+  const validId = /^\d{1,20}$/.test(requestedId);
+
+  const client = {
+    audience,
+    replaying: validId,
+    pendingTopics: new Set(),
+    pendingId: null,
+  };
+
+  if (!validId) {
+    deliver(res, audience, [], cursor);
+  }
+
+  clients.set(res, client);
 
   if (!timer) {
     timer = setInterval(() => {
@@ -344,8 +447,8 @@ export async function subscribeRealtime(req, res, audience = "staff") {
     }
   }, 20000);
 
-  // Preserve the existing two-minute
-  // SSE authentication renewal requirement.
+  // Preserve the existing SSE authentication
+  // renewal interval.
   const expire = setTimeout(() => res.end(), 120000);
 
   const cleanup = () => {
@@ -356,19 +459,32 @@ export async function subscribeRealtime(req, res, audience = "staff") {
 
     if (clients.size === 0 && timer) {
       clearInterval(timer);
+
       timer = null;
     }
   };
 
   res.once("close", cleanup);
 
-  const lastId = String(req.get("Last-Event-ID") || "").trim();
-
-  if (/^\d{1,20}$/.test(lastId)) {
+  if (validId) {
     try {
-      await replayMissed(res, audience, lastId);
+      const replayedId = await replayMissed(res, audience, requestedId);
+
+      if (!clients.has(res) || res.destroyed || res.writableEnded) {
+        return;
+      }
+
+      if (client.pendingId && BigInt(client.pendingId) > BigInt(replayedId)) {
+        deliver(res, audience, [...client.pendingTopics], client.pendingId);
+      }
+
+      client.pendingTopics.clear();
+      client.pendingId = null;
+      client.replaying = false;
     } catch (error) {
       console.error("Realtime reconnect catch-up error:", error);
+
+      res.end();
     }
   }
 }

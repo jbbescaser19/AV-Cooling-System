@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+
 import {
   Archive,
   ArchiveRestore,
@@ -10,25 +11,35 @@ import {
   RefreshCw,
   UserRoundX,
 } from "lucide-react";
+
 import api from "../../../api/api.js";
+
+import { getStaff } from "../../utils/authMock.js";
+import { confirmAction } from "../../utils/confirmAction.jsx";
+
+import useRealtimeRefresh from "../../hooks/useRealtimeRefresh.js";
+
+import PermanentArchiveDelete from "../../components/management/PermanentArchiveDelete.jsx";
+
 import "../../styles/management/archive-db.css";
 
 const titles = {
   products: "Products",
-  categories: "Product categories",
-  variants: "Product variants",
+  categories: "Product Categories",
+  variants: "Product Variants",
   inventory: "Inventory",
-  "service-types": "Service types",
+  "service-types": "Service Types",
   technicians: "Technicians",
-  "facebook-requests": "Facebook requests",
+  "facebook-requests": "Facebook Agreements",
   "customer-accounts": "Customer Accounts",
   "staff-accounts": "Staff Accounts",
 };
 
-const isClosedAccount = (entry) =>
-  ["customer-accounts", "staff-accounts"].includes(
-    entry.sourceModule || entry.category,
-  );
+const isAccount = (entry) =>
+  ["customer-accounts", "staff-accounts"].includes(entry.category);
+
+const canRestore = (entry) =>
+  !isAccount(entry) || entry.snapshot?.restorable === true;
 
 const formatted = (date) => {
   if (!date) return "—";
@@ -63,7 +74,20 @@ const snapshotFields = {
   ],
 };
 
+const actionLayout = {
+  display: "grid",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: 8,
+};
+
+const fullWidthAction = {
+  gridColumn: "1 / -1",
+  display: "flex",
+};
+
 export default function ArchivePage() {
+  const isOwner = getStaff()?.role === "OWNER";
+
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState("");
@@ -74,30 +98,43 @@ export default function ArchivePage() {
   const [message, setMessage] = useState("");
   const [revision, setRevision] = useState(0);
 
+  const loadedOnce = useRef(false);
+  const restoring = useRef(false);
+
+  useRealtimeRefresh(["archive"], setRevision);
+
   useEffect(() => {
     const controller = new AbortController();
 
-    setLoading(true);
+    if (!loadedOnce.current) {
+      setLoading(true);
+    }
 
     api
       .get("/api/management/workspace/archive", {
         signal: controller.signal,
       })
       .then(({ data }) => {
-        if (!controller.signal.aborted) {
-          setItems(data.items || []);
-          setError("");
-        }
+        if (controller.signal.aborted) return;
+
+        const records = data.items || [];
+
+        setItems(records);
+
+        setDetail((previous) =>
+          previous
+            ? records.find((entry) => entry.id === previous.id) || null
+            : null,
+        );
+
+        loadedOnce.current = true;
+        setLoading(false);
       })
       .catch((failure) => {
         if (!controller.signal.aborted) {
           setError(
             failure.response?.data?.message || "Could not load the archive.",
           );
-        }
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) {
           setLoading(false);
         }
       });
@@ -126,26 +163,48 @@ export default function ArchivePage() {
         .includes(query.toLowerCase().trim()),
   );
 
-  async function restore(entry) {
-    // Deleted accounts cannot be restored through
-    // the catalog Archive endpoint.
-    if (isClosedAccount(entry)) return;
+  function handleDeleted(text) {
+    setError("");
+    setMessage(text || "Record permanently deleted.");
+    setDetail(null);
 
+    setRevision((count) => count + 1);
+  }
+
+  function handleError(text) {
+    setError(text);
+    setMessage("");
+    setDetail(null);
+  }
+
+  async function restore(entry) {
     if (
-      !window.confirm(
-        `Restore ${entry.label} to ${
-          titles[entry.category] || entry.category
-        }?`,
-      )
+      busy ||
+      restoring.current ||
+      !canRestore(entry) ||
+      (isAccount(entry) && !isOwner)
     ) {
       return;
     }
 
+    restoring.current = true;
     setBusy(entry.id);
     setError("");
     setMessage("");
 
     try {
+      const approved = await confirmAction({
+        title: "Restore archived record?",
+        message: isAccount(entry)
+          ? `Restore ${entry.label}'s account? Previously cancelled orders and services will remain cancelled.`
+          : `Restore ${entry.label} to ${
+              titles[entry.category] || entry.category
+            }?`,
+        confirmText: "Restore",
+      });
+
+      if (!approved) return;
+
       const { data } = await api.post(
         `/api/management/workspace/archive/${encodeURIComponent(entry.id)}/restore`,
         {},
@@ -155,21 +214,70 @@ export default function ArchivePage() {
         throw new Error("Restore was not confirmed.");
       }
 
+      setItems((previous) => previous.filter((item) => item.id !== entry.id));
+
       setMessage(data.message || "Record restored.");
 
       setDetail(null);
+
       setRevision((count) => count + 1);
 
       window.dispatchEvent(new Event("av-management-updated"));
     } catch (failure) {
-      setError(
+      handleError(
         failure.response?.data?.message ||
           failure.message ||
           "Could not restore record.",
       );
     } finally {
+      restoring.current = false;
       setBusy("");
     }
+  }
+
+  function renderRestore(entry) {
+    const allowed = canRestore(entry) && (!isAccount(entry) || isOwner);
+
+    return (
+      <button
+        type="button"
+        disabled={Boolean(busy) || !allowed}
+        onClick={() => restore(entry)}
+        title={
+          allowed
+            ? "Restore this archived record"
+            : "Previous account information is unavailable or restoration is restricted."
+        }
+        style={{
+          background: "#0a7193",
+          color: "#ffffff",
+          borderColor: "#0a7193",
+          opacity: !allowed || busy ? 0.55 : 1,
+          cursor: !allowed || busy ? "not-allowed" : "pointer",
+        }}
+      >
+        <ArchiveRestore size={16} />
+        Restore
+      </button>
+    );
+  }
+
+  function renderPermanentDelete(entry) {
+    return (
+      <PermanentArchiveDelete
+        entry={entry}
+        busy={busy}
+        setBusy={setBusy}
+        onError={handleError}
+        onDeleted={(text) => {
+          setItems((previous) =>
+            previous.filter((item) => item.id !== entry.id),
+          );
+
+          handleDeleted(text);
+        }}
+      />
+    );
   }
 
   return (
@@ -184,15 +292,18 @@ export default function ArchivePage() {
           <h1>Archive</h1>
 
           <p>
-            Archived catalog records can be restored. Deleted Customer and Staff
-            accounts have read-only closure history, visible to the Owner.
+            Restore archived records or permanently delete records you no longer
+            need.
           </p>
         </div>
 
         <button
           type="button"
-          onClick={() => setRevision((count) => count + 1)}
-          disabled={loading}
+          disabled={loading || Boolean(busy)}
+          onClick={() => {
+            setError("");
+            setRevision((count) => count + 1);
+          }}
         >
           <RefreshCw size={16} />
           Refresh
@@ -203,10 +314,9 @@ export default function ArchivePage() {
         <ShieldCheck size={18} />
 
         <span>
-          Catalog records may be restored during their retention period. Deleted
-          Customer and Staff account logins are permanently closed; their
-          Archive history is read-only. Orders, payments, and service history
-          are preserved.
+          Archived records can be restored during their retention period.
+          Permanent deletion is restricted to the Owner and cannot be undone.
+          Historical transactions remain protected.
         </span>
       </div>
 
@@ -247,6 +357,7 @@ export default function ArchivePage() {
 
         <div className="av-archive-categories" aria-label="Archive categories">
           <button
+            type="button"
             className={category === "all" ? "active" : ""}
             onClick={() => setCategory("all")}
           >
@@ -258,6 +369,7 @@ export default function ArchivePage() {
             .map(([key, count]) => (
               <button
                 key={key}
+                type="button"
                 className={category === key ? "active" : ""}
                 onClick={() => setCategory(key)}
               >
@@ -275,7 +387,7 @@ export default function ArchivePage() {
         <p className="av-archive-empty">
           {items.length
             ? "No records match your filters."
-            : "No archived records yet. Use Archive on a product, category, variant, service type, or technician record."}
+            : "No archived records yet."}
         </p>
       ) : (
         <div className="av-archive-grid">
@@ -298,22 +410,39 @@ export default function ArchivePage() {
 
               <p>Retention ends {formatted(entry.purgeAfter)}</p>
 
-              <div className="av-archive-card-actions">
-                <button type="button" onClick={() => setDetail(entry)}>
+              {isAccount(entry) && (
+                <p className="av-archive-account-tag">
+                  <UserRoundX size={13} />
+
+                  {canRestore(entry)
+                    ? "Restorable account"
+                    : "Previously anonymized"}
+                </p>
+              )}
+
+              {!canRestore(entry) && (
+                <p>
+                  The original login information was permanently removed before
+                  this update.
+                </p>
+              )}
+
+              <div className="av-archive-card-actions" style={actionLayout}>
+                <button
+                  type="button"
+                  disabled={Boolean(busy)}
+                  onClick={() => setDetail(entry)}
+                >
                   <Eye size={16} />
                   Details
                 </button>
 
-                {!isClosedAccount(entry) && (
-                  <button
-                    type="button"
-                    disabled={Boolean(busy)}
-                    onClick={() => restore(entry)}
-                  >
-                    <ArchiveRestore size={16} />
+                {renderRestore(entry)}
 
-                    {busy === entry.id ? "Restoring…" : "Restore"}
-                  </button>
+                {isOwner && (
+                  <div style={fullWidthAction}>
+                    {renderPermanentDelete(entry)}
+                  </div>
                 )}
               </div>
             </article>
@@ -325,7 +454,7 @@ export default function ArchivePage() {
         <div
           className="av-archive-overlay"
           onMouseDown={(event) => {
-            if (event.target === event.currentTarget) {
+            if (!busy && event.target === event.currentTarget) {
               setDetail(null);
             }
           }}
@@ -344,6 +473,8 @@ export default function ArchivePage() {
               </div>
 
               <button
+                type="button"
+                disabled={Boolean(busy)}
                 onClick={() => setDetail(null)}
                 aria-label="Close details"
               >
@@ -358,12 +489,12 @@ export default function ArchivePage() {
                 {detail.deletedBy || "Management"}
               </p>
 
-              {isClosedAccount(detail) ? (
+              {isAccount(detail) ? (
                 <>
                   <p>
-                    <UserRoundX size={16} aria-hidden="true" /> The Owner closed
-                    this account and its login cannot be restored. Only closure
-                    metadata is retained here.
+                    {canRestore(detail)
+                      ? "This account can be restored or permanently deleted."
+                      : "The previous deletion process permanently removed the login information. This account cannot be restored."}
                   </p>
 
                   <dl>
@@ -375,6 +506,13 @@ export default function ArchivePage() {
                     <div>
                       <dt>Previous status</dt>
                       <dd>{detail.previousStatus || "—"}</dd>
+                    </div>
+
+                    <div>
+                      <dt>Recovery status</dt>
+                      <dd>
+                        {canRestore(detail) ? "Restorable" : "Not restorable"}
+                      </dd>
                     </div>
 
                     {detail.category === "staff-accounts" ? (
@@ -426,36 +564,33 @@ export default function ArchivePage() {
                   </dl>
                 </>
               ) : (
-                <>
-                  <dl>
-                    {(snapshotFields[detail.category] || []).map((field) => (
-                      <div key={field}>
-                        <dt>{field.replaceAll("_", " ")}</dt>
+                <dl>
+                  {(snapshotFields[detail.category] || []).map((field) => (
+                    <div key={field}>
+                      <dt>{field.replaceAll("_", " ")}</dt>
 
-                        <dd>{String(detail.snapshot?.[field] ?? "—")}</dd>
-                      </div>
-                    ))}
-                  </dl>
-
-                  <p>
-                    Changes made while archived are not supported. Restore first
-                    to edit the live record.
-                  </p>
-                </>
+                      <dd>{String(detail.snapshot?.[field] ?? "—")}</dd>
+                    </div>
+                  ))}
+                </dl>
               )}
             </div>
 
-            <footer>
-              <button onClick={() => setDetail(null)}>Close</button>
+            <footer style={actionLayout}>
+              <button
+                type="button"
+                disabled={Boolean(busy)}
+                onClick={() => setDetail(null)}
+              >
+                Close
+              </button>
 
-              {!isClosedAccount(detail) && (
-                <button
-                  disabled={Boolean(busy)}
-                  onClick={() => restore(detail)}
-                >
-                  <ArchiveRestore size={17} />
-                  Restore record
-                </button>
+              {renderRestore(detail)}
+
+              {isOwner && (
+                <div style={fullWidthAction}>
+                  {renderPermanentDelete(detail)}
+                </div>
               )}
             </footer>
           </section>

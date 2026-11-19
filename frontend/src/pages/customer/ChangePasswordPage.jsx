@@ -7,6 +7,10 @@ import api from "../../../api/api.js";
 
 import CustomerPageHeader from "../../components/customer/CustomerPageHeader";
 
+import PasswordStrength from "../../components/auth/PasswordStrength.jsx";
+
+import { isStrongPassword } from "../../utils/passwordPolicy.js";
+
 import { logoutCustomer } from "../../utils/authMock";
 
 import {
@@ -31,6 +35,10 @@ export default function ChangePasswordPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
+  const passwordIsStrong = isStrongPassword(form.newPassword);
+
+  const passwordsMatch = form.newPassword === form.confirmPassword;
+
   function update(field, value) {
     setForm((previous) => ({
       ...previous,
@@ -46,18 +54,21 @@ export default function ChangePasswordPage() {
 
     if (saving) return;
 
-    if (form.newPassword.length < 8) {
-      setError("Your new password must have at least 8 characters.");
+    if (!passwordIsStrong) {
+      setError("Your password must meet all requirements.");
+
       return;
     }
 
-    if (form.newPassword !== form.confirmPassword) {
+    if (!passwordsMatch) {
       setError("The new passwords do not match.");
+
       return;
     }
 
     if (form.currentPassword === form.newPassword) {
       setError("Choose a password different from your current password.");
+
       return;
     }
 
@@ -123,8 +134,8 @@ export default function ChangePasswordPage() {
             <strong>Keep your account secure</strong>
 
             <p>
-              Enter your current password and choose a new password with at
-              least 8 characters.
+              Enter your current password and create a new password that meets
+              all requirements.
             </p>
           </div>
         </div>
@@ -141,57 +152,66 @@ export default function ChangePasswordPage() {
           </p>
         )}
 
-        <div className="customer-password-fields">
-          <label htmlFor="customer-current-password">
-            Current password
-            <input
-              id="customer-current-password"
-              className="form-control"
-              type="password"
-              autoComplete="current-password"
-              value={form.currentPassword}
-              onChange={(event) =>
-                update("currentPassword", event.target.value)
-              }
-              maxLength={128}
-              required
-              disabled={saving}
-            />
-          </label>
+        <div className="customer-password-grid">
+          <div className="customer-password-fields">
+            <label htmlFor="customer-current-password">
+              Current password
+              <input
+                id="customer-current-password"
+                className="form-control"
+                type="password"
+                autoComplete="current-password"
+                placeholder="Enter current password"
+                value={form.currentPassword}
+                onChange={(event) =>
+                  update("currentPassword", event.target.value)
+                }
+                maxLength={128}
+                required
+                disabled={saving}
+              />
+            </label>
 
-          <label htmlFor="customer-new-password">
-            New password
-            <input
-              id="customer-new-password"
-              className="form-control"
-              type="password"
-              autoComplete="new-password"
-              value={form.newPassword}
-              onChange={(event) => update("newPassword", event.target.value)}
-              minLength={8}
-              maxLength={128}
-              required
-              disabled={saving}
-            />
-          </label>
+            <label htmlFor="customer-new-password">
+              New password
+              <input
+                id="customer-new-password"
+                className="form-control"
+                type="password"
+                autoComplete="new-password"
+                placeholder="Enter new password"
+                value={form.newPassword}
+                onChange={(event) => update("newPassword", event.target.value)}
+                minLength={12}
+                maxLength={72}
+                required
+                disabled={saving}
+              />
+            </label>
 
-          <label htmlFor="customer-confirm-password">
-            Confirm new password
-            <input
-              id="customer-confirm-password"
-              className="form-control"
-              type="password"
-              autoComplete="new-password"
-              value={form.confirmPassword}
-              onChange={(event) =>
-                update("confirmPassword", event.target.value)
-              }
-              minLength={8}
-              maxLength={128}
-              required
-              disabled={saving}
-            />
-          </label>
+            <label htmlFor="customer-confirm-password">
+              Confirm new password
+              <input
+                id="customer-confirm-password"
+                className="form-control"
+                type="password"
+                autoComplete="new-password"
+                placeholder="Confirm new password"
+                value={form.confirmPassword}
+                onChange={(event) =>
+                  update("confirmPassword", event.target.value)
+                }
+                minLength={12}
+                maxLength={72}
+                required
+                disabled={saving}
+              />
+            </label>
+          </div>
+
+          <div className="customer-password-strength-panel">
+            <PasswordStrength value={form.newPassword} />
+          </div>
         </div>
 
         <label className="customer-password-signout">
@@ -217,7 +237,12 @@ export default function ChangePasswordPage() {
         <button
           type="submit"
           className="btn btn-dark customer-password-submit"
-          disabled={saving}
+          disabled={
+            saving ||
+            !form.currentPassword ||
+            !passwordIsStrong ||
+            !passwordsMatch
+          }
         >
           {saving ? "Updating password…" : "Update Password"}
         </button>

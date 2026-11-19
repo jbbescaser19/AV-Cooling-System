@@ -1,4 +1,5 @@
 import express from "express";
+
 import { requireCustomerWriteOrigin } from "../../middleware/requireCustomerWriteOrigin.js";
 
 import { requireCustomerAuth } from "../../middleware/requireCustomerAuth.js";
@@ -14,18 +15,27 @@ import {
 
 const router = express.Router();
 
-// Public, read-only service catalog.
-router.get("/types", getActiveServiceTypesController);
+// Public service catalog.
+router.get(
+  "/types",
+  (req, res, next) => {
+    res.set("Cache-Control", "no-store");
+    next();
+  },
+  getActiveServiceTypesController,
+);
 
 // Booking and request history require authentication.
 router.use(requireCustomerAuth);
 
 router.get("/installation-products", getInstallationProductsController);
+
 router.get("/aircon-purchases", getCustomerAirconPurchasesController);
 
 router.get("/requests", getCustomerServiceRequestsController);
 
 router.get("/payments", listMyServicePaymentsController);
+
 router.post(
   "/requests",
   requireCustomerWriteOrigin,

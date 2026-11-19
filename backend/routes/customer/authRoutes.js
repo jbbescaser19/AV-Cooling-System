@@ -15,7 +15,6 @@ import {
 } from "../../controllers/customer/auth/passwordResetController.js";
 
 import { requireCustomerAuth } from "../../middleware/requireCustomerAuth.js";
-
 import { requireCustomerWriteOrigin } from "../../middleware/requireCustomerWriteOrigin.js";
 
 const router = express.Router();
@@ -41,6 +40,21 @@ router.post(
 router.post("/refresh", refreshCustomerSessionController);
 
 router.get("/session", requireCustomerAuth, checkCustomerSessionController);
+
+router.get("/session-status", (req, res) => {
+  res.set("Cache-Control", "no-store");
+
+  if (!req.cookies?.accessToken && !req.cookies?.refreshToken) {
+    return res.json({
+      success: true,
+      authenticated: false,
+    });
+  }
+
+  return requireCustomerAuth(req, res, () =>
+    checkCustomerSessionController(req, res),
+  );
+});
 
 router.post("/logout", logoutCustomerController);
 

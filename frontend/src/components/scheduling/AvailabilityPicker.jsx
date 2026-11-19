@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+
 import api from "../../../api/api.js";
 import useRealtimeRefresh from "../../hooks/useRealtimeRefresh.js";
 import "../../styles/management/booking-calendar.css";
@@ -30,9 +31,22 @@ export default function AvailabilityPicker({
 }) {
   const [month, setMonth] = useState(() => value?.slice(0, 7) || manilaMonth());
 
-  const [days, setDays] = useState([]);
+  const [availability, setAvailability] = useState({
+    month: "",
+    days: [],
+  });
+
+  const loadedMonth = useRef("");
+
+  const originalValue = useRef(
+    allowExistingValue ? (value || "").slice(0, 16) : "",
+  );
+
+  const days = availability.month === month ? availability.days : [];
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
 
   const selectedDate = value?.slice(0, 10) || "";
 
@@ -40,12 +54,45 @@ export default function AvailabilityPicker({
 
   const [revision, setRevision] = useState(0);
 
+  // Primary real-time updates through existing SSE.
   useRealtimeRefresh(["schedules", "orders", "services", "jobs"], setRevision);
+
+  // Booking-specific fallback for missed SSE events.
+  // Runs only while the calendar is open and visible.
+  useEffect(() => {
+    function refreshVisible() {
+      if (document.visibilityState !== "hidden") {
+        setRevision((current) => current + 1);
+      }
+    }
+
+    const interval = window.setInterval(refreshVisible, 10000);
+
+    window.addEventListener("focus", refreshVisible);
+
+    window.addEventListener("online", refreshVisible);
+
+    document.addEventListener("visibilitychange", refreshVisible);
+
+    return () => {
+      window.clearInterval(interval);
+
+      window.removeEventListener("focus", refreshVisible);
+
+      window.removeEventListener("online", refreshVisible);
+
+      document.removeEventListener("visibilitychange", refreshVisible);
+    };
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
 
-    setLoading(true);
+    // Do not repeatedly hide the calendar
+    // during background SSE updates.
+    if (loadedMonth.current !== month) {
+      setLoading(true);
+    }
 
     api
       .get("/api/schedule/availability", {
@@ -54,13 +101,29 @@ export default function AvailabilityPicker({
       })
       .then(({ data }) => {
         if (!controller.signal.aborted) {
-          setDays(data.days || []);
+          if (!data?.success || !Array.isArray(data.days)) {
+            throw new Error("Invalid availability response.");
+          }
+
+          loadedMonth.current = month;
+
+          setAvailability({
+            month,
+            days: data.days,
+          });
+
           setError("");
         }
       })
       .catch((err) => {
         if (!controller.signal.aborted) {
-          setDays([]);
+          loadedMonth.current = "";
+
+          setAvailability({
+            month: "",
+            days: [],
+          });
+
           setError(
             err.response?.data?.message || "Calendar unavailable. Try again.",
           );
@@ -99,13 +162,51 @@ export default function AvailabilityPicker({
 
   const chosenValue = value?.slice(0, 16) || "";
 
-  const persisted = (existingValue || (allowExistingValue ? value : "")).slice(
-    0,
-    16,
-  );
+  // Allow existing confirmed appointments to remain
+  // selected without treating a newly selected
+  // appointment as an existing reservation.
+  const persisted = allowExistingValue
+    ? (existingValue || originalValue.current).slice(0, 16)
+    : "";
 
   const choosingExisting = (option) =>
     allowExistingValue && persisted === `${focusedDate}T${option.start}`;
+
+  // Remove a newly selected appointment if management
+  // closes it or another customer takes its capacity.
+  useEffect(() => {
+    if (
+      disabled ||
+      loading ||
+      error ||
+      !chosenValue ||
+      availability.month !== chosenValue.slice(0, 7) ||
+      (allowExistingValue && persisted === chosenValue)
+    ) {
+      return;
+    }
+
+    const selected = availability.days
+      .find((entry) => entry.date === chosenValue.slice(0, 10))
+      ?.slots.find((slot) => slot.start === chosenValue.slice(11, 16));
+
+    if (!selected?.available || selected.closed || selected.staffUnavailable) {
+      setNotice(
+        "Your selected time is no longer available. Choose another appointment.",
+      );
+
+      onChange("");
+    }
+  }, [
+    availability,
+    chosenValue,
+    persisted,
+    allowExistingValue,
+    disabled,
+    loading,
+    error,
+    onChange,
+  ]);
 
   return (
     <div className="booking-picker" aria-label={label}>
@@ -181,12 +282,20 @@ export default function AvailabilityPicker({
             remaining > 0 ||
             (allowExistingValue && persisted.slice(0, 10) === entry.date);
 
-          const hasBooked = entry.slots.some((slot) => Number(slot.booked) > 0);
+          // A partially closed date is orange,
+          // even when there are no customer bookings.
+          const hasUnavailable = entry.slots.some(
+            (slot) =>
+              Number(slot.booked) > 0 ||
+              slot.closed ||
+              slot.staffUnavailable ||
+              !slot.available,
+          );
 
           const state =
             remaining === 0
               ? "is-full"
-              : hasBooked
+              : hasUnavailable
                 ? "is-partial"
                 : "is-available";
 
@@ -197,8 +306,18 @@ export default function AvailabilityPicker({
               disabled={disabled || loading || !canOpen}
               aria-pressed={focusedDate === entry.date}
               className={`booking-picker__day ${
-                focusedDate === entry.date ? "is-selected" : ""
+                focusedDate === entry.date && state === "is-available"
+                  ? "is-selected"
+                  : ""
               } ${state}`}
+              style={
+                focusedDate === entry.date && state !== "is-available"
+                  ? {
+                      outline: "2px solid rgba(37, 99, 235, 0.18)",
+                      outlineOffset: 1,
+                    }
+                  : undefined
+              }
               onClick={() => setFocusedDate(entry.date)}
               title={
                 canOpen ? `${remaining} slot(s) left` : "No available times"
@@ -218,7 +337,7 @@ export default function AvailabilityPicker({
 
         <span>
           <i className="calendar-dot is-partial" />
-          Some booked
+          Partially booked / closed
         </span>
 
         <span>
@@ -237,7 +356,13 @@ export default function AvailabilityPicker({
         </p>
       )}
 
-      {day && !loading && (
+      {notice && (
+        <p className="booking-picker__error" role="status">
+          {notice}
+        </p>
+      )}
+
+      {day && !loading && !error && (
         <div className="booking-picker__slots">
           <strong>Times for {focusedDate}</strong>
 
@@ -246,7 +371,11 @@ export default function AvailabilityPicker({
 
             const existing = choosingExisting(option);
 
-            const selectable = option.available || existing;
+            const selectable =
+              (option.available &&
+                !option.closed &&
+                !option.staffUnavailable) ||
+              existing;
 
             return (
               <button
@@ -257,7 +386,10 @@ export default function AvailabilityPicker({
                 className={`booking-picker__slot ${
                   chosenValue === current ? "is-selected" : ""
                 }`}
-                onClick={() => onChange(current)}
+                onClick={() => {
+                  setNotice("");
+                  onChange(current);
+                }}
               >
                 <span>{option.label}</span>
 
@@ -297,8 +429,8 @@ export default function AvailabilityPicker({
       )}
 
       <p className="booking-picker__hint">
-        Time slots update as bookings are submitted. Availability is checked
-        again when you save.
+        Availability updates automatically when bookings or closing times
+        change. Availability is checked again when you save.
       </p>
     </div>
   );

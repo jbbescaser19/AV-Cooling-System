@@ -1,10 +1,29 @@
-import { syncGuestCart } from "../../utils/cartStore.js";
-import { useState } from "react";
+import { useRef, useState } from "react";
+
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { Mail, LockKeyhole, Eye, EyeOff, Snowflake } from "lucide-react";
+
+import {
+  Mail,
+  LockKeyhole,
+  Eye,
+  EyeOff,
+  Snowflake,
+  ArrowLeft,
+} from "lucide-react";
 
 import api from "../../../api/api.js";
-import { continuePendingAction } from "../../utils/purchaseFlow";
+
+import { syncGuestCart } from "../../utils/cartStore.js";
+
+import {
+  PENDING_ACTIONS,
+  continuePendingAction,
+  getPendingAction,
+  clearPendingAction,
+  clearDirectCheckout,
+} from "../../utils/purchaseFlow.js";
+
+import { showActionNotice } from "../../utils/confirmAction.jsx";
 
 import "../../styles/auth/auth.css";
 import "../../styles/auth/login.css";
@@ -22,6 +41,8 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const submittingRef = useRef(false);
+
   const handleChange = (event) => {
     const { name, value } = event.target;
 
@@ -33,12 +54,23 @@ export default function LoginPage() {
     setError("");
   };
 
+  function handleBackToHome() {
+    if (submittingRef.current) return;
+
+    clearPendingAction();
+    clearDirectCheckout();
+
+    navigate("/", {
+      replace: true,
+    });
+  }
+
   const handleSubmit = async (event) => {
     event.preventDefault();
 
-    if (loading) {
-      return;
-    }
+    if (submittingRef.current) return;
+
+    submittingRef.current = true;
 
     setError("");
     setLoading(true);
@@ -50,21 +82,55 @@ export default function LoginPage() {
 
       if (!response.data?.success) {
         setError(response.data?.message || "Login failed.");
+
         return;
       }
 
+      const from = location.state?.from || null;
+
+      const pending = getPendingAction();
+
+      let cartWarning = "";
+
       try {
         await syncGuestCart();
-        continuePendingAction(navigate);
       } catch (syncError) {
-        // The user is logged in, but guest items remain safely in localStorage.
+        cartWarning =
+          syncError.response?.data?.message ||
+          "Some previous cart items could not be synced. Please review your cart.";
+      }
+
+      const checkoutRequested =
+        from?.pathname === "/checkout" ||
+        from === "/checkout" ||
+        (!from &&
+          [
+            PENDING_ACTIONS.ORDER_NOW,
+            PENDING_ACTIONS.CHECKOUT_CART,
+            "checkout",
+          ].includes(pending?.type));
+
+      if (cartWarning && checkoutRequested) {
+        clearPendingAction();
+        clearDirectCheckout();
+
         navigate("/cart", {
           replace: true,
           state: {
-            cartWarning:
-              syncError.response?.data?.message ||
-              "Signed in, but your guest cart could not be synced. Remove items or retry.",
+            cartWarning,
           },
+        });
+
+        return;
+      }
+
+      const notice = await continuePendingAction(navigate, from);
+
+      if (notice || cartWarning) {
+        void showActionNotice({
+          title: cartWarning ? "Cart Notice" : notice.title,
+
+          message: [notice?.message, cartWarning].filter(Boolean).join(" "),
         });
       }
     } catch (error) {
@@ -73,6 +139,7 @@ export default function LoginPage() {
           "Login failed. Please check your credentials and try again.",
       );
     } finally {
+      submittingRef.current = false;
       setLoading(false);
     }
   };
@@ -80,11 +147,31 @@ export default function LoginPage() {
   return (
     <div className="auth-shell auth-login-page">
       <form className="auth-card auth-register-card" onSubmit={handleSubmit}>
+        <button
+          type="button"
+          className="btn btn-soft"
+          onClick={handleBackToHome}
+          disabled={loading}
+          style={{
+            justifySelf: "start",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "7px",
+            padding: "7px 12px",
+            fontSize: "0.8rem",
+            minHeight: "34px",
+          }}
+        >
+          <ArrowLeft size={16} aria-hidden="true" />
+          Back to Home
+        </button>
+
         <div className="auth-register-heading">
           <Snowflake size={25} aria-hidden="true" />
 
           <div>
             <div className="eyebrow">AV Cooling System</div>
+
             <h1>Welcome back</h1>
           </div>
         </div>
@@ -116,6 +203,7 @@ export default function LoginPage() {
               autoComplete="email"
               value={formData.email}
               onChange={handleChange}
+              disabled={loading}
               required
             />
           </div>
@@ -142,6 +230,7 @@ export default function LoginPage() {
               autoComplete="current-password"
               value={formData.password}
               onChange={handleChange}
+              disabled={loading}
               required
             />
 
@@ -149,6 +238,7 @@ export default function LoginPage() {
               className="auth-password-toggle"
               type="button"
               aria-label={showPassword ? "Hide password" : "Show password"}
+              disabled={loading}
               onClick={() => setShowPassword((previous) => !previous)}
             >
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -175,7 +265,10 @@ export default function LoginPage() {
         </button>
 
         <p className="auth-register-footer">
-          Don't have an account? <Link to="/register">Create account</Link>
+          Don't have an account?{" "}
+          <Link to="/register" state={location.state}>
+            Create account
+          </Link>
         </p>
       </form>
     </div>

@@ -1,6 +1,7 @@
-/** Dedicated referenceOptions database queries. */
+/** Dedicated reference-options database queries. */
 export function referenceOptionsModel(db) {
   const select = async (sql, values = []) => (await db.execute(sql, values))[0];
+
   return {
     async options() {
       const [
@@ -13,31 +14,97 @@ export function referenceOptionsModel(db) {
         requests,
       ] = await Promise.all([
         select(
-          `SELECT category_id AS id,category_name AS label FROM product_categories WHERE status='ACTIVE' ORDER BY category_name`,
+          `SELECT category_id AS id,
+                  category_name AS label
+           FROM product_categories
+           WHERE status='ACTIVE'
+           ORDER BY category_name`,
         ),
+
         select(
-          `SELECT v.variant_id AS id, CONCAT(p.brand,' ',p.model,' · ',v.horsepower,' HP') AS label,
-                  GREATEST(0, COALESCE(i.on_hand_quantity, 0)-COALESCE(i.reserved_quantity,0)) AS available
-            FROM product_variants v JOIN products p ON p.product_id=v.product_id
-            LEFT JOIN inventory i ON i.variant_id=v.variant_id
-            WHERE p.status='ACTIVE' AND v.status='ACTIVE' ORDER BY p.brand,p.model`,
+          `SELECT v.variant_id AS id,
+                  p.brand,
+                  p.product_name AS productName,
+                  p.model,
+                  v.horsepower AS horsepower,
+                  CAST(
+                    COALESCE(NULLIF(v.promo_price,0),v.srp)
+                    AS DOUBLE
+                  ) AS price,
+                  CONCAT(
+                    p.brand,' ',p.model,' · ',v.horsepower,' HP'
+                  ) AS label,
+                  GREATEST(
+                    0,
+                    COALESCE(i.on_hand_quantity,0)
+                    - COALESCE(i.reserved_quantity,0)
+                  ) AS available
+           FROM product_variants v
+           JOIN products p ON p.product_id=v.product_id
+           LEFT JOIN inventory i ON i.variant_id=v.variant_id
+           WHERE p.status='ACTIVE'
+             AND v.status='ACTIVE'
+           ORDER BY p.brand,p.model`,
         ),
+
         select(
-          `SELECT service_type_id AS id,service_name AS label,service_code AS code FROM service_types WHERE status='ACTIVE' ORDER BY service_name`,
+          `SELECT service_type_id AS id,
+                  service_name AS label,
+                  service_code AS code
+           FROM service_types
+           WHERE status='ACTIVE'
+           ORDER BY service_name`,
         ),
+
         select(
-          `SELECT t.technician_id AS id,u.name AS label FROM technicians t JOIN users u ON u.user_id=t.user_id WHERE t.status='ACTIVE' AND u.status='ACTIVE' ORDER BY u.name`,
+          `SELECT t.technician_id AS id,u.name AS label
+           FROM technicians t
+           JOIN users u ON u.user_id=t.user_id
+           WHERE t.status='ACTIVE'
+             AND u.status='ACTIVE'
+           ORDER BY u.name`,
         ),
+
         select(
-          `SELECT user_id AS id,name AS label FROM users WHERE account_type='STAFF' AND role='TECHNICIAN' AND status='ACTIVE' AND user_id NOT IN (SELECT user_id FROM technicians) ORDER BY name`,
+          `SELECT user_id AS id,name AS label
+           FROM users
+           WHERE account_type='STAFF'
+             AND role='TECHNICIAN'
+             AND status='ACTIVE'
+             AND user_id NOT IN (
+               SELECT user_id FROM technicians
+             )
+           ORDER BY name`,
         ),
+
         select(
-          `SELECT order_id AS id,order_number AS label FROM orders WHERE order_status IN ('CONFIRMED','SCHEDULED','IN_PROGRESS') ORDER BY order_id DESC LIMIT 100`,
+          `SELECT order_id AS id,
+                  CONCAT(
+                    'AV-',YEAR(ordered_at),'-',
+                    CASE
+                      WHEN order_id < 1000000
+                      THEN LPAD(order_id,6,'0')
+                      ELSE CAST(order_id AS CHAR)
+                    END
+                  ) AS label
+           FROM orders
+           WHERE order_status IN (
+             'CONFIRMED','SCHEDULED','IN_PROGRESS'
+           )
+           ORDER BY order_id DESC
+           LIMIT 100`,
         ),
+
         select(
-          `SELECT service_request_id AS id,CONCAT('Service #',service_request_id) AS label FROM service_requests WHERE status='CONFIRMED' ORDER BY service_request_id DESC LIMIT 100`,
+          `SELECT service_request_id AS id,
+                  CONCAT('Service #',service_request_id) AS label
+           FROM service_requests
+           WHERE status='CONFIRMED'
+           ORDER BY service_request_id DESC
+           LIMIT 100`,
         ),
       ]);
+
       return {
         categories,
         variants,

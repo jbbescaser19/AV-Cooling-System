@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import DashboardFinancialCharts from "../../components/management/DashboardFinancialCharts.jsx";
 import {
   ArrowRight,
   CalendarClock,
@@ -165,111 +166,8 @@ function Metric({ icon: Icon, label, value, description, to, tone = "blue" }) {
   );
 }
 
-function PaymentChart({ trends, monthlyItems, generatedAt }) {
-  const [period, setPeriod] = useState("monthly");
-  const source = trends?.[period] ?? (period === "monthly" ? monthlyItems : []);
-  const series = useMemo(
-    () => paymentSeries(source, period, generatedAt),
-    [source, period, generatedAt],
-  );
-  const maximum = Math.max(0, ...series.map((item) => item.amount));
-  const sum = series.reduce((total, item) => total + item.amount, 0);
-  const count = series.reduce((total, item) => total + item.paymentCount, 0);
-
-  return (
-    <section
-      className="live-dashboard__panel"
-      aria-labelledby="payment-trend-heading"
-    >
-      <div className="live-dashboard__panel-heading live-dashboard__trend-heading">
-        <div>
-          <h2 id="payment-trend-heading">Paid payments over time</h2>
-          <p>
-            {PAYMENT_PERIODS[period].description} · Recorded payments marked
-            PAID
-          </p>
-        </div>
-
-        <div className="live-dashboard__trend-summary">
-          <strong className="live-dashboard__panel-emphasis">
-            {money(sum)}
-          </strong>
-          <small>
-            {number(count)} paid {count === 1 ? "payment" : "payments"}
-          </small>
-        </div>
-      </div>
-
-      <div
-        className="live-dashboard__period-picker"
-        role="group"
-        aria-label="Paid payment chart period"
-      >
-        {Object.entries(PAYMENT_PERIODS).map(([key, config]) => (
-          <button
-            type="button"
-            key={key}
-            className={period === key ? "is-active" : ""}
-            aria-pressed={period === key}
-            onClick={() => setPeriod(key)}
-          >
-            {config.label}
-          </button>
-        ))}
-      </div>
-
-      {maximum === 0 ? (
-        <div className="live-dashboard__chart-empty">
-          <TrendingUp size={27} aria-hidden="true" />
-          <strong>No paid payments in this period</strong>
-          <p>
-            Choose another period or record a payment as PAID to see it here.
-          </p>
-        </div>
-      ) : (
-        <div className="live-dashboard__chart-scroll">
-          <div
-            className="live-dashboard__chart"
-            style={{
-              "--paid-chart-columns": series.length,
-              "--paid-chart-min-width": `${series.length * 73}px`,
-            }}
-            role="img"
-            aria-label={series
-              .map(
-                (item) =>
-                  `${item.title}: ${money(item.amount)} (${number(item.paymentCount)} payments)`,
-              )
-              .join(", ")}
-          >
-            {series.map((item) => (
-              <div key={item.key} className="live-dashboard__chart-column">
-                <div className="live-dashboard__chart-bar-area">
-                  <div
-                    className="live-dashboard__chart-bar"
-                    style={{
-                      height:
-                        item.amount === 0
-                          ? "0%"
-                          : `${Math.max(4, (item.amount / maximum) * 100)}%`,
-                    }}
-                    title={`${item.title}: ${money(item.amount)} · ${number(item.paymentCount)} paid payments`}
-                  />
-                </div>
-                <span title={item.title}>{item.label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <p className="live-dashboard__footnote">
-        This chart includes PAID payment records only, not uncollected orders,
-        pending payments or estimated service revenue. Totals above show the
-        selected period.
-      </p>
-    </section>
-  );
+function PaymentChart({ generatedAt }) {
+  return <DashboardFinancialCharts generatedAt={generatedAt} />;
 }
 
 function StatusBreakdown({ title, summary }) {
@@ -574,10 +472,9 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [reload, setReload] = useState(0);
+
   const hasLoadedRef = useRef(false);
 
-  // Do not fetch again simply because the user returned to this tab.
-  // A server-side business change is the refresh trigger.
   useRealtimeRefresh(
     [
       "dashboard",
@@ -595,7 +492,10 @@ export default function DashboardPage() {
   useEffect(() => {
     const controller = new AbortController();
 
-    if (!hasLoadedRef.current) setLoading(true);
+    if (!hasLoadedRef.current) {
+      setLoading(true);
+    }
+
     setError("");
 
     api
@@ -609,6 +509,7 @@ export default function DashboardPage() {
           }
 
           hasLoadedRef.current = true;
+
           setResult(data);
         }
       })
@@ -638,17 +539,17 @@ export default function DashboardPage() {
   }, [reload]);
 
   useEffect(() => {
-    // Keep refresh after a deliberate local staff action.
-    // No focus/visibility listeners or idle 60-second polling.
     const refresh = () => setReload((current) => current + 1);
+
     window.addEventListener("av-management-updated", refresh);
+
     return () => window.removeEventListener("av-management-updated", refresh);
   }, []);
 
   const data = result?.dashboard;
+
   const permissions = data?.permissions || {};
 
-  // Never show company-wide pending requests or forbidden links to technicians.
   if (permissions.technician) {
     return (
       <TechnicianDashboard
@@ -661,59 +562,148 @@ export default function DashboardPage() {
     );
   }
 
+  const financials = permissions.financials ? data?.financials : null;
+
   const metrics = [];
+
+  // Financial cards for Owner and Manager.
+  if (financials) {
+    metrics.push(
+      {
+        label: "Total Revenue",
+
+        value: money(financials.totalRevenue),
+
+        description: "All collected payments after refunds",
+
+        icon: TrendingUp,
+
+        tone: "green",
+      },
+
+      {
+        label: "Product Sales",
+
+        value: money(financials.productSales),
+
+        description: "Collected order payments after refunds",
+
+        icon: ShoppingBag,
+
+        tone: "blue",
+      },
+
+      {
+        label: "Service Revenue",
+
+        value: money(financials.serviceRevenue),
+
+        description: "Collected service payments after refunds",
+
+        icon: Wrench,
+
+        tone: "blue",
+      },
+
+      {
+        label: "Pending Payments",
+
+        value: money(financials.pendingPayments),
+
+        description: "Uncollected orders and service payments",
+
+        icon: CreditCard,
+
+        tone: "amber",
+      },
+    );
+  }
 
   if (permissions.sales) {
     metrics.push(
       {
         label: "All orders",
+
         value: number(data.orders.total),
-        description: "Online and POS orders",
+
+        description: "Online, POS and Facebook orders",
+
         icon: ShoppingBag,
+
         to: "/management/orders",
       },
+
       {
         label: "Pending orders",
+
         value: number(data.orders.pending),
+
         description: "Waiting for action",
+
         icon: Clock3,
+
         to: "/management/orders",
+
         tone: "amber",
       },
-      {
+    );
+
+    // Preserve the existing cashier payment metric.
+    // Avoid duplicating Total Revenue for Owner and Manager.
+    if (!financials) {
+      metrics.push({
         label: "Paid payments",
+
         value: money(data.payments.paidAmount),
+
         description: `${number(
           data.payments.paidCount,
         )} recorded paid payments`,
+
         icon: CreditCard,
+
         tone: "green",
-      },
-      {
-        label: "Active customers",
-        value: number(data.customers.active),
-        description: "Active registered accounts",
-        icon: UsersRound,
-      },
-    );
+      });
+    }
+
+    metrics.push({
+      label: "Active customers",
+
+      value: number(data.customers.active),
+
+      description: "Active registered accounts",
+
+      icon: UsersRound,
+    });
   }
 
   if (permissions.services) {
     metrics.push(
       {
         label: "Pending services",
+
         value: number(data.services.pending),
+
         description: "New requests to review",
+
         icon: Wrench,
+
         to: "/management/service-requests",
+
         tone: "amber",
       },
+
       {
         label: "Completed services",
+
         value: number(data.services.completed),
+
         description: "Service requests completed",
+
         icon: CheckCircle2,
+
         to: "/management/service-requests",
+
         tone: "green",
       },
     );
@@ -722,11 +712,15 @@ export default function DashboardPage() {
   if (permissions.inventory) {
     metrics.push({
       label: "Low-stock variants",
+
       value: number(data.inventory.lowStock),
+
       description: `${number(
         data.inventory.tracked,
       )} variants tracked in MySQL`,
+
       icon: PackageCheck,
+
       tone: data.inventory.lowStock > 0 ? "amber" : "blue",
     });
   }
@@ -809,10 +803,14 @@ export default function DashboardPage() {
 
           <span>
             {error}
+
             {data ? " Showing the last successfully loaded data." : ""}
           </span>
 
-          <button type="button" onClick={() => setReload((n) => n + 1)}>
+          <button
+            type="button"
+            onClick={() => setReload((current) => current + 1)}
+          >
             Try again
           </button>
         </div>
@@ -893,12 +891,20 @@ export default function DashboardPage() {
                 </div>
               )}
 
-              {permissions.sales && (
+              {financials ? (
                 <p className="live-dashboard__footnote">
-                  Pending order value:{" "}
-                  {money(data.orders.awaitingPaymentAmount)}. This is not
-                  collected revenue.
+                  Pending order payments: {money(financials.pendingOrders)}.{" "}
+                  Pending service payments: {money(financials.pendingServices)}.{" "}
+                  These are not collected revenue.
                 </p>
+              ) : (
+                permissions.sales && (
+                  <p className="live-dashboard__footnote">
+                    Pending order value:{" "}
+                    {money(data.orders.awaitingPaymentAmount)}. This is not
+                    collected revenue.
+                  </p>
+                )
               )}
             </section>
           </div>
@@ -946,7 +952,8 @@ export default function DashboardPage() {
           <footer className="live-dashboard__footer">
             <TrendingUp size={16} />
             Data updates after recorded business changes or when you use
-            Refresh. Payment totals use only records marked PAID.
+            Refresh. Revenue excludes pending payments and deducts recorded
+            refunds.
           </footer>
         </>
       )}

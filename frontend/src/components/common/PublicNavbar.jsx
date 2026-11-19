@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link, useLocation } from "react-router-dom";
+
 import { Search, ShoppingCart, User, Menu, X, Snowflake } from "lucide-react";
 
 import "../../styles/ecommerce/navbar.css";
 import "../../styles/ecommerce/navbar-auth.css";
+
 import api from "../../../api/api.js";
-import { getCustomer } from "../../utils/authMock.js";
 
 const links = [
   ["Our Expertise", "/#expertise"],
@@ -17,30 +18,50 @@ const links = [
   ["Contact", "/#contact"],
 ];
 
+function BrandLogo() {
+  const [failed, setFailed] = useState(false);
+
+  return (
+    <span className="brand-mark av-image-brand">
+      {failed ? (
+        <Snowflake size={22} aria-hidden="true" />
+      ) : (
+        <img
+          src="/av-cooling-logo.webp"
+          alt=""
+          width={44}
+          height={44}
+          onError={() => setFailed(true)}
+        />
+      )}
+    </span>
+  );
+}
+
 export default function PublicNavbar() {
   const [open, setOpen] = useState(false);
+  const [authenticated, setAuthenticated] = useState(null);
+
   const location = useLocation();
-  const [authenticated, setAuthenticated] = useState(() =>
-    Boolean(getCustomer()),
-  );
+
+  const loginState = {
+    from: {
+      pathname: location.pathname,
+      search: location.search,
+      hash: location.hash,
+    },
+  };
 
   useEffect(() => {
-    const cachedCustomer = getCustomer();
-
-    if (!cachedCustomer) {
-      setAuthenticated(false);
-      return undefined;
-    }
-
     const controller = new AbortController();
 
     api
-      .get("/api/auth/customer/session", {
+      .get("/api/auth/customer/session-status", {
         signal: controller.signal,
       })
       .then(({ data }) => {
         if (!controller.signal.aborted) {
-          setAuthenticated(Boolean(data?.authenticated));
+          setAuthenticated(data?.authenticated === true);
         }
       })
       .catch((error) => {
@@ -62,6 +83,7 @@ export default function PublicNavbar() {
     if (!open) return undefined;
 
     const previousOverflow = document.body.style.overflow;
+
     document.body.style.overflow = "hidden";
 
     const handleKeyDown = (event) => {
@@ -74,6 +96,7 @@ export default function PublicNavbar() {
 
     return () => {
       document.body.style.overflow = previousOverflow;
+
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [open]);
@@ -100,9 +123,7 @@ export default function PublicNavbar() {
         >
           <div className="mobile-nav-head">
             <div className="mobile-nav-brand">
-              <span className="brand-mark">
-                <Snowflake size={19} />
-              </span>
+              <BrandLogo />
 
               <div>
                 <strong>AV Cooling</strong>
@@ -145,11 +166,12 @@ export default function PublicNavbar() {
             </Link>
           </div>
 
-          {!authenticated && (
+          {authenticated === false && (
             <div className="mobile-nav-auth" aria-label="Customer sign in">
-              <Link to="/login" onClick={closeMenu}>
+              <Link to="/login" state={loginState} onClick={closeMenu}>
                 Log In
               </Link>
+
               <Link to="/register" onClick={closeMenu}>
                 Sign Up
               </Link>
@@ -165,9 +187,7 @@ export default function PublicNavbar() {
       <header className="public-nav">
         <div className="nav-inner">
           <Link to="/" className="brand" aria-label="AV Cooling home">
-            <span className="brand-mark">
-              <Snowflake size={20} />
-            </span>
+            <BrandLogo />
 
             <span>
               <b>AV Cooling</b>
@@ -223,9 +243,12 @@ export default function PublicNavbar() {
             </button>
           </div>
 
-          {!authenticated && (
+          {authenticated === false && (
             <div className="public-nav-auth" aria-label="Customer sign in">
-              <Link to="/login">Log In</Link>
+              <Link to="/login" state={loginState}>
+                Log In
+              </Link>
+
               <Link to="/register">Sign Up</Link>
             </div>
           )}

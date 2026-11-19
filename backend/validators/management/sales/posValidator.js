@@ -3,18 +3,25 @@ import { personName, contactNumber } from "../../shared/personFields.js";
 import { parseBookingStart } from "../../scheduling/bookingScheduleValidator.js";
 import { technicianIdsSchema } from "../services/confirmationAssignmentValidator.js";
 import { parseManagementInput } from "../parseManagementInput.js";
+
 const saleSchema = z
   .strictObject({
     requestKey: z.string().uuid(),
+
+    paymentCode: z.enum(["CASH", "GCASH", "BANK_TRANSFER"]).default("CASH"),
+
     customerName: personName,
     customerPhone: contactNumber,
+
     delivery: z.boolean().default(false),
     installationIncluded: z.boolean().default(false),
+
     deliveryArea: z
       .string()
       .regex(/^[A-Z_]{3,40}$/)
       .nullable()
       .default(null),
+
     items: z
       .array(
         z.strictObject({
@@ -24,16 +31,23 @@ const saleSchema = z
       )
       .min(1)
       .max(30),
+
     discount: z.number().finite().min(0).max(9999999).default(0),
+    discountReason: z.string().trim().max(255).default(""),
+
     additionalFee: z.number().finite().min(0).max(99999.99).default(0),
     additionalFeeReason: z.string().trim().max(255).default(""),
-    cashReceived: z.number().finite().min(0).max(99999999),
+
+    cashReceived: z.number().finite().min(0).max(99999999).default(0),
+    payLater: z.boolean().default(false),
+
     scheduledStart: z
       .string()
       .nullable()
       .default(null)
       .refine((value) => {
         if (value === null) return true;
+
         try {
           parseBookingStart(value);
           return true;
@@ -41,10 +55,34 @@ const saleSchema = z
           return false;
         }
       }, "Choose a future appointment from the calendar."),
+
     serviceAddress: z.string().trim().max(2000).default(""),
     technicianIds: technicianIdsSchema,
   })
   .superRefine((data, context) => {
+    if (
+      data.payLater &&
+      (data.paymentCode !== "CASH" || data.cashReceived !== 0)
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["payLater"],
+        message: "Pay Later requires CASH and zero cash received.",
+      });
+    }
+
+    if (
+      (data.discount > 0 && data.discountReason.length < 5) ||
+      (data.discount === 0 && data.discountReason)
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["discountReason"],
+        message:
+          "Enter a discount reason (5+ characters) only when a discount is applied.",
+      });
+    }
+
     if (data.additionalFee > 0 && data.additionalFeeReason.length < 5) {
       context.addIssue({
         code: "custom",
@@ -52,6 +90,7 @@ const saleSchema = z
         message: "Explain the additional fee (at least 5 characters).",
       });
     }
+
     if (data.additionalFee === 0 && data.additionalFeeReason.length) {
       context.addIssue({
         code: "custom",
@@ -69,6 +108,7 @@ const saleSchema = z
             "For other locations, enter the agreed delivery fee and its reason.",
         });
       }
+
       if (data.serviceAddress.length < 10) {
         context.addIssue({
           code: "custom",
@@ -77,6 +117,7 @@ const saleSchema = z
         });
       }
     }
+
     if (data.installationIncluded && !data.delivery) {
       context.addIssue({
         code: "custom",
@@ -84,6 +125,7 @@ const saleSchema = z
         message: "Installation includes delivery.",
       });
     }
+
     if (data.delivery && (!data.scheduledStart || !data.deliveryArea)) {
       context.addIssue({
         code: "custom",
@@ -91,6 +133,7 @@ const saleSchema = z
         message: "Choose a delivery area and appointment.",
       });
     }
+
     if (!data.delivery && data.scheduledStart) {
       context.addIssue({
         code: "custom",
@@ -98,6 +141,7 @@ const saleSchema = z
         message: "Choose delivery before selecting an appointment.",
       });
     }
+
     if (!data.scheduledStart && data.technicianIds.length) {
       context.addIssue({
         code: "custom",
@@ -106,6 +150,7 @@ const saleSchema = z
           "Technicians can only be assigned for a scheduled installation.",
       });
     }
+
     if (data.scheduledStart && data.serviceAddress.length < 5) {
       context.addIssue({
         code: "custom",
@@ -114,5 +159,6 @@ const saleSchema = z
       });
     }
   });
+
 export const validatePosSale = (value) =>
   parseManagementInput(saleSchema, value);

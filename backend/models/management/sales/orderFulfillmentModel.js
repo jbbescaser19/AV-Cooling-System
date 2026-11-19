@@ -4,7 +4,12 @@ export function orderModel(db) {
     async listOrders() {
       const [rows] = await db.execute(`SELECT
                o.order_id AS id,
-               o.order_number AS reference,
+               o.order_number AS orderNumber,
+               CONCAT('AV-', YEAR(o.ordered_at), '-',
+                 CASE WHEN o.order_id < 1000000
+                   THEN LPAD(o.order_id, 6, '0')
+                   ELSE CAST(o.order_id AS CHAR)
+                 END) AS reference,
                o.order_status AS status,
                o.payment_status AS paymentStatus,
                o.recipient_name AS customer,
@@ -16,7 +21,7 @@ export function orderModel(db) {
                  '%Y-%m-%dT%H:%i'
                ) AS schedule,
                o.ordered_at AS createdAt,
-    
+
                EXISTS (
                  SELECT 1
                  FROM fulfillment_events fe
@@ -24,7 +29,7 @@ export function orderModel(db) {
                    AND fe.record_id = o.order_id
                    AND fe.event_code = 'ORDER_OUT_FOR_DELIVERY'
                ) AS outForDelivery,
-    
+
                EXISTS (
                  SELECT 1
                  FROM fulfillment_events fe
@@ -32,7 +37,7 @@ export function orderModel(db) {
                    AND fe.record_id = o.order_id
                    AND fe.event_code = 'ORDER_DELIVERED'
                ) AS delivered,
-    
+
                EXISTS (
                  SELECT 1
                  FROM fulfillment_events fe
@@ -40,7 +45,7 @@ export function orderModel(db) {
                    AND fe.record_id = o.order_id
                    AND fe.event_code = 'INSTALLATION_STARTED'
                ) AS installationStarted,
-    
+
                (
                  SELECT GROUP_CONCAT(
                    CONCAT(
@@ -53,14 +58,16 @@ export function orderModel(db) {
                  FROM order_items oi
                  WHERE oi.order_id = o.order_id
                ) AS products
-    
+
              FROM orders o
              WHERE o.customer_id IS NOT NULL
                AND o.order_channel = 'ONLINE'
              ORDER BY o.order_id DESC
              LIMIT 100`);
+
       return rows;
     },
+
     async lockOrder(orderNumber) {
       const [rows] = await db.execute(
         `SELECT
@@ -69,45 +76,48 @@ export function orderModel(db) {
                o.order_status AS status,
                o.payment_status AS paymentStatus,
                c.user_id AS userId,
-    
+
                DATE_FORMAT(
                  o.preferred_schedule,
                  '%Y-%m-%dT%H:%i'
                ) AS schedule
-    
+
              FROM orders o
              JOIN customers c
                ON c.customer_id = o.customer_id
-    
+
              WHERE o.order_number = ?
                AND o.order_channel = 'ONLINE'
-    
+
              LIMIT 1
              FOR UPDATE`,
         [orderNumber],
       );
+
       return rows[0] || null;
     },
+
     async setOrderStatus(orderId, status, schedule) {
       await db.execute(
         `UPDATE orders
              SET
                order_status = ?,
-    
+
                preferred_schedule =
                  COALESCE(?, preferred_schedule),
-    
+
                completed_at =
                  CASE
                    WHEN ? = 'COMPLETED'
                    THEN CURRENT_TIMESTAMP
                    ELSE completed_at
                  END
-    
+
              WHERE order_id = ?`,
         [status, schedule, status, orderId],
       );
     },
+
     async addOrderHistory(orderId, previousStatus, nextStatus, staffId, note) {
       await db.execute(
         `INSERT INTO order_status_history

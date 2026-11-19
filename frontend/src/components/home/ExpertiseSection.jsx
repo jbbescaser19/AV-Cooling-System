@@ -1,11 +1,16 @@
-import { services } from "../../data/services";
 import ServiceRequestDialog from "../service/ServiceRequestDialog";
 import useServiceRequestFlow from "../../hooks/useServiceRequestFlow";
+
 import "../../styles/home/expertise.css";
 
 export default function ExpertiseSection() {
-  const { selectedService, requestService, closeServiceRequest } =
-    useServiceRequestFlow("/#expertise");
+  const {
+    services,
+    status,
+    selectedService,
+    requestService,
+    closeServiceRequest,
+  } = useServiceRequestFlow("/#expertise");
 
   return (
     <>
@@ -13,9 +18,11 @@ export default function ExpertiseSection() {
         <div className="container">
           <div className="section-head">
             <div className="eyebrow">Our Expertise</div>
+
             <h2 className="section-title">
               Service built around reliable cooling.
             </h2>
+
             <p className="section-copy">
               From installation to troubleshooting, each service is presented
               clearly so customers can choose the right next step.
@@ -23,9 +30,21 @@ export default function ExpertiseSection() {
           </div>
 
           <div className="expertise-scroll-hint" aria-hidden="true">
-            <span>Explore our six services</span>
+            <span>Explore our available services</span>
             <span>Swipe for more →</span>
           </div>
+
+          {status === "loading" && <p role="status">Loading services…</p>}
+
+          {status === "error" && (
+            <p role="alert">
+              Unable to load current services. Trying again automatically.
+            </p>
+          )}
+
+          {status === "ready" && !services.length && (
+            <p>No services available at the moment.</p>
+          )}
 
           <div
             className="service-grid"
@@ -55,9 +74,12 @@ export default function ExpertiseSection() {
                     <button
                       type="button"
                       className="btn btn-dark service-request-button"
+                      disabled={status !== "ready" || !service.bookable}
                       onClick={() => requestService(service)}
                     >
-                      Request Service
+                      {service.bookable
+                        ? "Request Service"
+                        : "Booking unavailable"}
                     </button>
                   </div>
                 </article>

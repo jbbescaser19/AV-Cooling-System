@@ -30,6 +30,7 @@ import OrdersPage from "./pages/management/OrdersPage";
 import POSPage from "./pages/management/POSPage";
 import InstallationHistoryPage from "./pages/management/InstallationHistoryPage";
 import BookingCalendarPage from "./pages/management/BookingCalendarPage";
+import TechnicianAvailabilityPage from "./pages/management/TechnicianAvailabilityPage";
 import PaymentsPage from "./pages/management/PaymentsPage";
 import ManagementOperationsPage from "./pages/management/ManagementOperationsPage";
 import ManagementWorkspacePage from "./pages/management/ManagementWorkspacePage";
@@ -174,8 +175,8 @@ export default function App() {
           path="schedules"
           element={
             <>
+              <TechnicianAvailabilityPage />
               <TechnicianAssignedJobsPanel />
-              <ManagementWorkspacePage module="schedules" />
             </>
           }
         />

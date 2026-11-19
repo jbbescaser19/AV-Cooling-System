@@ -1,0 +1,256 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<robot generator="Robot 7.5.1 (Python 3.13.17 on win32)" generated="2026-11-19T13:45:02.091118" rpa="false" schemaversion="5">
+<suite id="s1" name="Tests" source="C:\Users\james bryan bescaser\OneDrive\Desktop\webproj\SPavcoolingsys\robot-tests\tests">
+<suite id="s1-s1" name="Cashier" source="C:\Users\james bryan bescaser\OneDrive\Desktop\webproj\SPavcoolingsys\robot-tests\tests\cashier.robot">
+<test id="s1-s1-t1" name="Cashier Can Login And Access POS" line="12">
+<kw name="Open Browser" owner="SeleniumLibrary" type="SETUP">
+<msg time="2026-11-19T13:45:02.744163" level="INFO">Opening browser 'chrome' to base url 'http://localhost:5173'.</msg>
+<arg>${BASE_URL}</arg>
+<arg>chrome</arg>
+<doc>Opens a new browser instance to the optional ``url``.</doc>
+<status status="PASS" start="2026-11-19T13:45:02.743807" elapsed="4.000101"/>
+</kw>
+<kw name="Go To" owner="SeleniumLibrary">
+<msg time="2026-11-19T13:45:06.745668" level="INFO">Opening url 'http://localhost:5173/management/login'</msg>
+<arg>${BASE_URL}/management/login</arg>
+<doc>Navigates the current browser window to the provided ``url``.</doc>
+<status status="PASS" start="2026-11-19T13:45:06.745032" elapsed="1.065878"/>
+</kw>
+<kw name="Wait Until Element Is Visible" owner="SeleniumLibrary">
+<arg>css:input[type="password"]</arg>
+<arg>15s</arg>
+<doc>Waits until the element ``locator`` is visible.</doc>
+<status status="PASS" start="2026-11-19T13:45:07.814894" elapsed="0.088988"/>
+</kw>
+<kw name="Input Text" owner="SeleniumLibrary">
+<msg time="2026-11-19T13:45:07.905891" level="INFO">Typing text 'cash@gmail.com' into text field 'css:input[type="email"]'.</msg>
+<arg>css:input[type="email"]</arg>
+<arg>%{CASHIER_EMAIL}</arg>
+<doc>Types the given ``text`` into the text field identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T13:45:07.905040" elapsed="0.297092"/>
+</kw>
+<kw name="Input Password" owner="SeleniumLibrary">
+<msg time="2026-11-19T13:45:08.203410" level="INFO">Typing password into text field 'css:input[type="password"]'.</msg>
+<msg time="2026-11-19T13:45:08.257615" level="INFO">Temporally setting log level to: NONE</msg>
+<arg>css:input[type="password"]</arg>
+<arg>%{CASHIER_PASSWORD}</arg>
+<doc>Types the given password into the text field identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T13:45:08.202798" elapsed="0.202013"/>
+</kw>
+<kw name="Click Button" owner="SeleniumLibrary">
+<msg time="2026-11-19T13:45:08.406146" level="INFO">Clicking button 'css:button[type="submit"]'.</msg>
+<arg>css:button[type="submit"]</arg>
+<doc>Clicks the button identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T13:45:08.405561" elapsed="0.160742"/>
+</kw>
+<kw name="Wait Until Location Contains" owner="SeleniumLibrary">
+<arg>/management/pos</arg>
+<arg>20s</arg>
+<doc>Waits until the current URL contains ``expected``.</doc>
+<status status="PASS" start="2026-11-19T13:45:08.567124" elapsed="0.726465"/>
+</kw>
+<kw name="Wait Until Page Contains Element" owner="SeleniumLibrary">
+<arg>css:a[href="/management/pos"]</arg>
+<arg>20s</arg>
+<doc>Waits until the element ``locator`` appears on the current page.</doc>
+<status status="PASS" start="2026-11-19T13:45:09.294361" elapsed="0.153160"/>
+</kw>
+<kw name="Wait Until Page Contains Element" owner="SeleniumLibrary">
+<arg>css:a[href="/management/capacity-calculator"]</arg>
+<arg>20s</arg>
+<doc>Waits until the element ``locator`` appears on the current page.</doc>
+<status status="PASS" start="2026-11-19T13:45:09.448149" elapsed="0.014999"/>
+</kw>
+<kw name="Page Should Not Contain Element" owner="SeleniumLibrary">
+<msg time="2026-11-19T13:45:09.492731" level="INFO">Current page does not contain element 'css:a[href="/management/dashboard"]'.</msg>
+<arg>css:a[href="/management/dashboard"]</arg>
+<doc>Verifies that element ``locator`` is not found on the current page.</doc>
+<status status="PASS" start="2026-11-19T13:45:09.464078" elapsed="0.028848"/>
+</kw>
+<kw name="Page Should Not Contain Element" owner="SeleniumLibrary">
+<msg time="2026-11-19T13:45:09.510861" level="INFO">Current page does not contain element 'css:a[href="/management/orders"]'.</msg>
+<arg>css:a[href="/management/orders"]</arg>
+<doc>Verifies that element ``locator`` is not found on the current page.</doc>
+<status status="PASS" start="2026-11-19T13:45:09.493605" elapsed="0.017419"/>
+</kw>
+<kw name="Page Should Not Contain Element" owner="SeleniumLibrary">
+<msg time="2026-11-19T13:45:09.526008" level="INFO">Current page does not contain element 'css:a[href="/management/payments"]'.</msg>
+<arg>css:a[href="/management/payments"]</arg>
+<doc>Verifies that element ``locator`` is not found on the current page.</doc>
+<status status="PASS" start="2026-11-19T13:45:09.511657" elapsed="0.014573"/>
+</kw>
+<kw name="Page Should Not Contain Element" owner="SeleniumLibrary">
+<msg time="2026-11-19T13:45:09.542148" level="INFO">Current page does not contain element 'css:a[href="/management/inventory"]'.</msg>
+<arg>css:a[href="/management/inventory"]</arg>
+<doc>Verifies that element ``locator`` is not found on the current page.</doc>
+<status status="PASS" start="2026-11-19T13:45:09.526895" elapsed="0.015417"/>
+</kw>
+<kw name="Page Should Not Contain Element" owner="SeleniumLibrary">
+<msg time="2026-11-19T13:45:09.557038" level="INFO">Current page does not contain element 'css:a[href="/management/booking-calendar"]'.</msg>
+<arg>css:a[href="/management/booking-calendar"]</arg>
+<doc>Verifies that element ``locator`` is not found on the current page.</doc>
+<status status="PASS" start="2026-11-19T13:45:09.542891" elapsed="0.014334"/>
+</kw>
+<kw name="Log" owner="BuiltIn">
+<msg time="2026-11-19T13:45:09.558730" level="INFO">Cashier sidebar contains POS and Calculator only.</msg>
+<arg>Cashier sidebar contains POS and Calculator only.</arg>
+<doc>Logs the given message with the given level.</doc>
+<status status="PASS" start="2026-11-19T13:45:09.558053" elapsed="0.000783"/>
+</kw>
+<kw name="Close Browser" owner="SeleniumLibrary" type="TEARDOWN">
+<doc>Closes the current browser.</doc>
+<status status="PASS" start="2026-11-19T13:45:09.559615" elapsed="2.599881"/>
+</kw>
+<doc>Verify Cashier can access only POS and Calculator.</doc>
+<status status="PASS" start="2026-11-19T13:45:02.741597" elapsed="9.418311"/>
+</test>
+<doc>Cashier login and role navigation tests</doc>
+<status status="PASS" start="2026-11-19T13:45:02.170181" elapsed="9.991072"/>
+</suite>
+<suite id="s1-s2" name="Smoke" source="C:\Users\james bryan bescaser\OneDrive\Desktop\webproj\SPavcoolingsys\robot-tests\tests\smoke.robot">
+<test id="s1-s2-t1" name="01 - Homepage Loads Successfully" line="13">
+<kw name="Open Browser" owner="SeleniumLibrary" type="SETUP">
+<msg time="2026-11-19T13:45:12.165482" level="INFO">Opening browser 'chrome' to base url 'http://localhost:5173'.</msg>
+<arg>${BASE_URL}</arg>
+<arg>${BROWSER}</arg>
+<doc>Opens a new browser instance to the optional ``url``.</doc>
+<status status="PASS" start="2026-11-19T13:45:12.165126" elapsed="3.427307"/>
+</kw>
+<kw name="Wait Until Page Contains" owner="SeleniumLibrary">
+<arg>AV Cooling</arg>
+<arg>15s</arg>
+<doc>Waits until ``text`` appears on the current page.</doc>
+<status status="PASS" start="2026-11-19T13:45:15.597658" elapsed="0.142615"/>
+</kw>
+<kw name="Page Should Contain Element" owner="SeleniumLibrary">
+<msg time="2026-11-19T13:45:15.757908" level="INFO">Current page contains element 'css:body'.</msg>
+<arg>css:body</arg>
+<doc>Verifies that element ``locator`` is found on the current page.</doc>
+<status status="PASS" start="2026-11-19T13:45:15.741077" elapsed="0.017044"/>
+</kw>
+<kw name="Close Browser" owner="SeleniumLibrary" type="TEARDOWN">
+<doc>Closes the current browser.</doc>
+<status status="PASS" start="2026-11-19T13:45:15.759082" elapsed="2.378257"/>
+</kw>
+<doc>Check if the AV Cooling homepage loads.</doc>
+<status status="PASS" start="2026-11-19T13:45:12.164435" elapsed="5.973156"/>
+</test>
+<test id="s1-s2-t2" name="02 - Shop Page Opens" line="18">
+<kw name="Open Browser" owner="SeleniumLibrary" type="SETUP">
+<msg time="2026-11-19T13:45:18.139226" level="INFO">Opening browser 'chrome' to base url 'http://localhost:5173'.</msg>
+<arg>${BASE_URL}</arg>
+<arg>${BROWSER}</arg>
+<doc>Opens a new browser instance to the optional ``url``.</doc>
+<status status="PASS" start="2026-11-19T13:45:18.138715" elapsed="3.419788"/>
+</kw>
+<kw name="Go To" owner="SeleniumLibrary">
+<msg time="2026-11-19T13:45:21.559887" level="INFO">Opening url 'http://localhost:5173/shop'</msg>
+<arg>${BASE_URL}/shop</arg>
+<doc>Navigates the current browser window to the provided ``url``.</doc>
+<status status="PASS" start="2026-11-19T13:45:21.559317" elapsed="1.234011"/>
+</kw>
+<kw name="Wait Until Page Contains" owner="SeleniumLibrary">
+<arg>Shop</arg>
+<arg>15s</arg>
+<doc>Waits until ``text`` appears on the current page.</doc>
+<status status="PASS" start="2026-11-19T13:45:22.795407" elapsed="0.239715"/>
+</kw>
+<kw name="Location Should Be" owner="SeleniumLibrary">
+<msg time="2026-11-19T13:45:23.232962" level="INFO">Current location is 'http://localhost:5173/shop'.</msg>
+<arg>${BASE_URL}/shop</arg>
+<doc>Verifies that the current URL is exactly ``url``.</doc>
+<status status="PASS" start="2026-11-19T13:45:23.035969" elapsed="0.197201"/>
+</kw>
+<kw name="Close Browser" owner="SeleniumLibrary" type="TEARDOWN">
+<doc>Closes the current browser.</doc>
+<status status="PASS" start="2026-11-19T13:45:23.233987" elapsed="2.459228"/>
+</kw>
+<doc>Check if customers can visit the shop.</doc>
+<status status="PASS" start="2026-11-19T13:45:18.138143" elapsed="7.555400"/>
+</test>
+<test id="s1-s2-t3" name="03 - Services Page Opens" line="24">
+<kw name="Open Browser" owner="SeleniumLibrary" type="SETUP">
+<msg time="2026-11-19T13:45:25.695458" level="INFO">Opening browser 'chrome' to base url 'http://localhost:5173'.</msg>
+<arg>${BASE_URL}</arg>
+<arg>${BROWSER}</arg>
+<doc>Opens a new browser instance to the optional ``url``.</doc>
+<status status="PASS" start="2026-11-19T13:45:25.695202" elapsed="3.624973"/>
+</kw>
+<kw name="Go To" owner="SeleniumLibrary">
+<msg time="2026-11-19T13:45:29.323533" level="INFO">Opening url 'http://localhost:5173/services'</msg>
+<arg>${BASE_URL}/services</arg>
+<doc>Navigates the current browser window to the provided ``url``.</doc>
+<status status="PASS" start="2026-11-19T13:45:29.322076" elapsed="1.198709"/>
+</kw>
+<kw name="Wait Until Page Contains Element" owner="SeleniumLibrary">
+<arg>css:main</arg>
+<arg>15s</arg>
+<doc>Waits until the element ``locator`` appears on the current page.</doc>
+<status status="PASS" start="2026-11-19T13:45:30.544989" elapsed="0.133241"/>
+</kw>
+<kw name="Location Should Be" owner="SeleniumLibrary">
+<msg time="2026-11-19T13:45:30.699880" level="INFO">Current location is 'http://localhost:5173/services'.</msg>
+<arg>${BASE_URL}/services</arg>
+<doc>Verifies that the current URL is exactly ``url``.</doc>
+<status status="PASS" start="2026-11-19T13:45:30.679012" elapsed="0.021085"/>
+</kw>
+<kw name="Close Browser" owner="SeleniumLibrary" type="TEARDOWN">
+<doc>Closes the current browser.</doc>
+<status status="PASS" start="2026-11-19T13:45:30.700928" elapsed="2.636399"/>
+</kw>
+<doc>Check if the services page loads.</doc>
+<status status="PASS" start="2026-11-19T13:45:25.694390" elapsed="7.643458"/>
+</test>
+<test id="s1-s2-t4" name="04 - Management Login Opens" line="30">
+<kw name="Open Browser" owner="SeleniumLibrary" type="SETUP">
+<msg time="2026-11-19T13:45:33.339897" level="INFO">Opening browser 'chrome' to base url 'http://localhost:5173'.</msg>
+<arg>${BASE_URL}</arg>
+<arg>${BROWSER}</arg>
+<doc>Opens a new browser instance to the optional ``url``.</doc>
+<status status="PASS" start="2026-11-19T13:45:33.339562" elapsed="4.089657"/>
+</kw>
+<kw name="Go To" owner="SeleniumLibrary">
+<msg time="2026-11-19T13:45:37.525778" level="INFO">Opening url 'http://localhost:5173/management/login'</msg>
+<arg>${BASE_URL}/management/login</arg>
+<doc>Navigates the current browser window to the provided ``url``.</doc>
+<status status="PASS" start="2026-11-19T13:45:37.525142" elapsed="2.750025"/>
+</kw>
+<kw name="Wait Until Page Contains Element" owner="SeleniumLibrary">
+<arg>css:input[type="password"]</arg>
+<arg>15s</arg>
+<doc>Waits until the element ``locator`` appears on the current page.</doc>
+<status status="PASS" start="2026-11-19T13:45:40.300757" elapsed="0.509129"/>
+</kw>
+<kw name="Page Should Contain Element" owner="SeleniumLibrary">
+<msg time="2026-11-19T13:45:40.922703" level="INFO">Current page contains element 'css:button[type="submit"]'.</msg>
+<arg>css:button[type="submit"]</arg>
+<doc>Verifies that element ``locator`` is found on the current page.</doc>
+<status status="PASS" start="2026-11-19T13:45:40.822163" elapsed="0.101085"/>
+</kw>
+<kw name="Close Browser" owner="SeleniumLibrary" type="TEARDOWN">
+<doc>Closes the current browser.</doc>
+<status status="PASS" start="2026-11-19T13:45:40.926912" elapsed="5.129223"/>
+</kw>
+<doc>Check if the staff login page loads.</doc>
+<status status="PASS" start="2026-11-19T13:45:33.338636" elapsed="12.718336"/>
+</test>
+<doc>Basic automated tests for AV Cooling System</doc>
+<status status="PASS" start="2026-11-19T13:45:12.162079" elapsed="33.898582"/>
+</suite>
+<status status="PASS" start="2026-11-19T13:45:02.093953" elapsed="43.972392"/>
+</suite>
+<statistics>
+<total>
+<stat pass="5" fail="0" skip="0">All Tests</stat>
+</total>
+<tag>
+</tag>
+<suite>
+<stat name="Tests" id="s1" pass="5" fail="0" skip="0">Tests</stat>
+<stat name="Cashier" id="s1-s1" pass="1" fail="0" skip="0">Tests.Cashier</stat>
+<stat name="Smoke" id="s1-s2" pass="4" fail="0" skip="0">Tests.Smoke</stat>
+</suite>
+</statistics>
+<errors>
+</errors>
+</robot>

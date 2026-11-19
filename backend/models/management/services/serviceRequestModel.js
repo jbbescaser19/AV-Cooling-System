@@ -1,43 +1,124 @@
-/** Dedicated serviceRequest database queries. */
 export function serviceRequestModel(db) {
-  const select = async (sql, values = []) => (await db.execute(sql, values))[0];
-  const execute = async (sql, values = []) =>
-    (await db.execute(sql, values))[0];
   return {
-    findServiceRequest(id) {
-      return select(
-        `SELECT service_request_id AS id,c.status AS customerStatus,u.name AS customer,s.contact_number AS phone,s.service_address AS address,s.status FROM service_requests s LEFT JOIN customers c ON c.customer_id=s.customer_id LEFT JOIN users u ON u.user_id=c.user_id WHERE s.service_request_id=? LIMIT 1 FOR UPDATE`,
-        [id],
+    findCustomerByUserId(userId, lock = false) {
+      return db.execute(
+        `SELECT
+           c.customer_id AS customerId,
+           c.phone AS contactNumber,
+           c.status AS customerStatus,
+           u.status AS userStatus
+         FROM customers AS c
+         INNER JOIN users AS u
+           ON u.user_id = c.user_id
+         WHERE u.user_id = ?
+           AND u.account_type = 'CUSTOMER'
+         LIMIT 1 ${lock ? "FOR UPDATE" : ""}`,
+        [userId],
       );
     },
-    facebookServiceComplete(id) {
-      return execute(
-        `UPDATE service_requests SET status='COMPLETED' WHERE service_request_id=? AND facebook_request_id IS NOT NULL AND status='CONFIRMED'`,
-        [id],
+
+    findActiveServices() {
+      return db.execute(
+        `SELECT
+           service_type_id AS serviceTypeId,
+           service_code AS serviceType,
+           service_name AS serviceName,
+           description,
+           base_price AS basePrice
+         FROM service_types
+         WHERE status = 'ACTIVE'
+           AND service_code IS NOT NULL
+         ORDER BY service_type_id`,
       );
     },
-    fbCreateServiceRequest(fb, serviceType) {
-      // Service details come from this staff-confirmed Facebook agreement.
-      const hasAircon = Boolean(
-        fb.aircon_brand && fb.aircon_model && fb.aircon_horsepower,
+
+    findActiveServiceByCode(serviceType) {
+      return db.execute(
+        `SELECT
+           service_type_id AS serviceTypeId,
+           service_code AS serviceType,
+           service_name AS serviceName,
+           base_price AS basePrice
+         FROM service_types
+         WHERE service_code = ?
+           AND status = 'ACTIVE'
+         LIMIT 1`,
+        [serviceType],
       );
-      return execute(
-        `INSERT INTO service_requests(customer_id,service_type_id,service_price,customer_concern,customer_notes,preferred_start,contact_number,service_address,destination_address,status,facebook_request_id,aircon_source,aircon_brand,aircon_model,aircon_horsepower) VALUES (NULL,?,?,?,?,?,?,?,?,'CONFIRMED',?,?,?,?,?)`,
+    },
+
+    createRequest(request) {
+      return db.execute(
+        `INSERT INTO service_requests (
+           customer_id,
+           service_type_id,
+           service_price,
+           preferred_start,
+           contact_number,
+           service_address,
+           destination_address,
+           customer_concern,
+           customer_notes,
+           aircon_source,
+           aircon_order_item_id,
+           aircon_brand,
+           aircon_model,
+           aircon_horsepower,
+           copper_pipe_feet,
+           includes_dismantling,
+           status
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING')`,
         [
-          fb.service_type_id,
-          serviceType.base_price,
-          fb.customer_notes,
-          `Facebook agreement with: ${fb.facebook_account || "Account not recorded"}`,
-          fb.preferred_schedule.replace("T", " "),
-          fb.contact_number,
-          fb.delivery_address,
-          fb.destination_address || null,
-          fb.facebook_request_id,
-          hasAircon ? "CUSTOMER_OWNED" : null,
-          hasAircon ? fb.aircon_brand : null,
-          hasAircon ? fb.aircon_model : null,
-          hasAircon ? fb.aircon_horsepower : null,
+          request.customerId,
+          request.serviceTypeId,
+          request.servicePrice,
+          request.preferredStart,
+          request.contactNumber,
+          request.serviceAddress,
+          request.destinationAddress,
+          request.concern,
+          request.notes,
+          request.aircon?.source ?? null,
+          request.aircon?.orderItemId ?? null,
+          request.aircon?.brand ?? null,
+          request.aircon?.model ?? null,
+          request.aircon?.horsepower ?? null,
+          request.copperFeet,
+          request.includeDismantling ? 1 : 0,
         ],
+      );
+    },
+
+    findRequestsByCustomerId(customerId) {
+      return db.execute(
+        `SELECT
+           sr.service_request_id AS requestId,
+           st.service_code AS serviceType,
+           st.service_name AS serviceName,
+           sr.service_price AS estimatedBasePrice,
+           DATE_FORMAT(
+             sr.preferred_start,
+             '%Y-%m-%d %H:%i:%s'
+           ) AS preferredStart,
+           sr.service_address AS serviceAddress,
+           sr.destination_address AS destinationAddress,
+           sr.customer_concern AS concern,
+           sr.customer_notes AS notes,
+           sr.aircon_source AS airconSource,
+           sr.aircon_brand AS airconBrand,
+           sr.aircon_model AS airconModel,
+           sr.aircon_horsepower AS airconHorsepower,
+           sr.copper_pipe_feet AS copperFeet,
+           sr.includes_dismantling AS includesDismantling,
+           sr.status
+         FROM service_requests AS sr
+         INNER JOIN service_types AS st
+           ON st.service_type_id = sr.service_type_id
+         WHERE sr.customer_id = ?
+           AND sr.customer_deleted_at IS NULL
+         ORDER BY sr.service_request_id DESC
+         LIMIT 100`,
+        [customerId],
       );
     },
   };

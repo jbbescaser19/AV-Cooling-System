@@ -1,0 +1,2131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<robot generator="Robot 7.5.1 (Python 3.13.17 on win32)" generated="2026-11-19T14:39:18.008051" rpa="false" schemaversion="5">
+<suite id="s1" name="Management" source="C:\Users\james bryan bescaser\OneDrive\Desktop\webproj\SPavcoolingsys\robot-tests\tests\management.robot">
+<test id="s1-t1" name="01 - Owner Dashboard" line="14">
+<kw name="Open Browser" owner="SeleniumLibrary" type="SETUP">
+<msg time="2026-11-19T14:39:18.774509" level="INFO">Opening browser 'chrome' to base url 'http://localhost:5173'.</msg>
+<arg>${BASE_URL}</arg>
+<arg>${BROWSER}</arg>
+<doc>Opens a new browser instance to the optional ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:39:18.774162" elapsed="4.460034"/>
+</kw>
+<kw name="Login As Owner">
+<kw name="Get Environment Variable" owner="OperatingSystem">
+<msg time="2026-11-19T14:39:23.248143" level="INFO">${email} = owner@gmail.com</msg>
+<var>${email}</var>
+<arg>OWNER_EMAIL</arg>
+<arg>${EMPTY}</arg>
+<doc>Returns the value of an environment variable with the given name.</doc>
+<status status="PASS" start="2026-11-19T14:39:23.247027" elapsed="0.001283"/>
+</kw>
+<kw name="Get Environment Variable" owner="OperatingSystem">
+<msg time="2026-11-19T14:39:23.249924" level="INFO">${password} = 12345678</msg>
+<var>${password}</var>
+<arg>OWNER_PASSWORD</arg>
+<arg>${EMPTY}</arg>
+<doc>Returns the value of an environment variable with the given name.</doc>
+<status status="PASS" start="2026-11-19T14:39:23.248897" elapsed="0.001184"/>
+</kw>
+<kw name="Skip If" owner="BuiltIn">
+<arg>not $email or not $password</arg>
+<arg>Set OWNER_EMAIL and OWNER_PASSWORD first.</arg>
+<doc>Conditionally stops the current test or task and sets its status to SKIP.</doc>
+<status status="PASS" start="2026-11-19T14:39:23.250639" elapsed="0.002017"/>
+</kw>
+<kw name="Go To" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:39:23.253621" level="INFO">Opening url 'http://localhost:5173/management/login'</msg>
+<arg>${BASE_URL}/management/login</arg>
+<doc>Navigates the current browser window to the provided ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:39:23.253138" elapsed="1.238661"/>
+</kw>
+<kw name="Wait Until Element Is Visible" owner="SeleniumLibrary">
+<arg>css:input[type="email"]</arg>
+<arg>15s</arg>
+<doc>Waits until the element ``locator`` is visible.</doc>
+<status status="PASS" start="2026-11-19T14:39:24.492608" elapsed="0.102132"/>
+</kw>
+<kw name="Input Text" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:39:24.597038" level="INFO">Typing text 'owner@gmail.com' into text field 'css:input[type="email"]'.</msg>
+<arg>css:input[type="email"]</arg>
+<arg>${email}</arg>
+<doc>Types the given ``text`` into the text field identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:39:24.595402" elapsed="0.309042"/>
+</kw>
+<kw name="Input Password" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:39:24.905755" level="INFO">Typing password into text field 'css:input[type="password"]'.</msg>
+<msg time="2026-11-19T14:39:24.955118" level="INFO">Temporally setting log level to: NONE</msg>
+<arg>css:input[type="password"]</arg>
+<arg>${password}</arg>
+<doc>Types the given password into the text field identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:39:24.904993" elapsed="0.164299"/>
+</kw>
+<kw name="Click Button" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:39:25.070112" level="INFO">Clicking button 'css:button[type="submit"]'.</msg>
+<arg>css:button[type="submit"]</arg>
+<doc>Clicks the button identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:39:25.069644" elapsed="0.148295"/>
+</kw>
+<kw name="Wait Until Location Is" owner="SeleniumLibrary">
+<arg>${BASE_URL}/management/dashboard</arg>
+<arg>20s</arg>
+<doc>Waits until the current URL is ``expected``.</doc>
+<status status="PASS" start="2026-11-19T14:39:25.218649" elapsed="0.687326"/>
+</kw>
+<status status="PASS" start="2026-11-19T14:39:23.245773" elapsed="2.660454"/>
+</kw>
+<kw name="Check Management Page">
+<kw name="Go To" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:39:25.908884" level="INFO">Opening url 'http://localhost:5173/management/dashboard'</msg>
+<arg>${BASE_URL}${path}</arg>
+<doc>Navigates the current browser window to the provided ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:39:25.908387" elapsed="0.878929"/>
+</kw>
+<kw name="Wait Until Location Is" owner="SeleniumLibrary">
+<arg>${BASE_URL}${path}</arg>
+<arg>20s</arg>
+<doc>Waits until the current URL is ``expected``.</doc>
+<status status="PASS" start="2026-11-19T14:39:26.787734" elapsed="0.012454"/>
+</kw>
+<kw name="Wait Until Page Contains" owner="SeleniumLibrary">
+<arg>${expected_text}</arg>
+<arg>20s</arg>
+<doc>Waits until ``text`` appears on the current page.</doc>
+<status status="PASS" start="2026-11-19T14:39:26.800814" elapsed="0.113414"/>
+</kw>
+<arg>/management/dashboard</arg>
+<arg>Business dashboard</arg>
+<status status="PASS" start="2026-11-19T14:39:25.907004" elapsed="1.009353"/>
+</kw>
+<kw name="Close Browser" owner="SeleniumLibrary" type="TEARDOWN">
+<doc>Closes the current browser.</doc>
+<status status="PASS" start="2026-11-19T14:39:26.919778" elapsed="2.511250"/>
+</kw>
+<status status="PASS" start="2026-11-19T14:39:18.772521" elapsed="10.658895"/>
+</test>
+<test id="s1-t2" name="02 - POS" line="18">
+<kw name="Open Browser" owner="SeleniumLibrary" type="SETUP">
+<msg time="2026-11-19T14:39:29.433428" level="INFO">Opening browser 'chrome' to base url 'http://localhost:5173'.</msg>
+<arg>${BASE_URL}</arg>
+<arg>${BROWSER}</arg>
+<doc>Opens a new browser instance to the optional ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:39:29.433163" elapsed="3.699445"/>
+</kw>
+<kw name="Login As Owner">
+<kw name="Get Environment Variable" owner="OperatingSystem">
+<msg time="2026-11-19T14:39:33.135273" level="INFO">${email} = owner@gmail.com</msg>
+<var>${email}</var>
+<arg>OWNER_EMAIL</arg>
+<arg>${EMPTY}</arg>
+<doc>Returns the value of an environment variable with the given name.</doc>
+<status status="PASS" start="2026-11-19T14:39:33.134529" elapsed="0.000848"/>
+</kw>
+<kw name="Get Environment Variable" owner="OperatingSystem">
+<msg time="2026-11-19T14:39:33.136677" level="INFO">${password} = 12345678</msg>
+<var>${password}</var>
+<arg>OWNER_PASSWORD</arg>
+<arg>${EMPTY}</arg>
+<doc>Returns the value of an environment variable with the given name.</doc>
+<status status="PASS" start="2026-11-19T14:39:33.135791" elapsed="0.000995"/>
+</kw>
+<kw name="Skip If" owner="BuiltIn">
+<arg>not $email or not $password</arg>
+<arg>Set OWNER_EMAIL and OWNER_PASSWORD first.</arg>
+<doc>Conditionally stops the current test or task and sets its status to SKIP.</doc>
+<status status="PASS" start="2026-11-19T14:39:33.138236" elapsed="0.001709"/>
+</kw>
+<kw name="Go To" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:39:33.141285" level="INFO">Opening url 'http://localhost:5173/management/login'</msg>
+<arg>${BASE_URL}/management/login</arg>
+<doc>Navigates the current browser window to the provided ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:39:33.140663" elapsed="0.998007"/>
+</kw>
+<kw name="Wait Until Element Is Visible" owner="SeleniumLibrary">
+<arg>css:input[type="email"]</arg>
+<arg>15s</arg>
+<doc>Waits until the element ``locator`` is visible.</doc>
+<status status="PASS" start="2026-11-19T14:39:34.139087" elapsed="0.100960"/>
+</kw>
+<kw name="Input Text" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:39:34.244070" level="INFO">Typing text 'owner@gmail.com' into text field 'css:input[type="email"]'.</msg>
+<arg>css:input[type="email"]</arg>
+<arg>${email}</arg>
+<doc>Types the given ``text`` into the text field identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:39:34.240903" elapsed="0.336580"/>
+</kw>
+<kw name="Input Password" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:39:34.578757" level="INFO">Typing password into text field 'css:input[type="password"]'.</msg>
+<msg time="2026-11-19T14:39:34.628313" level="INFO">Temporally setting log level to: NONE</msg>
+<arg>css:input[type="password"]</arg>
+<arg>${password}</arg>
+<doc>Types the given password into the text field identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:39:34.577981" elapsed="0.155332"/>
+</kw>
+<kw name="Click Button" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:39:34.734249" level="INFO">Clicking button 'css:button[type="submit"]'.</msg>
+<arg>css:button[type="submit"]</arg>
+<doc>Clicks the button identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:39:34.733719" elapsed="0.141648"/>
+</kw>
+<kw name="Wait Until Location Is" owner="SeleniumLibrary">
+<arg>${BASE_URL}/management/dashboard</arg>
+<arg>20s</arg>
+<doc>Waits until the current URL is ``expected``.</doc>
+<status status="PASS" start="2026-11-19T14:39:34.875874" elapsed="0.763102"/>
+</kw>
+<status status="PASS" start="2026-11-19T14:39:33.133583" elapsed="2.505760"/>
+</kw>
+<kw name="Check Management Page">
+<kw name="Go To" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:39:35.642080" level="INFO">Opening url 'http://localhost:5173/management/pos'</msg>
+<arg>${BASE_URL}${path}</arg>
+<doc>Navigates the current browser window to the provided ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:39:35.641498" elapsed="0.718441"/>
+</kw>
+<kw name="Wait Until Location Is" owner="SeleniumLibrary">
+<arg>${BASE_URL}${path}</arg>
+<arg>20s</arg>
+<doc>Waits until the current URL is ``expected``.</doc>
+<status status="PASS" start="2026-11-19T14:39:36.360378" elapsed="0.016468"/>
+</kw>
+<kw name="Wait Until Page Contains" owner="SeleniumLibrary">
+<arg>${expected_text}</arg>
+<arg>20s</arg>
+<doc>Waits until ``text`` appears on the current page.</doc>
+<status status="PASS" start="2026-11-19T14:39:36.377728" elapsed="0.159215"/>
+</kw>
+<arg>/management/pos</arg>
+<arg>Walk-in product sales</arg>
+<status status="PASS" start="2026-11-19T14:39:35.640445" elapsed="0.896731"/>
+</kw>
+<kw name="Close Browser" owner="SeleniumLibrary" type="TEARDOWN">
+<doc>Closes the current browser.</doc>
+<status status="PASS" start="2026-11-19T14:39:36.538053" elapsed="2.433967"/>
+</kw>
+<status status="PASS" start="2026-11-19T14:39:29.432285" elapsed="9.540107"/>
+</test>
+<test id="s1-t3" name="03 - Orders" line="22">
+<kw name="Open Browser" owner="SeleniumLibrary" type="SETUP">
+<msg time="2026-11-19T14:39:38.974135" level="INFO">Opening browser 'chrome' to base url 'http://localhost:5173'.</msg>
+<arg>${BASE_URL}</arg>
+<arg>${BROWSER}</arg>
+<doc>Opens a new browser instance to the optional ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:39:38.973869" elapsed="3.361507"/>
+</kw>
+<kw name="Login As Owner">
+<kw name="Get Environment Variable" owner="OperatingSystem">
+<msg time="2026-11-19T14:39:42.339141" level="INFO">${email} = owner@gmail.com</msg>
+<var>${email}</var>
+<arg>OWNER_EMAIL</arg>
+<arg>${EMPTY}</arg>
+<doc>Returns the value of an environment variable with the given name.</doc>
+<status status="PASS" start="2026-11-19T14:39:42.338247" elapsed="0.001024"/>
+</kw>
+<kw name="Get Environment Variable" owner="OperatingSystem">
+<msg time="2026-11-19T14:39:42.340694" level="INFO">${password} = 12345678</msg>
+<var>${password}</var>
+<arg>OWNER_PASSWORD</arg>
+<arg>${EMPTY}</arg>
+<doc>Returns the value of an environment variable with the given name.</doc>
+<status status="PASS" start="2026-11-19T14:39:42.339790" elapsed="0.001024"/>
+</kw>
+<kw name="Skip If" owner="BuiltIn">
+<arg>not $email or not $password</arg>
+<arg>Set OWNER_EMAIL and OWNER_PASSWORD first.</arg>
+<doc>Conditionally stops the current test or task and sets its status to SKIP.</doc>
+<status status="PASS" start="2026-11-19T14:39:42.341552" elapsed="0.001656"/>
+</kw>
+<kw name="Go To" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:39:42.344627" level="INFO">Opening url 'http://localhost:5173/management/login'</msg>
+<arg>${BASE_URL}/management/login</arg>
+<doc>Navigates the current browser window to the provided ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:39:42.343737" elapsed="1.148794"/>
+</kw>
+<kw name="Wait Until Element Is Visible" owner="SeleniumLibrary">
+<arg>css:input[type="email"]</arg>
+<arg>15s</arg>
+<doc>Waits until the element ``locator`` is visible.</doc>
+<status status="PASS" start="2026-11-19T14:39:43.495109" elapsed="0.071546"/>
+</kw>
+<kw name="Input Text" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:39:43.569465" level="INFO">Typing text 'owner@gmail.com' into text field 'css:input[type="email"]'.</msg>
+<arg>css:input[type="email"]</arg>
+<arg>${email}</arg>
+<doc>Types the given ``text`` into the text field identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:39:43.567630" elapsed="0.336168"/>
+</kw>
+<kw name="Input Password" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:39:43.904941" level="INFO">Typing password into text field 'css:input[type="password"]'.</msg>
+<msg time="2026-11-19T14:39:43.953787" level="INFO">Temporally setting log level to: NONE</msg>
+<arg>css:input[type="password"]</arg>
+<arg>${password}</arg>
+<doc>Types the given password into the text field identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:39:43.904181" elapsed="0.159328"/>
+</kw>
+<kw name="Click Button" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:39:44.064500" level="INFO">Clicking button 'css:button[type="submit"]'.</msg>
+<arg>css:button[type="submit"]</arg>
+<doc>Clicks the button identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:39:44.063914" elapsed="0.140887"/>
+</kw>
+<kw name="Wait Until Location Is" owner="SeleniumLibrary">
+<arg>${BASE_URL}/management/dashboard</arg>
+<arg>20s</arg>
+<doc>Waits until the current URL is ``expected``.</doc>
+<status status="PASS" start="2026-11-19T14:39:44.205161" elapsed="0.689941"/>
+</kw>
+<status status="PASS" start="2026-11-19T14:39:42.337349" elapsed="2.558117"/>
+</kw>
+<kw name="Check Management Page">
+<kw name="Go To" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:39:44.897941" level="INFO">Opening url 'http://localhost:5173/management/orders'</msg>
+<arg>${BASE_URL}${path}</arg>
+<doc>Navigates the current browser window to the provided ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:39:44.897423" elapsed="0.732086"/>
+</kw>
+<kw name="Wait Until Location Is" owner="SeleniumLibrary">
+<arg>${BASE_URL}${path}</arg>
+<arg>20s</arg>
+<doc>Waits until the current URL is ``expected``.</doc>
+<status status="PASS" start="2026-11-19T14:39:45.629949" elapsed="0.011932"/>
+</kw>
+<kw name="Wait Until Page Contains" owner="SeleniumLibrary">
+<arg>${expected_text}</arg>
+<arg>20s</arg>
+<doc>Waits until ``text`` appears on the current page.</doc>
+<status status="PASS" start="2026-11-19T14:39:45.642252" elapsed="0.115916"/>
+</kw>
+<arg>/management/orders</arg>
+<arg>All orders</arg>
+<status status="PASS" start="2026-11-19T14:39:44.896404" elapsed="0.862150"/>
+</kw>
+<kw name="Close Browser" owner="SeleniumLibrary" type="TEARDOWN">
+<doc>Closes the current browser.</doc>
+<status status="PASS" start="2026-11-19T14:39:45.760340" elapsed="2.488605"/>
+</kw>
+<status status="PASS" start="2026-11-19T14:39:38.973234" elapsed="9.276040"/>
+</test>
+<test id="s1-t4" name="04 - Service Requests" line="26">
+<kw name="Open Browser" owner="SeleniumLibrary" type="SETUP">
+<msg time="2026-11-19T14:39:48.250747" level="INFO">Opening browser 'chrome' to base url 'http://localhost:5173'.</msg>
+<arg>${BASE_URL}</arg>
+<arg>${BROWSER}</arg>
+<doc>Opens a new browser instance to the optional ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:39:48.250496" elapsed="3.449357"/>
+</kw>
+<kw name="Login As Owner">
+<kw name="Get Environment Variable" owner="OperatingSystem">
+<msg time="2026-11-19T14:39:51.704529" level="INFO">${email} = owner@gmail.com</msg>
+<var>${email}</var>
+<arg>OWNER_EMAIL</arg>
+<arg>${EMPTY}</arg>
+<doc>Returns the value of an environment variable with the given name.</doc>
+<status status="PASS" start="2026-11-19T14:39:51.703428" elapsed="0.001287"/>
+</kw>
+<kw name="Get Environment Variable" owner="OperatingSystem">
+<msg time="2026-11-19T14:39:51.707510" level="INFO">${password} = 12345678</msg>
+<var>${password}</var>
+<arg>OWNER_PASSWORD</arg>
+<arg>${EMPTY}</arg>
+<doc>Returns the value of an environment variable with the given name.</doc>
+<status status="PASS" start="2026-11-19T14:39:51.706002" elapsed="0.001631"/>
+</kw>
+<kw name="Skip If" owner="BuiltIn">
+<arg>not $email or not $password</arg>
+<arg>Set OWNER_EMAIL and OWNER_PASSWORD first.</arg>
+<doc>Conditionally stops the current test or task and sets its status to SKIP.</doc>
+<status status="PASS" start="2026-11-19T14:39:51.708027" elapsed="0.001072"/>
+</kw>
+<kw name="Go To" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:39:51.710141" level="INFO">Opening url 'http://localhost:5173/management/login'</msg>
+<arg>${BASE_URL}/management/login</arg>
+<doc>Navigates the current browser window to the provided ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:39:51.709591" elapsed="0.968195"/>
+</kw>
+<kw name="Wait Until Element Is Visible" owner="SeleniumLibrary">
+<arg>css:input[type="email"]</arg>
+<arg>15s</arg>
+<doc>Waits until the element ``locator`` is visible.</doc>
+<status status="PASS" start="2026-11-19T14:39:52.678357" elapsed="0.083750"/>
+</kw>
+<kw name="Input Text" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:39:52.763830" level="INFO">Typing text 'owner@gmail.com' into text field 'css:input[type="email"]'.</msg>
+<arg>css:input[type="email"]</arg>
+<arg>${email}</arg>
+<doc>Types the given ``text`` into the text field identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:39:52.762864" elapsed="0.377717"/>
+</kw>
+<kw name="Input Password" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:39:53.141975" level="INFO">Typing password into text field 'css:input[type="password"]'.</msg>
+<msg time="2026-11-19T14:39:53.197850" level="INFO">Temporally setting log level to: NONE</msg>
+<arg>css:input[type="password"]</arg>
+<arg>${password}</arg>
+<doc>Types the given password into the text field identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:39:53.141142" elapsed="0.179738"/>
+</kw>
+<kw name="Click Button" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:39:53.321883" level="INFO">Clicking button 'css:button[type="submit"]'.</msg>
+<arg>css:button[type="submit"]</arg>
+<doc>Clicks the button identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:39:53.321301" elapsed="0.145729"/>
+</kw>
+<kw name="Wait Until Location Is" owner="SeleniumLibrary">
+<arg>${BASE_URL}/management/dashboard</arg>
+<arg>20s</arg>
+<doc>Waits until the current URL is ``expected``.</doc>
+<status status="PASS" start="2026-11-19T14:39:53.467409" elapsed="0.700327"/>
+</kw>
+<status status="PASS" start="2026-11-19T14:39:51.702358" elapsed="2.465658"/>
+</kw>
+<kw name="Check Management Page">
+<kw name="Go To" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:39:54.170313" level="INFO">Opening url 'http://localhost:5173/management/service-requests'</msg>
+<arg>${BASE_URL}${path}</arg>
+<doc>Navigates the current browser window to the provided ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:39:54.169795" elapsed="0.724205"/>
+</kw>
+<kw name="Wait Until Location Is" owner="SeleniumLibrary">
+<arg>${BASE_URL}${path}</arg>
+<arg>20s</arg>
+<doc>Waits until the current URL is ``expected``.</doc>
+<status status="PASS" start="2026-11-19T14:39:54.894517" elapsed="0.011084"/>
+</kw>
+<kw name="Wait Until Page Contains" owner="SeleniumLibrary">
+<arg>${expected_text}</arg>
+<arg>20s</arg>
+<doc>Waits until ``text`` appears on the current page.</doc>
+<status status="PASS" start="2026-11-19T14:39:54.906040" elapsed="0.131965"/>
+</kw>
+<arg>/management/service-requests</arg>
+<arg>Service requests</arg>
+<status status="PASS" start="2026-11-19T14:39:54.168811" elapsed="0.869619"/>
+</kw>
+<kw name="Close Browser" owner="SeleniumLibrary" type="TEARDOWN">
+<doc>Closes the current browser.</doc>
+<status status="PASS" start="2026-11-19T14:39:55.040118" elapsed="2.474350"/>
+</kw>
+<status status="PASS" start="2026-11-19T14:39:48.249883" elapsed="9.265040"/>
+</test>
+<test id="s1-t5" name="05 - Payments" line="30">
+<kw name="Open Browser" owner="SeleniumLibrary" type="SETUP">
+<msg time="2026-11-19T14:39:57.517066" level="INFO">Opening browser 'chrome' to base url 'http://localhost:5173'.</msg>
+<arg>${BASE_URL}</arg>
+<arg>${BROWSER}</arg>
+<doc>Opens a new browser instance to the optional ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:39:57.516701" elapsed="3.608422"/>
+</kw>
+<kw name="Login As Owner">
+<kw name="Get Environment Variable" owner="OperatingSystem">
+<msg time="2026-11-19T14:40:01.128326" level="INFO">${email} = owner@gmail.com</msg>
+<var>${email}</var>
+<arg>OWNER_EMAIL</arg>
+<arg>${EMPTY}</arg>
+<doc>Returns the value of an environment variable with the given name.</doc>
+<status status="PASS" start="2026-11-19T14:40:01.127385" elapsed="0.001059"/>
+</kw>
+<kw name="Get Environment Variable" owner="OperatingSystem">
+<msg time="2026-11-19T14:40:01.129891" level="INFO">${password} = 12345678</msg>
+<var>${password}</var>
+<arg>OWNER_PASSWORD</arg>
+<arg>${EMPTY}</arg>
+<doc>Returns the value of an environment variable with the given name.</doc>
+<status status="PASS" start="2026-11-19T14:40:01.128977" elapsed="0.001063"/>
+</kw>
+<kw name="Skip If" owner="BuiltIn">
+<arg>not $email or not $password</arg>
+<arg>Set OWNER_EMAIL and OWNER_PASSWORD first.</arg>
+<doc>Conditionally stops the current test or task and sets its status to SKIP.</doc>
+<status status="PASS" start="2026-11-19T14:40:01.130492" elapsed="0.001315"/>
+</kw>
+<kw name="Go To" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:40:01.132562" level="INFO">Opening url 'http://localhost:5173/management/login'</msg>
+<arg>${BASE_URL}/management/login</arg>
+<doc>Navigates the current browser window to the provided ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:40:01.132178" elapsed="1.056535"/>
+</kw>
+<kw name="Wait Until Element Is Visible" owner="SeleniumLibrary">
+<arg>css:input[type="email"]</arg>
+<arg>15s</arg>
+<doc>Waits until the element ``locator`` is visible.</doc>
+<status status="PASS" start="2026-11-19T14:40:02.189200" elapsed="0.040767"/>
+</kw>
+<kw name="Input Text" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:40:02.231134" level="INFO">Typing text 'owner@gmail.com' into text field 'css:input[type="email"]'.</msg>
+<arg>css:input[type="email"]</arg>
+<arg>${email}</arg>
+<doc>Types the given ``text`` into the text field identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:40:02.230427" elapsed="0.334645"/>
+</kw>
+<kw name="Input Password" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:40:02.566262" level="INFO">Typing password into text field 'css:input[type="password"]'.</msg>
+<msg time="2026-11-19T14:40:02.619334" level="INFO">Temporally setting log level to: NONE</msg>
+<arg>css:input[type="password"]</arg>
+<arg>${password}</arg>
+<doc>Types the given password into the text field identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:40:02.565427" elapsed="0.172195"/>
+</kw>
+<kw name="Click Button" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:40:02.738606" level="INFO">Clicking button 'css:button[type="submit"]'.</msg>
+<arg>css:button[type="submit"]</arg>
+<doc>Clicks the button identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:40:02.738025" elapsed="0.163090"/>
+</kw>
+<kw name="Wait Until Location Is" owner="SeleniumLibrary">
+<arg>${BASE_URL}/management/dashboard</arg>
+<arg>20s</arg>
+<doc>Waits until the current URL is ``expected``.</doc>
+<status status="PASS" start="2026-11-19T14:40:02.901586" elapsed="0.691007"/>
+</kw>
+<status status="PASS" start="2026-11-19T14:40:01.126371" elapsed="2.466602"/>
+</kw>
+<kw name="Check Management Page">
+<kw name="Go To" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:40:03.595322" level="INFO">Opening url 'http://localhost:5173/management/payments'</msg>
+<arg>${BASE_URL}${path}</arg>
+<doc>Navigates the current browser window to the provided ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:40:03.594780" elapsed="0.887010"/>
+</kw>
+<kw name="Wait Until Location Is" owner="SeleniumLibrary">
+<arg>${BASE_URL}${path}</arg>
+<arg>20s</arg>
+<doc>Waits until the current URL is ``expected``.</doc>
+<status status="PASS" start="2026-11-19T14:40:04.483145" elapsed="0.012245"/>
+</kw>
+<kw name="Wait Until Page Contains" owner="SeleniumLibrary">
+<arg>${expected_text}</arg>
+<arg>20s</arg>
+<doc>Waits until ``text`` appears on the current page.</doc>
+<status status="PASS" start="2026-11-19T14:40:04.495784" elapsed="0.110662"/>
+</kw>
+<arg>/management/payments</arg>
+<arg>Payments</arg>
+<status status="PASS" start="2026-11-19T14:40:03.593877" elapsed="1.012906"/>
+</kw>
+<kw name="Close Browser" owner="SeleniumLibrary" type="TEARDOWN">
+<doc>Closes the current browser.</doc>
+<status status="PASS" start="2026-11-19T14:40:04.608106" elapsed="2.437499"/>
+</kw>
+<status status="PASS" start="2026-11-19T14:39:57.515723" elapsed="9.530292"/>
+</test>
+<test id="s1-t6" name="06 - Products And Inventory" line="34">
+<kw name="Open Browser" owner="SeleniumLibrary" type="SETUP">
+<msg time="2026-11-19T14:40:07.048542" level="INFO">Opening browser 'chrome' to base url 'http://localhost:5173'.</msg>
+<arg>${BASE_URL}</arg>
+<arg>${BROWSER}</arg>
+<doc>Opens a new browser instance to the optional ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:40:07.048016" elapsed="3.427354"/>
+</kw>
+<kw name="Login As Owner">
+<kw name="Get Environment Variable" owner="OperatingSystem">
+<msg time="2026-11-19T14:40:10.483388" level="INFO">${email} = owner@gmail.com</msg>
+<var>${email}</var>
+<arg>OWNER_EMAIL</arg>
+<arg>${EMPTY}</arg>
+<doc>Returns the value of an environment variable with the given name.</doc>
+<status status="PASS" start="2026-11-19T14:40:10.482593" elapsed="0.000910"/>
+</kw>
+<kw name="Get Environment Variable" owner="OperatingSystem">
+<msg time="2026-11-19T14:40:10.487376" level="INFO">${password} = 12345678</msg>
+<var>${password}</var>
+<arg>OWNER_PASSWORD</arg>
+<arg>${EMPTY}</arg>
+<doc>Returns the value of an environment variable with the given name.</doc>
+<status status="PASS" start="2026-11-19T14:40:10.484874" elapsed="0.002687"/>
+</kw>
+<kw name="Skip If" owner="BuiltIn">
+<arg>not $email or not $password</arg>
+<arg>Set OWNER_EMAIL and OWNER_PASSWORD first.</arg>
+<doc>Conditionally stops the current test or task and sets its status to SKIP.</doc>
+<status status="PASS" start="2026-11-19T14:40:10.488012" elapsed="0.005223"/>
+</kw>
+<kw name="Go To" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:40:10.502439" level="INFO">Opening url 'http://localhost:5173/management/login'</msg>
+<arg>${BASE_URL}/management/login</arg>
+<doc>Navigates the current browser window to the provided ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:40:10.501298" elapsed="1.124866"/>
+</kw>
+<kw name="Wait Until Element Is Visible" owner="SeleniumLibrary">
+<arg>css:input[type="email"]</arg>
+<arg>15s</arg>
+<doc>Waits until the element ``locator`` is visible.</doc>
+<status status="PASS" start="2026-11-19T14:40:11.627265" elapsed="0.063328"/>
+</kw>
+<kw name="Input Text" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:40:11.691902" level="INFO">Typing text 'owner@gmail.com' into text field 'css:input[type="email"]'.</msg>
+<arg>css:input[type="email"]</arg>
+<arg>${email}</arg>
+<doc>Types the given ``text`` into the text field identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:40:11.691155" elapsed="0.293783"/>
+</kw>
+<kw name="Input Password" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:40:11.985778" level="INFO">Typing password into text field 'css:input[type="password"]'.</msg>
+<msg time="2026-11-19T14:40:12.044024" level="INFO">Temporally setting log level to: NONE</msg>
+<arg>css:input[type="password"]</arg>
+<arg>${password}</arg>
+<doc>Types the given password into the text field identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:40:11.985304" elapsed="0.176154"/>
+</kw>
+<kw name="Click Button" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:40:12.162396" level="INFO">Clicking button 'css:button[type="submit"]'.</msg>
+<arg>css:button[type="submit"]</arg>
+<doc>Clicks the button identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:40:12.161838" elapsed="0.160361"/>
+</kw>
+<kw name="Wait Until Location Is" owner="SeleniumLibrary">
+<arg>${BASE_URL}/management/dashboard</arg>
+<arg>20s</arg>
+<doc>Waits until the current URL is ``expected``.</doc>
+<status status="PASS" start="2026-11-19T14:40:12.322677" elapsed="0.713200"/>
+</kw>
+<status status="PASS" start="2026-11-19T14:40:10.481535" elapsed="2.554643"/>
+</kw>
+<kw name="Check Management Page">
+<kw name="Go To" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:40:13.038447" level="INFO">Opening url 'http://localhost:5173/management/products'</msg>
+<arg>${BASE_URL}${path}</arg>
+<doc>Navigates the current browser window to the provided ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:40:13.037921" elapsed="0.907215"/>
+</kw>
+<kw name="Wait Until Location Is" owner="SeleniumLibrary">
+<arg>${BASE_URL}${path}</arg>
+<arg>20s</arg>
+<doc>Waits until the current URL is ``expected``.</doc>
+<status status="PASS" start="2026-11-19T14:40:13.945540" elapsed="0.011676"/>
+</kw>
+<kw name="Wait Until Page Contains" owner="SeleniumLibrary">
+<arg>${expected_text}</arg>
+<arg>20s</arg>
+<doc>Waits until ``text`` appears on the current page.</doc>
+<status status="PASS" start="2026-11-19T14:40:13.957798" elapsed="0.129144"/>
+</kw>
+<arg>/management/products</arg>
+<arg>Products</arg>
+<status status="PASS" start="2026-11-19T14:40:13.036962" elapsed="1.050296"/>
+</kw>
+<kw name="Check Management Page">
+<kw name="Go To" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:40:14.089909" level="INFO">Opening url 'http://localhost:5173/management/variants'</msg>
+<arg>${BASE_URL}${path}</arg>
+<doc>Navigates the current browser window to the provided ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:40:14.089426" elapsed="0.901600"/>
+</kw>
+<kw name="Wait Until Location Is" owner="SeleniumLibrary">
+<arg>${BASE_URL}${path}</arg>
+<arg>20s</arg>
+<doc>Waits until the current URL is ``expected``.</doc>
+<status status="PASS" start="2026-11-19T14:40:14.991616" elapsed="0.019238"/>
+</kw>
+<kw name="Wait Until Page Contains" owner="SeleniumLibrary">
+<arg>${expected_text}</arg>
+<arg>20s</arg>
+<doc>Waits until ``text`` appears on the current page.</doc>
+<status status="PASS" start="2026-11-19T14:40:15.011309" elapsed="0.128786"/>
+</kw>
+<arg>/management/variants</arg>
+<arg>Variants</arg>
+<status status="PASS" start="2026-11-19T14:40:14.088156" elapsed="1.052357"/>
+</kw>
+<kw name="Check Management Page">
+<kw name="Go To" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:40:15.143206" level="INFO">Opening url 'http://localhost:5173/management/categories'</msg>
+<arg>${BASE_URL}${path}</arg>
+<doc>Navigates the current browser window to the provided ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:40:15.142806" elapsed="0.886324"/>
+</kw>
+<kw name="Wait Until Location Is" owner="SeleniumLibrary">
+<arg>${BASE_URL}${path}</arg>
+<arg>20s</arg>
+<doc>Waits until the current URL is ``expected``.</doc>
+<status status="PASS" start="2026-11-19T14:40:16.029454" elapsed="0.011649"/>
+</kw>
+<kw name="Wait Until Page Contains" owner="SeleniumLibrary">
+<arg>${expected_text}</arg>
+<arg>20s</arg>
+<doc>Waits until ``text`` appears on the current page.</doc>
+<status status="PASS" start="2026-11-19T14:40:16.041501" elapsed="0.313759"/>
+</kw>
+<arg>/management/categories</arg>
+<arg>Categories</arg>
+<status status="PASS" start="2026-11-19T14:40:15.141883" elapsed="1.213758"/>
+</kw>
+<kw name="Check Management Page">
+<kw name="Go To" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:40:16.358238" level="INFO">Opening url 'http://localhost:5173/management/inventory'</msg>
+<arg>${BASE_URL}${path}</arg>
+<doc>Navigates the current browser window to the provided ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:40:16.357601" elapsed="0.615111"/>
+</kw>
+<kw name="Wait Until Location Is" owner="SeleniumLibrary">
+<arg>${BASE_URL}${path}</arg>
+<arg>20s</arg>
+<doc>Waits until the current URL is ``expected``.</doc>
+<status status="PASS" start="2026-11-19T14:40:16.973637" elapsed="0.012231"/>
+</kw>
+<kw name="Wait Until Page Contains" owner="SeleniumLibrary">
+<arg>${expected_text}</arg>
+<arg>20s</arg>
+<doc>Waits until ``text`` appears on the current page.</doc>
+<status status="PASS" start="2026-11-19T14:40:16.986588" elapsed="0.114913"/>
+</kw>
+<arg>/management/inventory</arg>
+<arg>Inventory</arg>
+<status status="PASS" start="2026-11-19T14:40:16.356599" elapsed="0.745231"/>
+</kw>
+<kw name="Check Management Page">
+<kw name="Go To" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:40:17.104550" level="INFO">Opening url 'http://localhost:5173/management/stock-movements'</msg>
+<arg>${BASE_URL}${path}</arg>
+<doc>Navigates the current browser window to the provided ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:40:17.103852" elapsed="0.749570"/>
+</kw>
+<kw name="Wait Until Location Is" owner="SeleniumLibrary">
+<arg>${BASE_URL}${path}</arg>
+<arg>20s</arg>
+<doc>Waits until the current URL is ``expected``.</doc>
+<status status="PASS" start="2026-11-19T14:40:17.854037" elapsed="0.010082"/>
+</kw>
+<kw name="Wait Until Page Contains" owner="SeleniumLibrary">
+<arg>${expected_text}</arg>
+<arg>20s</arg>
+<doc>Waits until ``text`` appears on the current page.</doc>
+<status status="PASS" start="2026-11-19T14:40:17.864585" elapsed="0.248095"/>
+</kw>
+<arg>/management/stock-movements</arg>
+<arg>Stock Movements</arg>
+<status status="PASS" start="2026-11-19T14:40:17.102584" elapsed="1.010291"/>
+</kw>
+<kw name="Close Browser" owner="SeleniumLibrary" type="TEARDOWN">
+<doc>Closes the current browser.</doc>
+<status status="PASS" start="2026-11-19T14:40:18.113503" elapsed="2.351419"/>
+</kw>
+<status status="PASS" start="2026-11-19T14:40:07.046969" elapsed="13.418297"/>
+</test>
+<test id="s1-t7" name="07 - Booking Calendar" line="42">
+<kw name="Open Browser" owner="SeleniumLibrary" type="SETUP">
+<msg time="2026-11-19T14:40:20.467350" level="INFO">Opening browser 'chrome' to base url 'http://localhost:5173'.</msg>
+<arg>${BASE_URL}</arg>
+<arg>${BROWSER}</arg>
+<doc>Opens a new browser instance to the optional ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:40:20.467079" elapsed="3.317075"/>
+</kw>
+<kw name="Login As Owner">
+<kw name="Get Environment Variable" owner="OperatingSystem">
+<msg time="2026-11-19T14:40:23.791476" level="INFO">${email} = owner@gmail.com</msg>
+<var>${email}</var>
+<arg>OWNER_EMAIL</arg>
+<arg>${EMPTY}</arg>
+<doc>Returns the value of an environment variable with the given name.</doc>
+<status status="PASS" start="2026-11-19T14:40:23.790450" elapsed="0.001131"/>
+</kw>
+<kw name="Get Environment Variable" owner="OperatingSystem">
+<msg time="2026-11-19T14:40:23.792436" level="INFO">${password} = 12345678</msg>
+<var>${password}</var>
+<arg>OWNER_PASSWORD</arg>
+<arg>${EMPTY}</arg>
+<doc>Returns the value of an environment variable with the given name.</doc>
+<status status="PASS" start="2026-11-19T14:40:23.791913" elapsed="0.000632"/>
+</kw>
+<kw name="Skip If" owner="BuiltIn">
+<arg>not $email or not $password</arg>
+<arg>Set OWNER_EMAIL and OWNER_PASSWORD first.</arg>
+<doc>Conditionally stops the current test or task and sets its status to SKIP.</doc>
+<status status="PASS" start="2026-11-19T14:40:23.792982" elapsed="0.001274"/>
+</kw>
+<kw name="Go To" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:40:23.795091" level="INFO">Opening url 'http://localhost:5173/management/login'</msg>
+<arg>${BASE_URL}/management/login</arg>
+<doc>Navigates the current browser window to the provided ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:40:23.794659" elapsed="1.093440"/>
+</kw>
+<kw name="Wait Until Element Is Visible" owner="SeleniumLibrary">
+<arg>css:input[type="email"]</arg>
+<arg>15s</arg>
+<doc>Waits until the element ``locator`` is visible.</doc>
+<status status="PASS" start="2026-11-19T14:40:24.889097" elapsed="0.055949"/>
+</kw>
+<kw name="Input Text" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:40:24.946719" level="INFO">Typing text 'owner@gmail.com' into text field 'css:input[type="email"]'.</msg>
+<arg>css:input[type="email"]</arg>
+<arg>${email}</arg>
+<doc>Types the given ``text`` into the text field identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:40:24.945718" elapsed="0.312587"/>
+</kw>
+<kw name="Input Password" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:40:25.259321" level="INFO">Typing password into text field 'css:input[type="password"]'.</msg>
+<msg time="2026-11-19T14:40:25.310136" level="INFO">Temporally setting log level to: NONE</msg>
+<arg>css:input[type="password"]</arg>
+<arg>${password}</arg>
+<doc>Types the given password into the text field identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:40:25.258728" elapsed="0.158149"/>
+</kw>
+<kw name="Click Button" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:40:25.417909" level="INFO">Clicking button 'css:button[type="submit"]'.</msg>
+<arg>css:button[type="submit"]</arg>
+<doc>Clicks the button identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:40:25.417303" elapsed="0.158357"/>
+</kw>
+<kw name="Wait Until Location Is" owner="SeleniumLibrary">
+<arg>${BASE_URL}/management/dashboard</arg>
+<arg>20s</arg>
+<doc>Waits until the current URL is ``expected``.</doc>
+<status status="PASS" start="2026-11-19T14:40:25.576328" elapsed="0.680674"/>
+</kw>
+<status status="PASS" start="2026-11-19T14:40:23.789391" elapsed="2.467885"/>
+</kw>
+<kw name="Check Management Page">
+<kw name="Go To" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:40:26.260406" level="INFO">Opening url 'http://localhost:5173/management/booking-calendar'</msg>
+<arg>${BASE_URL}${path}</arg>
+<doc>Navigates the current browser window to the provided ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:40:26.259812" elapsed="0.828796"/>
+</kw>
+<kw name="Wait Until Location Is" owner="SeleniumLibrary">
+<arg>${BASE_URL}${path}</arg>
+<arg>20s</arg>
+<doc>Waits until the current URL is ``expected``.</doc>
+<status status="PASS" start="2026-11-19T14:40:27.089057" elapsed="0.013279"/>
+</kw>
+<kw name="Wait Until Page Contains" owner="SeleniumLibrary">
+<arg>${expected_text}</arg>
+<arg>20s</arg>
+<doc>Waits until ``text`` appears on the current page.</doc>
+<status status="PASS" start="2026-11-19T14:40:27.102932" elapsed="0.184335"/>
+</kw>
+<arg>/management/booking-calendar</arg>
+<arg>Booking Calendar</arg>
+<status status="PASS" start="2026-11-19T14:40:26.258655" elapsed="1.028841"/>
+</kw>
+<kw name="Close Browser" owner="SeleniumLibrary" type="TEARDOWN">
+<doc>Closes the current browser.</doc>
+<status status="PASS" start="2026-11-19T14:40:27.288302" elapsed="2.391525"/>
+</kw>
+<status status="PASS" start="2026-11-19T14:40:20.466101" elapsed="9.214179"/>
+</test>
+<test id="s1-t8" name="08 - Technician Availability" line="46">
+<kw name="Open Browser" owner="SeleniumLibrary" type="SETUP">
+<msg time="2026-11-19T14:40:29.682578" level="INFO">Opening browser 'chrome' to base url 'http://localhost:5173'.</msg>
+<arg>${BASE_URL}</arg>
+<arg>${BROWSER}</arg>
+<doc>Opens a new browser instance to the optional ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:40:29.682179" elapsed="3.324651"/>
+</kw>
+<kw name="Login As Owner">
+<kw name="Get Environment Variable" owner="OperatingSystem">
+<msg time="2026-11-19T14:40:33.010443" level="INFO">${email} = owner@gmail.com</msg>
+<var>${email}</var>
+<arg>OWNER_EMAIL</arg>
+<arg>${EMPTY}</arg>
+<doc>Returns the value of an environment variable with the given name.</doc>
+<status status="PASS" start="2026-11-19T14:40:33.009668" elapsed="0.000892"/>
+</kw>
+<kw name="Get Environment Variable" owner="OperatingSystem">
+<msg time="2026-11-19T14:40:33.011632" level="INFO">${password} = 12345678</msg>
+<var>${password}</var>
+<arg>OWNER_PASSWORD</arg>
+<arg>${EMPTY}</arg>
+<doc>Returns the value of an environment variable with the given name.</doc>
+<status status="PASS" start="2026-11-19T14:40:33.010959" elapsed="0.000777"/>
+</kw>
+<kw name="Skip If" owner="BuiltIn">
+<arg>not $email or not $password</arg>
+<arg>Set OWNER_EMAIL and OWNER_PASSWORD first.</arg>
+<doc>Conditionally stops the current test or task and sets its status to SKIP.</doc>
+<status status="PASS" start="2026-11-19T14:40:33.012296" elapsed="0.001336"/>
+</kw>
+<kw name="Go To" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:40:33.014903" level="INFO">Opening url 'http://localhost:5173/management/login'</msg>
+<arg>${BASE_URL}/management/login</arg>
+<doc>Navigates the current browser window to the provided ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:40:33.014201" elapsed="1.015891"/>
+</kw>
+<kw name="Wait Until Element Is Visible" owner="SeleniumLibrary">
+<arg>css:input[type="email"]</arg>
+<arg>15s</arg>
+<doc>Waits until the element ``locator`` is visible.</doc>
+<status status="PASS" start="2026-11-19T14:40:34.030987" elapsed="0.066236"/>
+</kw>
+<kw name="Input Text" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:40:34.098477" level="INFO">Typing text 'owner@gmail.com' into text field 'css:input[type="email"]'.</msg>
+<arg>css:input[type="email"]</arg>
+<arg>${email}</arg>
+<doc>Types the given ``text`` into the text field identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:40:34.097696" elapsed="0.298567"/>
+</kw>
+<kw name="Input Password" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:40:34.397075" level="INFO">Typing password into text field 'css:input[type="password"]'.</msg>
+<msg time="2026-11-19T14:40:34.446859" level="INFO">Temporally setting log level to: NONE</msg>
+<arg>css:input[type="password"]</arg>
+<arg>${password}</arg>
+<doc>Types the given password into the text field identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:40:34.396601" elapsed="0.161216"/>
+</kw>
+<kw name="Click Button" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:40:34.558525" level="INFO">Clicking button 'css:button[type="submit"]'.</msg>
+<arg>css:button[type="submit"]</arg>
+<doc>Clicks the button identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:40:34.558130" elapsed="0.135547"/>
+</kw>
+<kw name="Wait Until Location Is" owner="SeleniumLibrary">
+<arg>${BASE_URL}/management/dashboard</arg>
+<arg>20s</arg>
+<doc>Waits until the current URL is ``expected``.</doc>
+<status status="PASS" start="2026-11-19T14:40:34.694221" elapsed="0.650961"/>
+</kw>
+<status status="PASS" start="2026-11-19T14:40:33.008835" elapsed="2.336776"/>
+</kw>
+<kw name="Check Management Page">
+<kw name="Go To" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:40:35.348309" level="INFO">Opening url 'http://localhost:5173/management/schedules'</msg>
+<arg>${BASE_URL}${path}</arg>
+<doc>Navigates the current browser window to the provided ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:40:35.347801" elapsed="0.892662"/>
+</kw>
+<kw name="Wait Until Location Is" owner="SeleniumLibrary">
+<arg>${BASE_URL}${path}</arg>
+<arg>20s</arg>
+<doc>Waits until the current URL is ``expected``.</doc>
+<status status="PASS" start="2026-11-19T14:40:36.240824" elapsed="0.015860"/>
+</kw>
+<kw name="Wait Until Page Contains" owner="SeleniumLibrary">
+<arg>${expected_text}</arg>
+<arg>20s</arg>
+<doc>Waits until ``text`` appears on the current page.</doc>
+<status status="PASS" start="2026-11-19T14:40:36.257273" elapsed="0.259150"/>
+</kw>
+<arg>/management/schedules</arg>
+<arg>Technician Availability</arg>
+<status status="PASS" start="2026-11-19T14:40:35.346639" elapsed="1.170050"/>
+</kw>
+<kw name="Close Browser" owner="SeleniumLibrary" type="TEARDOWN">
+<doc>Closes the current browser.</doc>
+<status status="PASS" start="2026-11-19T14:40:36.517497" elapsed="2.476227"/>
+</kw>
+<status status="PASS" start="2026-11-19T14:40:29.681305" elapsed="9.315861"/>
+</test>
+<test id="s1-t9" name="09 - Completed Jobs History" line="50">
+<kw name="Open Browser" owner="SeleniumLibrary" type="SETUP">
+<msg time="2026-11-19T14:40:39.032118" level="INFO">Opening browser 'chrome' to base url 'http://localhost:5173'.</msg>
+<arg>${BASE_URL}</arg>
+<arg>${BROWSER}</arg>
+<doc>Opens a new browser instance to the optional ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:40:39.031267" elapsed="4.730852"/>
+</kw>
+<kw name="Login As Owner">
+<kw name="Get Environment Variable" owner="OperatingSystem">
+<msg time="2026-11-19T14:40:43.770324" level="INFO">${email} = owner@gmail.com</msg>
+<var>${email}</var>
+<arg>OWNER_EMAIL</arg>
+<arg>${EMPTY}</arg>
+<doc>Returns the value of an environment variable with the given name.</doc>
+<status status="PASS" start="2026-11-19T14:40:43.769463" elapsed="0.000974"/>
+</kw>
+<kw name="Get Environment Variable" owner="OperatingSystem">
+<msg time="2026-11-19T14:40:43.771731" level="INFO">${password} = 12345678</msg>
+<var>${password}</var>
+<arg>OWNER_PASSWORD</arg>
+<arg>${EMPTY}</arg>
+<doc>Returns the value of an environment variable with the given name.</doc>
+<status status="PASS" start="2026-11-19T14:40:43.770870" elapsed="0.000975"/>
+</kw>
+<kw name="Skip If" owner="BuiltIn">
+<arg>not $email or not $password</arg>
+<arg>Set OWNER_EMAIL and OWNER_PASSWORD first.</arg>
+<doc>Conditionally stops the current test or task and sets its status to SKIP.</doc>
+<status status="PASS" start="2026-11-19T14:40:43.772330" elapsed="0.004817"/>
+</kw>
+<kw name="Go To" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:40:43.778185" level="INFO">Opening url 'http://localhost:5173/management/login'</msg>
+<arg>${BASE_URL}/management/login</arg>
+<doc>Navigates the current browser window to the provided ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:40:43.777627" elapsed="1.277416"/>
+</kw>
+<kw name="Wait Until Element Is Visible" owner="SeleniumLibrary">
+<arg>css:input[type="email"]</arg>
+<arg>15s</arg>
+<doc>Waits until the element ``locator`` is visible.</doc>
+<status status="PASS" start="2026-11-19T14:40:45.055675" elapsed="0.118498"/>
+</kw>
+<kw name="Input Text" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:40:45.175997" level="INFO">Typing text 'owner@gmail.com' into text field 'css:input[type="email"]'.</msg>
+<arg>css:input[type="email"]</arg>
+<arg>${email}</arg>
+<doc>Types the given ``text`` into the text field identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:40:45.174800" elapsed="0.315746"/>
+</kw>
+<kw name="Input Password" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:40:45.491832" level="INFO">Typing password into text field 'css:input[type="password"]'.</msg>
+<msg time="2026-11-19T14:40:45.566047" level="INFO">Temporally setting log level to: NONE</msg>
+<arg>css:input[type="password"]</arg>
+<arg>${password}</arg>
+<doc>Types the given password into the text field identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:40:45.491062" elapsed="0.218678"/>
+</kw>
+<kw name="Click Button" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:40:45.711184" level="INFO">Clicking button 'css:button[type="submit"]'.</msg>
+<arg>css:button[type="submit"]</arg>
+<doc>Clicks the button identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:40:45.710453" elapsed="0.203588"/>
+</kw>
+<kw name="Wait Until Location Is" owner="SeleniumLibrary">
+<arg>${BASE_URL}/management/dashboard</arg>
+<arg>20s</arg>
+<doc>Waits until the current URL is ``expected``.</doc>
+<status status="PASS" start="2026-11-19T14:40:45.914676" elapsed="0.737878"/>
+</kw>
+<status status="PASS" start="2026-11-19T14:40:43.768558" elapsed="2.884309"/>
+</kw>
+<kw name="Check Management Page">
+<kw name="Go To" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:40:46.655667" level="INFO">Opening url 'http://localhost:5173/management/installation-history'</msg>
+<arg>${BASE_URL}${path}</arg>
+<doc>Navigates the current browser window to the provided ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:40:46.655164" elapsed="1.047051"/>
+</kw>
+<kw name="Wait Until Location Is" owner="SeleniumLibrary">
+<arg>${BASE_URL}${path}</arg>
+<arg>20s</arg>
+<doc>Waits until the current URL is ``expected``.</doc>
+<status status="PASS" start="2026-11-19T14:40:47.702540" elapsed="0.012698"/>
+</kw>
+<kw name="Wait Until Page Contains" owner="SeleniumLibrary">
+<arg>${expected_text}</arg>
+<arg>20s</arg>
+<doc>Waits until ``text`` appears on the current page.</doc>
+<status status="PASS" start="2026-11-19T14:40:47.716047" elapsed="0.242443"/>
+</kw>
+<arg>/management/installation-history</arg>
+<arg>Completed Jobs History</arg>
+<status status="PASS" start="2026-11-19T14:40:46.654255" elapsed="1.305049"/>
+</kw>
+<kw name="Close Browser" owner="SeleniumLibrary" type="TEARDOWN">
+<doc>Closes the current browser.</doc>
+<status status="PASS" start="2026-11-19T14:40:47.962231" elapsed="2.868915"/>
+</kw>
+<status status="PASS" start="2026-11-19T14:40:39.022026" elapsed="11.809454"/>
+</test>
+<test id="s1-t10" name="10 - Facebook Agreements" line="56">
+<kw name="Open Browser" owner="SeleniumLibrary" type="SETUP">
+<msg time="2026-11-19T14:40:50.833410" level="INFO">Opening browser 'chrome' to base url 'http://localhost:5173'.</msg>
+<arg>${BASE_URL}</arg>
+<arg>${BROWSER}</arg>
+<doc>Opens a new browser instance to the optional ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:40:50.833107" elapsed="3.562513"/>
+</kw>
+<kw name="Login As Owner">
+<kw name="Get Environment Variable" owner="OperatingSystem">
+<msg time="2026-11-19T14:40:54.398418" level="INFO">${email} = owner@gmail.com</msg>
+<var>${email}</var>
+<arg>OWNER_EMAIL</arg>
+<arg>${EMPTY}</arg>
+<doc>Returns the value of an environment variable with the given name.</doc>
+<status status="PASS" start="2026-11-19T14:40:54.397682" elapsed="0.000835"/>
+</kw>
+<kw name="Get Environment Variable" owner="OperatingSystem">
+<msg time="2026-11-19T14:40:54.399889" level="INFO">${password} = 12345678</msg>
+<var>${password}</var>
+<arg>OWNER_PASSWORD</arg>
+<arg>${EMPTY}</arg>
+<doc>Returns the value of an environment variable with the given name.</doc>
+<status status="PASS" start="2026-11-19T14:40:54.398955" elapsed="0.001122"/>
+</kw>
+<kw name="Skip If" owner="BuiltIn">
+<arg>not $email or not $password</arg>
+<arg>Set OWNER_EMAIL and OWNER_PASSWORD first.</arg>
+<doc>Conditionally stops the current test or task and sets its status to SKIP.</doc>
+<status status="PASS" start="2026-11-19T14:40:54.400578" elapsed="0.002479"/>
+</kw>
+<kw name="Go To" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:40:54.404446" level="INFO">Opening url 'http://localhost:5173/management/login'</msg>
+<arg>${BASE_URL}/management/login</arg>
+<doc>Navigates the current browser window to the provided ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:40:54.403827" elapsed="1.086476"/>
+</kw>
+<kw name="Wait Until Element Is Visible" owner="SeleniumLibrary">
+<arg>css:input[type="email"]</arg>
+<arg>15s</arg>
+<doc>Waits until the element ``locator`` is visible.</doc>
+<status status="PASS" start="2026-11-19T14:40:55.498658" elapsed="0.074327"/>
+</kw>
+<kw name="Input Text" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:40:55.574488" level="INFO">Typing text 'owner@gmail.com' into text field 'css:input[type="email"]'.</msg>
+<arg>css:input[type="email"]</arg>
+<arg>${email}</arg>
+<doc>Types the given ``text`` into the text field identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:40:55.573619" elapsed="0.330428"/>
+</kw>
+<kw name="Input Password" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:40:55.905304" level="INFO">Typing password into text field 'css:input[type="password"]'.</msg>
+<msg time="2026-11-19T14:40:55.962207" level="INFO">Temporally setting log level to: NONE</msg>
+<arg>css:input[type="password"]</arg>
+<arg>${password}</arg>
+<doc>Types the given password into the text field identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:40:55.904514" elapsed="0.179008"/>
+</kw>
+<kw name="Click Button" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:40:56.085052" level="INFO">Clicking button 'css:button[type="submit"]'.</msg>
+<arg>css:button[type="submit"]</arg>
+<doc>Clicks the button identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:40:56.084167" elapsed="0.143007"/>
+</kw>
+<kw name="Wait Until Location Is" owner="SeleniumLibrary">
+<arg>${BASE_URL}/management/dashboard</arg>
+<arg>20s</arg>
+<doc>Waits until the current URL is ``expected``.</doc>
+<status status="PASS" start="2026-11-19T14:40:56.227663" elapsed="0.706478"/>
+</kw>
+<status status="PASS" start="2026-11-19T14:40:54.396834" elapsed="2.537632"/>
+</kw>
+<kw name="Check Management Page">
+<kw name="Go To" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:40:56.936912" level="INFO">Opening url 'http://localhost:5173/management/facebook-requests'</msg>
+<arg>${BASE_URL}${path}</arg>
+<doc>Navigates the current browser window to the provided ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:40:56.936385" elapsed="0.926823"/>
+</kw>
+<kw name="Wait Until Location Is" owner="SeleniumLibrary">
+<arg>${BASE_URL}${path}</arg>
+<arg>20s</arg>
+<doc>Waits until the current URL is ``expected``.</doc>
+<status status="PASS" start="2026-11-19T14:40:57.863575" elapsed="0.013436"/>
+</kw>
+<kw name="Wait Until Page Contains" owner="SeleniumLibrary">
+<arg>${expected_text}</arg>
+<arg>20s</arg>
+<doc>Waits until ``text`` appears on the current page.</doc>
+<status status="PASS" start="2026-11-19T14:40:57.877387" elapsed="0.210708"/>
+</kw>
+<arg>/management/facebook-requests</arg>
+<arg>Facebook</arg>
+<status status="PASS" start="2026-11-19T14:40:56.935333" elapsed="1.153053"/>
+</kw>
+<kw name="Close Browser" owner="SeleniumLibrary" type="TEARDOWN">
+<doc>Closes the current browser.</doc>
+<status status="PASS" start="2026-11-19T14:40:58.089116" elapsed="2.410335"/>
+</kw>
+<status status="PASS" start="2026-11-19T14:40:50.832285" elapsed="9.667465"/>
+</test>
+<test id="s1-t11" name="11 - Reports" line="60">
+<kw name="Open Browser" owner="SeleniumLibrary" type="SETUP">
+<msg time="2026-11-19T14:41:00.501351" level="INFO">Opening browser 'chrome' to base url 'http://localhost:5173'.</msg>
+<arg>${BASE_URL}</arg>
+<arg>${BROWSER}</arg>
+<doc>Opens a new browser instance to the optional ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:41:00.501013" elapsed="3.458093"/>
+</kw>
+<kw name="Login As Owner">
+<kw name="Get Environment Variable" owner="OperatingSystem">
+<msg time="2026-11-19T14:41:03.971351" level="INFO">${email} = owner@gmail.com</msg>
+<var>${email}</var>
+<arg>OWNER_EMAIL</arg>
+<arg>${EMPTY}</arg>
+<doc>Returns the value of an environment variable with the given name.</doc>
+<status status="PASS" start="2026-11-19T14:41:03.970706" elapsed="0.000728"/>
+</kw>
+<kw name="Get Environment Variable" owner="OperatingSystem">
+<msg time="2026-11-19T14:41:03.972407" level="INFO">${password} = 12345678</msg>
+<var>${password}</var>
+<arg>OWNER_PASSWORD</arg>
+<arg>${EMPTY}</arg>
+<doc>Returns the value of an environment variable with the given name.</doc>
+<status status="PASS" start="2026-11-19T14:41:03.971732" elapsed="0.000835"/>
+</kw>
+<kw name="Skip If" owner="BuiltIn">
+<arg>not $email or not $password</arg>
+<arg>Set OWNER_EMAIL and OWNER_PASSWORD first.</arg>
+<doc>Conditionally stops the current test or task and sets its status to SKIP.</doc>
+<status status="PASS" start="2026-11-19T14:41:03.972959" elapsed="0.001091"/>
+</kw>
+<kw name="Go To" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:41:03.975082" level="INFO">Opening url 'http://localhost:5173/management/login'</msg>
+<arg>${BASE_URL}/management/login</arg>
+<doc>Navigates the current browser window to the provided ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:41:03.974504" elapsed="0.976276"/>
+</kw>
+<kw name="Wait Until Element Is Visible" owner="SeleniumLibrary">
+<arg>css:input[type="email"]</arg>
+<arg>15s</arg>
+<doc>Waits until the element ``locator`` is visible.</doc>
+<status status="PASS" start="2026-11-19T14:41:04.951807" elapsed="0.079992"/>
+</kw>
+<kw name="Input Text" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:41:05.034405" level="INFO">Typing text 'owner@gmail.com' into text field 'css:input[type="email"]'.</msg>
+<arg>css:input[type="email"]</arg>
+<arg>${email}</arg>
+<doc>Types the given ``text`` into the text field identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:41:05.032399" elapsed="0.304623"/>
+</kw>
+<kw name="Input Password" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:41:05.337901" level="INFO">Typing password into text field 'css:input[type="password"]'.</msg>
+<msg time="2026-11-19T14:41:05.389467" level="INFO">Temporally setting log level to: NONE</msg>
+<arg>css:input[type="password"]</arg>
+<arg>${password}</arg>
+<doc>Types the given password into the text field identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:41:05.337392" elapsed="0.161666"/>
+</kw>
+<kw name="Click Button" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:41:05.499877" level="INFO">Clicking button 'css:button[type="submit"]'.</msg>
+<arg>css:button[type="submit"]</arg>
+<doc>Clicks the button identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:41:05.499391" elapsed="0.136258"/>
+</kw>
+<kw name="Wait Until Location Is" owner="SeleniumLibrary">
+<arg>${BASE_URL}/management/dashboard</arg>
+<arg>20s</arg>
+<doc>Waits until the current URL is ``expected``.</doc>
+<status status="PASS" start="2026-11-19T14:41:05.636041" elapsed="0.678579"/>
+</kw>
+<status status="PASS" start="2026-11-19T14:41:03.969683" elapsed="2.345217"/>
+</kw>
+<kw name="Check Management Page">
+<kw name="Go To" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:41:06.317086" level="INFO">Opening url 'http://localhost:5173/management/reports'</msg>
+<arg>${BASE_URL}${path}</arg>
+<doc>Navigates the current browser window to the provided ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:41:06.316562" elapsed="0.885927"/>
+</kw>
+<kw name="Wait Until Location Is" owner="SeleniumLibrary">
+<arg>${BASE_URL}${path}</arg>
+<arg>20s</arg>
+<doc>Waits until the current URL is ``expected``.</doc>
+<status status="PASS" start="2026-11-19T14:41:07.203115" elapsed="0.015477"/>
+</kw>
+<kw name="Wait Until Page Contains" owner="SeleniumLibrary">
+<arg>${expected_text}</arg>
+<arg>20s</arg>
+<doc>Waits until ``text`` appears on the current page.</doc>
+<status status="PASS" start="2026-11-19T14:41:07.219008" elapsed="0.169429"/>
+</kw>
+<arg>/management/reports</arg>
+<arg>Reports</arg>
+<status status="PASS" start="2026-11-19T14:41:06.315679" elapsed="1.072973"/>
+</kw>
+<kw name="Close Browser" owner="SeleniumLibrary" type="TEARDOWN">
+<doc>Closes the current browser.</doc>
+<status status="PASS" start="2026-11-19T14:41:07.389327" elapsed="2.405443"/>
+</kw>
+<status status="PASS" start="2026-11-19T14:41:00.500389" elapsed="9.294784"/>
+</test>
+<test id="s1-t12" name="12 - Feedback And Sentiment Analysis" line="64">
+<kw name="Open Browser" owner="SeleniumLibrary" type="SETUP">
+<msg time="2026-11-19T14:41:09.796765" level="INFO">Opening browser 'chrome' to base url 'http://localhost:5173'.</msg>
+<arg>${BASE_URL}</arg>
+<arg>${BROWSER}</arg>
+<doc>Opens a new browser instance to the optional ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:41:09.796505" elapsed="3.326571"/>
+</kw>
+<kw name="Login As Owner">
+<kw name="Get Environment Variable" owner="OperatingSystem">
+<msg time="2026-11-19T14:41:13.126317" level="INFO">${email} = owner@gmail.com</msg>
+<var>${email}</var>
+<arg>OWNER_EMAIL</arg>
+<arg>${EMPTY}</arg>
+<doc>Returns the value of an environment variable with the given name.</doc>
+<status status="PASS" start="2026-11-19T14:41:13.125231" elapsed="0.001226"/>
+</kw>
+<kw name="Get Environment Variable" owner="OperatingSystem">
+<msg time="2026-11-19T14:41:13.127971" level="INFO">${password} = 12345678</msg>
+<var>${password}</var>
+<arg>OWNER_PASSWORD</arg>
+<arg>${EMPTY}</arg>
+<doc>Returns the value of an environment variable with the given name.</doc>
+<status status="PASS" start="2026-11-19T14:41:13.126959" elapsed="0.001134"/>
+</kw>
+<kw name="Skip If" owner="BuiltIn">
+<arg>not $email or not $password</arg>
+<arg>Set OWNER_EMAIL and OWNER_PASSWORD first.</arg>
+<doc>Conditionally stops the current test or task and sets its status to SKIP.</doc>
+<status status="PASS" start="2026-11-19T14:41:13.128430" elapsed="0.001231"/>
+</kw>
+<kw name="Go To" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:41:13.130518" level="INFO">Opening url 'http://localhost:5173/management/login'</msg>
+<arg>${BASE_URL}/management/login</arg>
+<doc>Navigates the current browser window to the provided ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:41:13.130021" elapsed="0.977946"/>
+</kw>
+<kw name="Wait Until Element Is Visible" owner="SeleniumLibrary">
+<arg>css:input[type="email"]</arg>
+<arg>15s</arg>
+<doc>Waits until the element ``locator`` is visible.</doc>
+<status status="PASS" start="2026-11-19T14:41:14.108930" elapsed="0.076227"/>
+</kw>
+<kw name="Input Text" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:41:14.187387" level="INFO">Typing text 'owner@gmail.com' into text field 'css:input[type="email"]'.</msg>
+<arg>css:input[type="email"]</arg>
+<arg>${email}</arg>
+<doc>Types the given ``text`` into the text field identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:41:14.185700" elapsed="0.343386"/>
+</kw>
+<kw name="Input Password" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:41:14.530350" level="INFO">Typing password into text field 'css:input[type="password"]'.</msg>
+<msg time="2026-11-19T14:41:14.604107" level="INFO">Temporally setting log level to: NONE</msg>
+<arg>css:input[type="password"]</arg>
+<arg>${password}</arg>
+<doc>Types the given password into the text field identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:41:14.529556" elapsed="0.184552"/>
+</kw>
+<kw name="Click Button" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:41:14.714828" level="INFO">Clicking button 'css:button[type="submit"]'.</msg>
+<arg>css:button[type="submit"]</arg>
+<doc>Clicks the button identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:41:14.714413" elapsed="0.141864"/>
+</kw>
+<kw name="Wait Until Location Is" owner="SeleniumLibrary">
+<arg>${BASE_URL}/management/dashboard</arg>
+<arg>20s</arg>
+<doc>Waits until the current URL is ``expected``.</doc>
+<status status="PASS" start="2026-11-19T14:41:14.856718" elapsed="0.655615"/>
+</kw>
+<status status="PASS" start="2026-11-19T14:41:13.124201" elapsed="2.388419"/>
+</kw>
+<kw name="Check Management Page">
+<kw name="Go To" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:41:15.515278" level="INFO">Opening url 'http://localhost:5173/management/feedback'</msg>
+<arg>${BASE_URL}${path}</arg>
+<doc>Navigates the current browser window to the provided ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:41:15.514647" elapsed="0.944142"/>
+</kw>
+<kw name="Wait Until Location Is" owner="SeleniumLibrary">
+<arg>${BASE_URL}${path}</arg>
+<arg>20s</arg>
+<doc>Waits until the current URL is ``expected``.</doc>
+<status status="PASS" start="2026-11-19T14:41:16.459269" elapsed="0.015668"/>
+</kw>
+<kw name="Wait Until Page Contains" owner="SeleniumLibrary">
+<arg>${expected_text}</arg>
+<arg>20s</arg>
+<doc>Waits until ``text`` appears on the current page.</doc>
+<status status="PASS" start="2026-11-19T14:41:16.475393" elapsed="0.230401"/>
+</kw>
+<arg>/management/feedback</arg>
+<arg>Feedback &amp; Sentiment</arg>
+<status status="PASS" start="2026-11-19T14:41:15.513486" elapsed="1.192530"/>
+</kw>
+<kw name="Close Browser" owner="SeleniumLibrary" type="TEARDOWN">
+<doc>Closes the current browser.</doc>
+<status status="PASS" start="2026-11-19T14:41:16.706875" elapsed="2.390147"/>
+</kw>
+<status status="PASS" start="2026-11-19T14:41:09.795869" elapsed="9.301485"/>
+</test>
+<test id="s1-t13" name="13 - Capacity Calculator" line="68">
+<kw name="Open Browser" owner="SeleniumLibrary" type="SETUP">
+<msg time="2026-11-19T14:41:19.099206" level="INFO">Opening browser 'chrome' to base url 'http://localhost:5173'.</msg>
+<arg>${BASE_URL}</arg>
+<arg>${BROWSER}</arg>
+<doc>Opens a new browser instance to the optional ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:41:19.098838" elapsed="3.230475"/>
+</kw>
+<kw name="Login As Owner">
+<kw name="Get Environment Variable" owner="OperatingSystem">
+<msg time="2026-11-19T14:41:22.332800" level="INFO">${email} = owner@gmail.com</msg>
+<var>${email}</var>
+<arg>OWNER_EMAIL</arg>
+<arg>${EMPTY}</arg>
+<doc>Returns the value of an environment variable with the given name.</doc>
+<status status="PASS" start="2026-11-19T14:41:22.332071" elapsed="0.000833"/>
+</kw>
+<kw name="Get Environment Variable" owner="OperatingSystem">
+<msg time="2026-11-19T14:41:22.334085" level="INFO">${password} = 12345678</msg>
+<var>${password}</var>
+<arg>OWNER_PASSWORD</arg>
+<arg>${EMPTY}</arg>
+<doc>Returns the value of an environment variable with the given name.</doc>
+<status status="PASS" start="2026-11-19T14:41:22.333345" elapsed="0.000842"/>
+</kw>
+<kw name="Skip If" owner="BuiltIn">
+<arg>not $email or not $password</arg>
+<arg>Set OWNER_EMAIL and OWNER_PASSWORD first.</arg>
+<doc>Conditionally stops the current test or task and sets its status to SKIP.</doc>
+<status status="PASS" start="2026-11-19T14:41:22.334713" elapsed="0.001475"/>
+</kw>
+<kw name="Go To" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:41:22.337031" level="INFO">Opening url 'http://localhost:5173/management/login'</msg>
+<arg>${BASE_URL}/management/login</arg>
+<doc>Navigates the current browser window to the provided ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:41:22.336629" elapsed="0.977069"/>
+</kw>
+<kw name="Wait Until Element Is Visible" owner="SeleniumLibrary">
+<arg>css:input[type="email"]</arg>
+<arg>15s</arg>
+<doc>Waits until the element ``locator`` is visible.</doc>
+<status status="PASS" start="2026-11-19T14:41:23.314261" elapsed="0.065962"/>
+</kw>
+<kw name="Input Text" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:41:23.381945" level="INFO">Typing text 'owner@gmail.com' into text field 'css:input[type="email"]'.</msg>
+<arg>css:input[type="email"]</arg>
+<arg>${email}</arg>
+<doc>Types the given ``text`` into the text field identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:41:23.381074" elapsed="0.302286"/>
+</kw>
+<kw name="Input Password" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:41:23.684605" level="INFO">Typing password into text field 'css:input[type="password"]'.</msg>
+<msg time="2026-11-19T14:41:23.736629" level="INFO">Temporally setting log level to: NONE</msg>
+<arg>css:input[type="password"]</arg>
+<arg>${password}</arg>
+<doc>Types the given password into the text field identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:41:23.683846" elapsed="0.176531"/>
+</kw>
+<kw name="Click Button" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:41:23.861351" level="INFO">Clicking button 'css:button[type="submit"]'.</msg>
+<arg>css:button[type="submit"]</arg>
+<doc>Clicks the button identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:41:23.860723" elapsed="0.146517"/>
+</kw>
+<kw name="Wait Until Location Is" owner="SeleniumLibrary">
+<arg>${BASE_URL}/management/dashboard</arg>
+<arg>20s</arg>
+<doc>Waits until the current URL is ``expected``.</doc>
+<status status="PASS" start="2026-11-19T14:41:24.007684" elapsed="0.671765"/>
+</kw>
+<status status="PASS" start="2026-11-19T14:41:22.331000" elapsed="2.348818"/>
+</kw>
+<kw name="Check Management Page">
+<kw name="Go To" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:41:24.683457" level="INFO">Opening url 'http://localhost:5173/management/capacity-calculator'</msg>
+<arg>${BASE_URL}${path}</arg>
+<doc>Navigates the current browser window to the provided ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:41:24.682965" elapsed="0.851534"/>
+</kw>
+<kw name="Wait Until Location Is" owner="SeleniumLibrary">
+<arg>${BASE_URL}${path}</arg>
+<arg>20s</arg>
+<doc>Waits until the current URL is ``expected``.</doc>
+<status status="PASS" start="2026-11-19T14:41:25.535176" elapsed="0.012028"/>
+</kw>
+<kw name="Wait Until Page Contains" owner="SeleniumLibrary">
+<arg>${expected_text}</arg>
+<arg>20s</arg>
+<doc>Waits until ``text`` appears on the current page.</doc>
+<status status="PASS" start="2026-11-19T14:41:25.547628" elapsed="0.232982"/>
+</kw>
+<arg>/management/capacity-calculator</arg>
+<arg>Aircon Capacity Calculator</arg>
+<status status="PASS" start="2026-11-19T14:41:24.681490" elapsed="1.099322"/>
+</kw>
+<kw name="Close Browser" owner="SeleniumLibrary" type="TEARDOWN">
+<doc>Closes the current browser.</doc>
+<status status="PASS" start="2026-11-19T14:41:25.781494" elapsed="2.375615"/>
+</kw>
+<status status="PASS" start="2026-11-19T14:41:19.097991" elapsed="9.059460"/>
+</test>
+<test id="s1-t14" name="14 - Staff Accounts" line="74">
+<kw name="Open Browser" owner="SeleniumLibrary" type="SETUP">
+<msg time="2026-11-19T14:41:28.159190" level="INFO">Opening browser 'chrome' to base url 'http://localhost:5173'.</msg>
+<arg>${BASE_URL}</arg>
+<arg>${BROWSER}</arg>
+<doc>Opens a new browser instance to the optional ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:41:28.158872" elapsed="3.477145"/>
+</kw>
+<kw name="Login As Owner">
+<kw name="Get Environment Variable" owner="OperatingSystem">
+<msg time="2026-11-19T14:41:31.638707" level="INFO">${email} = owner@gmail.com</msg>
+<var>${email}</var>
+<arg>OWNER_EMAIL</arg>
+<arg>${EMPTY}</arg>
+<doc>Returns the value of an environment variable with the given name.</doc>
+<status status="PASS" start="2026-11-19T14:41:31.637832" elapsed="0.000997"/>
+</kw>
+<kw name="Get Environment Variable" owner="OperatingSystem">
+<msg time="2026-11-19T14:41:31.640186" level="INFO">${password} = 12345678</msg>
+<var>${password}</var>
+<arg>OWNER_PASSWORD</arg>
+<arg>${EMPTY}</arg>
+<doc>Returns the value of an environment variable with the given name.</doc>
+<status status="PASS" start="2026-11-19T14:41:31.639252" elapsed="0.001028"/>
+</kw>
+<kw name="Skip If" owner="BuiltIn">
+<arg>not $email or not $password</arg>
+<arg>Set OWNER_EMAIL and OWNER_PASSWORD first.</arg>
+<doc>Conditionally stops the current test or task and sets its status to SKIP.</doc>
+<status status="PASS" start="2026-11-19T14:41:31.640621" elapsed="0.001154"/>
+</kw>
+<kw name="Go To" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:41:31.642676" level="INFO">Opening url 'http://localhost:5173/management/login'</msg>
+<arg>${BASE_URL}/management/login</arg>
+<doc>Navigates the current browser window to the provided ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:41:31.642193" elapsed="1.009939"/>
+</kw>
+<kw name="Wait Until Element Is Visible" owner="SeleniumLibrary">
+<arg>css:input[type="email"]</arg>
+<arg>15s</arg>
+<doc>Waits until the element ``locator`` is visible.</doc>
+<status status="PASS" start="2026-11-19T14:41:32.653832" elapsed="0.066223"/>
+</kw>
+<kw name="Input Text" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:41:32.722009" level="INFO">Typing text 'owner@gmail.com' into text field 'css:input[type="email"]'.</msg>
+<arg>css:input[type="email"]</arg>
+<arg>${email}</arg>
+<doc>Types the given ``text`` into the text field identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:41:32.720859" elapsed="0.267876"/>
+</kw>
+<kw name="Input Password" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:41:32.989593" level="INFO">Typing password into text field 'css:input[type="password"]'.</msg>
+<msg time="2026-11-19T14:41:33.042116" level="INFO">Temporally setting log level to: NONE</msg>
+<arg>css:input[type="password"]</arg>
+<arg>${password}</arg>
+<doc>Types the given password into the text field identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:41:32.989077" elapsed="0.163908"/>
+</kw>
+<kw name="Click Button" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:41:33.154066" level="INFO">Clicking button 'css:button[type="submit"]'.</msg>
+<arg>css:button[type="submit"]</arg>
+<doc>Clicks the button identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:41:33.153532" elapsed="0.147176"/>
+</kw>
+<kw name="Wait Until Location Is" owner="SeleniumLibrary">
+<arg>${BASE_URL}/management/dashboard</arg>
+<arg>20s</arg>
+<doc>Waits until the current URL is ``expected``.</doc>
+<status status="PASS" start="2026-11-19T14:41:33.301251" elapsed="0.660481"/>
+</kw>
+<status status="PASS" start="2026-11-19T14:41:31.636939" elapsed="2.325556"/>
+</kw>
+<kw name="Check Management Page">
+<kw name="Go To" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:41:33.966080" level="INFO">Opening url 'http://localhost:5173/management/staff'</msg>
+<arg>${BASE_URL}${path}</arg>
+<doc>Navigates the current browser window to the provided ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:41:33.965530" elapsed="0.876850"/>
+</kw>
+<kw name="Wait Until Location Is" owner="SeleniumLibrary">
+<arg>${BASE_URL}${path}</arg>
+<arg>20s</arg>
+<doc>Waits until the current URL is ``expected``.</doc>
+<status status="PASS" start="2026-11-19T14:41:34.842795" elapsed="0.012617"/>
+</kw>
+<kw name="Wait Until Page Contains" owner="SeleniumLibrary">
+<arg>${expected_text}</arg>
+<arg>20s</arg>
+<doc>Waits until ``text`` appears on the current page.</doc>
+<status status="PASS" start="2026-11-19T14:41:34.855830" elapsed="0.169101"/>
+</kw>
+<arg>/management/staff</arg>
+<arg>Staff</arg>
+<status status="PASS" start="2026-11-19T14:41:33.964230" elapsed="1.060969"/>
+</kw>
+<kw name="Close Browser" owner="SeleniumLibrary" type="TEARDOWN">
+<doc>Closes the current browser.</doc>
+<status status="PASS" start="2026-11-19T14:41:35.026135" elapsed="2.391857"/>
+</kw>
+<status status="PASS" start="2026-11-19T14:41:28.158132" elapsed="9.260196"/>
+</test>
+<test id="s1-t15" name="15 - Archive" line="78">
+<kw name="Open Browser" owner="SeleniumLibrary" type="SETUP">
+<msg time="2026-11-19T14:41:37.420284" level="INFO">Opening browser 'chrome' to base url 'http://localhost:5173'.</msg>
+<arg>${BASE_URL}</arg>
+<arg>${BROWSER}</arg>
+<doc>Opens a new browser instance to the optional ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:41:37.419930" elapsed="3.448982"/>
+</kw>
+<kw name="Login As Owner">
+<kw name="Get Environment Variable" owner="OperatingSystem">
+<msg time="2026-11-19T14:41:40.871566" level="INFO">${email} = owner@gmail.com</msg>
+<var>${email}</var>
+<arg>OWNER_EMAIL</arg>
+<arg>${EMPTY}</arg>
+<doc>Returns the value of an environment variable with the given name.</doc>
+<status status="PASS" start="2026-11-19T14:41:40.870843" elapsed="0.000913"/>
+</kw>
+<kw name="Get Environment Variable" owner="OperatingSystem">
+<msg time="2026-11-19T14:41:40.873382" level="INFO">${password} = 12345678</msg>
+<var>${password}</var>
+<arg>OWNER_PASSWORD</arg>
+<arg>${EMPTY}</arg>
+<doc>Returns the value of an environment variable with the given name.</doc>
+<status status="PASS" start="2026-11-19T14:41:40.872350" elapsed="0.001167"/>
+</kw>
+<kw name="Skip If" owner="BuiltIn">
+<arg>not $email or not $password</arg>
+<arg>Set OWNER_EMAIL and OWNER_PASSWORD first.</arg>
+<doc>Conditionally stops the current test or task and sets its status to SKIP.</doc>
+<status status="PASS" start="2026-11-19T14:41:40.874025" elapsed="0.001174"/>
+</kw>
+<kw name="Go To" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:41:40.876058" level="INFO">Opening url 'http://localhost:5173/management/login'</msg>
+<arg>${BASE_URL}/management/login</arg>
+<doc>Navigates the current browser window to the provided ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:41:40.875616" elapsed="0.937707"/>
+</kw>
+<kw name="Wait Until Element Is Visible" owner="SeleniumLibrary">
+<arg>css:input[type="email"]</arg>
+<arg>15s</arg>
+<doc>Waits until the element ``locator`` is visible.</doc>
+<status status="PASS" start="2026-11-19T14:41:41.814048" elapsed="0.069680"/>
+</kw>
+<kw name="Input Text" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:41:41.885245" level="INFO">Typing text 'owner@gmail.com' into text field 'css:input[type="email"]'.</msg>
+<arg>css:input[type="email"]</arg>
+<arg>${email}</arg>
+<doc>Types the given ``text`` into the text field identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:41:41.884355" elapsed="0.297918"/>
+</kw>
+<kw name="Input Password" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:41:42.183541" level="INFO">Typing password into text field 'css:input[type="password"]'.</msg>
+<msg time="2026-11-19T14:41:42.243653" level="INFO">Temporally setting log level to: NONE</msg>
+<arg>css:input[type="password"]</arg>
+<arg>${password}</arg>
+<doc>Types the given password into the text field identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:41:42.182829" elapsed="0.167547"/>
+</kw>
+<kw name="Click Button" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:41:42.351570" level="INFO">Clicking button 'css:button[type="submit"]'.</msg>
+<arg>css:button[type="submit"]</arg>
+<doc>Clicks the button identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:41:42.350914" elapsed="0.148511"/>
+</kw>
+<kw name="Wait Until Location Is" owner="SeleniumLibrary">
+<arg>${BASE_URL}/management/dashboard</arg>
+<arg>20s</arg>
+<doc>Waits until the current URL is ``expected``.</doc>
+<status status="PASS" start="2026-11-19T14:41:42.499951" elapsed="0.674535"/>
+</kw>
+<status status="PASS" start="2026-11-19T14:41:40.869936" elapsed="2.304832"/>
+</kw>
+<kw name="Check Management Page">
+<kw name="Go To" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:41:43.178310" level="INFO">Opening url 'http://localhost:5173/management/archive'</msg>
+<arg>${BASE_URL}${path}</arg>
+<doc>Navigates the current browser window to the provided ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:41:43.177732" elapsed="0.839960"/>
+</kw>
+<kw name="Wait Until Location Is" owner="SeleniumLibrary">
+<arg>${BASE_URL}${path}</arg>
+<arg>20s</arg>
+<doc>Waits until the current URL is ``expected``.</doc>
+<status status="PASS" start="2026-11-19T14:41:44.018032" elapsed="0.011848"/>
+</kw>
+<kw name="Wait Until Page Contains" owner="SeleniumLibrary">
+<arg>${expected_text}</arg>
+<arg>20s</arg>
+<doc>Waits until ``text`` appears on the current page.</doc>
+<status status="PASS" start="2026-11-19T14:41:44.030294" elapsed="0.173608"/>
+</kw>
+<arg>/management/archive</arg>
+<arg>Archive</arg>
+<status status="PASS" start="2026-11-19T14:41:43.176447" elapsed="1.027747"/>
+</kw>
+<kw name="Close Browser" owner="SeleniumLibrary" type="TEARDOWN">
+<doc>Closes the current browser.</doc>
+<status status="PASS" start="2026-11-19T14:41:44.205022" elapsed="2.392712"/>
+</kw>
+<status status="PASS" start="2026-11-19T14:41:37.419209" elapsed="9.178964"/>
+</test>
+<test id="s1-t16" name="16 - Audit Logs" line="82">
+<kw name="Open Browser" owner="SeleniumLibrary" type="SETUP">
+<msg time="2026-11-19T14:41:46.600173" level="INFO">Opening browser 'chrome' to base url 'http://localhost:5173'.</msg>
+<arg>${BASE_URL}</arg>
+<arg>${BROWSER}</arg>
+<doc>Opens a new browser instance to the optional ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:41:46.599748" elapsed="3.421494"/>
+</kw>
+<kw name="Login As Owner">
+<kw name="Get Environment Variable" owner="OperatingSystem">
+<msg time="2026-11-19T14:41:50.024355" level="INFO">${email} = owner@gmail.com</msg>
+<var>${email}</var>
+<arg>OWNER_EMAIL</arg>
+<arg>${EMPTY}</arg>
+<doc>Returns the value of an environment variable with the given name.</doc>
+<status status="PASS" start="2026-11-19T14:41:50.023678" elapsed="0.000798"/>
+</kw>
+<kw name="Get Environment Variable" owner="OperatingSystem">
+<msg time="2026-11-19T14:41:50.025655" level="INFO">${password} = 12345678</msg>
+<var>${password}</var>
+<arg>OWNER_PASSWORD</arg>
+<arg>${EMPTY}</arg>
+<doc>Returns the value of an environment variable with the given name.</doc>
+<status status="PASS" start="2026-11-19T14:41:50.024913" elapsed="0.000838"/>
+</kw>
+<kw name="Skip If" owner="BuiltIn">
+<arg>not $email or not $password</arg>
+<arg>Set OWNER_EMAIL and OWNER_PASSWORD first.</arg>
+<doc>Conditionally stops the current test or task and sets its status to SKIP.</doc>
+<status status="PASS" start="2026-11-19T14:41:50.026122" elapsed="0.001998"/>
+</kw>
+<kw name="Go To" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:41:50.030226" level="INFO">Opening url 'http://localhost:5173/management/login'</msg>
+<arg>${BASE_URL}/management/login</arg>
+<doc>Navigates the current browser window to the provided ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:41:50.028715" elapsed="1.019864"/>
+</kw>
+<kw name="Wait Until Element Is Visible" owner="SeleniumLibrary">
+<arg>css:input[type="email"]</arg>
+<arg>15s</arg>
+<doc>Waits until the element ``locator`` is visible.</doc>
+<status status="PASS" start="2026-11-19T14:41:51.049940" elapsed="0.069545"/>
+</kw>
+<kw name="Input Text" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:41:51.120761" level="INFO">Typing text 'owner@gmail.com' into text field 'css:input[type="email"]'.</msg>
+<arg>css:input[type="email"]</arg>
+<arg>${email}</arg>
+<doc>Types the given ``text`` into the text field identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:41:51.119990" elapsed="0.286985"/>
+</kw>
+<kw name="Input Password" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:41:51.408638" level="INFO">Typing password into text field 'css:input[type="password"]'.</msg>
+<msg time="2026-11-19T14:41:51.471274" level="INFO">Temporally setting log level to: NONE</msg>
+<arg>css:input[type="password"]</arg>
+<arg>${password}</arg>
+<doc>Types the given password into the text field identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:41:51.407604" elapsed="0.186649"/>
+</kw>
+<kw name="Click Button" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:41:51.595245" level="INFO">Clicking button 'css:button[type="submit"]'.</msg>
+<arg>css:button[type="submit"]</arg>
+<doc>Clicks the button identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:41:51.594666" elapsed="0.144425"/>
+</kw>
+<kw name="Wait Until Location Is" owner="SeleniumLibrary">
+<arg>${BASE_URL}/management/dashboard</arg>
+<arg>20s</arg>
+<doc>Waits until the current URL is ``expected``.</doc>
+<status status="PASS" start="2026-11-19T14:41:51.739524" elapsed="0.679034"/>
+</kw>
+<status status="PASS" start="2026-11-19T14:41:50.022788" elapsed="2.396176"/>
+</kw>
+<kw name="Check Management Page">
+<kw name="Go To" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:41:52.429724" level="INFO">Opening url 'http://localhost:5173/management/audit-logs'</msg>
+<arg>${BASE_URL}${path}</arg>
+<doc>Navigates the current browser window to the provided ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:41:52.420823" elapsed="0.934902"/>
+</kw>
+<kw name="Wait Until Location Is" owner="SeleniumLibrary">
+<arg>${BASE_URL}${path}</arg>
+<arg>20s</arg>
+<doc>Waits until the current URL is ``expected``.</doc>
+<status status="PASS" start="2026-11-19T14:41:53.356288" elapsed="0.013988"/>
+</kw>
+<kw name="Wait Until Page Contains" owner="SeleniumLibrary">
+<arg>${expected_text}</arg>
+<arg>20s</arg>
+<doc>Waits until ``text`` appears on the current page.</doc>
+<status status="PASS" start="2026-11-19T14:41:53.370709" elapsed="0.236642"/>
+</kw>
+<arg>/management/audit-logs</arg>
+<arg>Audit</arg>
+<status status="PASS" start="2026-11-19T14:41:52.419778" elapsed="1.187865"/>
+</kw>
+<kw name="Close Browser" owner="SeleniumLibrary" type="TEARDOWN">
+<doc>Closes the current browser.</doc>
+<status status="PASS" start="2026-11-19T14:41:53.608595" elapsed="2.392348"/>
+</kw>
+<status status="PASS" start="2026-11-19T14:41:46.598945" elapsed="9.402434"/>
+</test>
+<test id="s1-t17" name="17 - Customers" line="86">
+<kw name="Open Browser" owner="SeleniumLibrary" type="SETUP">
+<msg time="2026-11-19T14:41:56.003459" level="INFO">Opening browser 'chrome' to base url 'http://localhost:5173'.</msg>
+<arg>${BASE_URL}</arg>
+<arg>${BROWSER}</arg>
+<doc>Opens a new browser instance to the optional ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:41:56.003178" elapsed="3.337213"/>
+</kw>
+<kw name="Login As Owner">
+<kw name="Get Environment Variable" owner="OperatingSystem">
+<msg time="2026-11-19T14:41:59.343122" level="INFO">${email} = owner@gmail.com</msg>
+<var>${email}</var>
+<arg>OWNER_EMAIL</arg>
+<arg>${EMPTY}</arg>
+<doc>Returns the value of an environment variable with the given name.</doc>
+<status status="PASS" start="2026-11-19T14:41:59.342340" elapsed="0.000952"/>
+</kw>
+<kw name="Get Environment Variable" owner="OperatingSystem">
+<msg time="2026-11-19T14:41:59.344599" level="INFO">${password} = 12345678</msg>
+<var>${password}</var>
+<arg>OWNER_PASSWORD</arg>
+<arg>${EMPTY}</arg>
+<doc>Returns the value of an environment variable with the given name.</doc>
+<status status="PASS" start="2026-11-19T14:41:59.343727" elapsed="0.000991"/>
+</kw>
+<kw name="Skip If" owner="BuiltIn">
+<arg>not $email or not $password</arg>
+<arg>Set OWNER_EMAIL and OWNER_PASSWORD first.</arg>
+<doc>Conditionally stops the current test or task and sets its status to SKIP.</doc>
+<status status="PASS" start="2026-11-19T14:41:59.345135" elapsed="0.001530"/>
+</kw>
+<kw name="Go To" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:41:59.347674" level="INFO">Opening url 'http://localhost:5173/management/login'</msg>
+<arg>${BASE_URL}/management/login</arg>
+<doc>Navigates the current browser window to the provided ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:41:59.347158" elapsed="0.961556"/>
+</kw>
+<kw name="Wait Until Element Is Visible" owner="SeleniumLibrary">
+<arg>css:input[type="email"]</arg>
+<arg>15s</arg>
+<doc>Waits until the element ``locator`` is visible.</doc>
+<status status="PASS" start="2026-11-19T14:42:00.310213" elapsed="0.061062"/>
+</kw>
+<kw name="Input Text" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:42:00.373149" level="INFO">Typing text 'owner@gmail.com' into text field 'css:input[type="email"]'.</msg>
+<arg>css:input[type="email"]</arg>
+<arg>${email}</arg>
+<doc>Types the given ``text`` into the text field identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:42:00.372065" elapsed="0.286160"/>
+</kw>
+<kw name="Input Password" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:42:00.659315" level="INFO">Typing password into text field 'css:input[type="password"]'.</msg>
+<msg time="2026-11-19T14:42:00.711444" level="INFO">Temporally setting log level to: NONE</msg>
+<arg>css:input[type="password"]</arg>
+<arg>${password}</arg>
+<doc>Types the given password into the text field identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:42:00.658601" elapsed="0.168113"/>
+</kw>
+<kw name="Click Button" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:42:00.827594" level="INFO">Clicking button 'css:button[type="submit"]'.</msg>
+<arg>css:button[type="submit"]</arg>
+<doc>Clicks the button identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:42:00.827058" elapsed="0.142786"/>
+</kw>
+<kw name="Wait Until Location Is" owner="SeleniumLibrary">
+<arg>${BASE_URL}/management/dashboard</arg>
+<arg>20s</arg>
+<doc>Waits until the current URL is ``expected``.</doc>
+<status status="PASS" start="2026-11-19T14:42:00.970687" elapsed="0.700676"/>
+</kw>
+<status status="PASS" start="2026-11-19T14:41:59.341376" elapsed="2.330289"/>
+</kw>
+<kw name="Check Management Page">
+<kw name="Go To" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:42:01.674192" level="INFO">Opening url 'http://localhost:5173/management/customers'</msg>
+<arg>${BASE_URL}${path}</arg>
+<doc>Navigates the current browser window to the provided ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:42:01.673707" elapsed="0.941869"/>
+</kw>
+<kw name="Wait Until Location Is" owner="SeleniumLibrary">
+<arg>${BASE_URL}${path}</arg>
+<arg>20s</arg>
+<doc>Waits until the current URL is ``expected``.</doc>
+<status status="PASS" start="2026-11-19T14:42:02.615979" elapsed="0.015805"/>
+</kw>
+<kw name="Wait Until Page Contains" owner="SeleniumLibrary">
+<arg>${expected_text}</arg>
+<arg>20s</arg>
+<doc>Waits until ``text`` appears on the current page.</doc>
+<status status="PASS" start="2026-11-19T14:42:02.632309" elapsed="0.181946"/>
+</kw>
+<arg>/management/customers</arg>
+<arg>Customers</arg>
+<status status="PASS" start="2026-11-19T14:42:01.672885" elapsed="1.141574"/>
+</kw>
+<kw name="Close Browser" owner="SeleniumLibrary" type="TEARDOWN">
+<doc>Closes the current browser.</doc>
+<status status="PASS" start="2026-11-19T14:42:02.815412" elapsed="2.443061"/>
+</kw>
+<status status="PASS" start="2026-11-19T14:41:56.002392" elapsed="9.256450"/>
+</test>
+<test id="s1-t18" name="18 - Notifications" line="90">
+<kw name="Open Browser" owner="SeleniumLibrary" type="SETUP">
+<msg time="2026-11-19T14:42:05.260462" level="INFO">Opening browser 'chrome' to base url 'http://localhost:5173'.</msg>
+<arg>${BASE_URL}</arg>
+<arg>${BROWSER}</arg>
+<doc>Opens a new browser instance to the optional ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:42:05.260207" elapsed="3.397852"/>
+</kw>
+<kw name="Login As Owner">
+<kw name="Get Environment Variable" owner="OperatingSystem">
+<msg time="2026-11-19T14:42:08.660842" level="INFO">${email} = owner@gmail.com</msg>
+<var>${email}</var>
+<arg>OWNER_EMAIL</arg>
+<arg>${EMPTY}</arg>
+<doc>Returns the value of an environment variable with the given name.</doc>
+<status status="PASS" start="2026-11-19T14:42:08.659989" elapsed="0.000971"/>
+</kw>
+<kw name="Get Environment Variable" owner="OperatingSystem">
+<msg time="2026-11-19T14:42:08.662227" level="INFO">${password} = 12345678</msg>
+<var>${password}</var>
+<arg>OWNER_PASSWORD</arg>
+<arg>${EMPTY}</arg>
+<doc>Returns the value of an environment variable with the given name.</doc>
+<status status="PASS" start="2026-11-19T14:42:08.661519" elapsed="0.000820"/>
+</kw>
+<kw name="Skip If" owner="BuiltIn">
+<arg>not $email or not $password</arg>
+<arg>Set OWNER_EMAIL and OWNER_PASSWORD first.</arg>
+<doc>Conditionally stops the current test or task and sets its status to SKIP.</doc>
+<status status="PASS" start="2026-11-19T14:42:08.662770" elapsed="0.001566"/>
+</kw>
+<kw name="Go To" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:42:08.665568" level="INFO">Opening url 'http://localhost:5173/management/login'</msg>
+<arg>${BASE_URL}/management/login</arg>
+<doc>Navigates the current browser window to the provided ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:42:08.664928" elapsed="1.018871"/>
+</kw>
+<kw name="Wait Until Element Is Visible" owner="SeleniumLibrary">
+<arg>css:input[type="email"]</arg>
+<arg>15s</arg>
+<doc>Waits until the element ``locator`` is visible.</doc>
+<status status="PASS" start="2026-11-19T14:42:09.685270" elapsed="0.053236"/>
+</kw>
+<kw name="Input Text" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:42:09.740301" level="INFO">Typing text 'owner@gmail.com' into text field 'css:input[type="email"]'.</msg>
+<arg>css:input[type="email"]</arg>
+<arg>${email}</arg>
+<doc>Types the given ``text`` into the text field identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:42:09.739356" elapsed="0.277714"/>
+</kw>
+<kw name="Input Password" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:42:10.018656" level="INFO">Typing password into text field 'css:input[type="password"]'.</msg>
+<msg time="2026-11-19T14:42:10.069268" level="INFO">Temporally setting log level to: NONE</msg>
+<arg>css:input[type="password"]</arg>
+<arg>${password}</arg>
+<doc>Types the given password into the text field identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:42:10.017630" elapsed="0.158229"/>
+</kw>
+<kw name="Click Button" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:42:10.176818" level="INFO">Clicking button 'css:button[type="submit"]'.</msg>
+<arg>css:button[type="submit"]</arg>
+<doc>Clicks the button identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:42:10.176237" elapsed="0.148578"/>
+</kw>
+<kw name="Wait Until Location Is" owner="SeleniumLibrary">
+<arg>${BASE_URL}/management/dashboard</arg>
+<arg>20s</arg>
+<doc>Waits until the current URL is ``expected``.</doc>
+<status status="PASS" start="2026-11-19T14:42:10.325273" elapsed="0.656497"/>
+</kw>
+<status status="PASS" start="2026-11-19T14:42:08.659051" elapsed="2.322938"/>
+</kw>
+<kw name="Check Management Page">
+<kw name="Go To" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:42:10.984521" level="INFO">Opening url 'http://localhost:5173/management/notifications'</msg>
+<arg>${BASE_URL}${path}</arg>
+<doc>Navigates the current browser window to the provided ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:42:10.983933" elapsed="0.827900"/>
+</kw>
+<kw name="Wait Until Location Is" owner="SeleniumLibrary">
+<arg>${BASE_URL}${path}</arg>
+<arg>20s</arg>
+<doc>Waits until the current URL is ``expected``.</doc>
+<status status="PASS" start="2026-11-19T14:42:11.812228" elapsed="0.014362"/>
+</kw>
+<kw name="Wait Until Page Contains" owner="SeleniumLibrary">
+<arg>${expected_text}</arg>
+<arg>20s</arg>
+<doc>Waits until ``text`` appears on the current page.</doc>
+<status status="PASS" start="2026-11-19T14:42:11.827099" elapsed="0.184002"/>
+</kw>
+<arg>/management/notifications</arg>
+<arg>Notifications</arg>
+<status status="PASS" start="2026-11-19T14:42:10.982639" elapsed="1.028729"/>
+</kw>
+<kw name="Close Browser" owner="SeleniumLibrary" type="TEARDOWN">
+<doc>Closes the current browser.</doc>
+<status status="PASS" start="2026-11-19T14:42:12.012118" elapsed="2.395366"/>
+</kw>
+<status status="PASS" start="2026-11-19T14:42:05.259577" elapsed="9.148265"/>
+</test>
+<test id="s1-t19" name="19 - Service Types" line="94">
+<kw name="Open Browser" owner="SeleniumLibrary" type="SETUP">
+<msg time="2026-11-19T14:42:14.410096" level="INFO">Opening browser 'chrome' to base url 'http://localhost:5173'.</msg>
+<arg>${BASE_URL}</arg>
+<arg>${BROWSER}</arg>
+<doc>Opens a new browser instance to the optional ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:42:14.409786" elapsed="3.408188"/>
+</kw>
+<kw name="Login As Owner">
+<kw name="Get Environment Variable" owner="OperatingSystem">
+<msg time="2026-11-19T14:42:17.823214" level="INFO">${email} = owner@gmail.com</msg>
+<var>${email}</var>
+<arg>OWNER_EMAIL</arg>
+<arg>${EMPTY}</arg>
+<doc>Returns the value of an environment variable with the given name.</doc>
+<status status="PASS" start="2026-11-19T14:42:17.822257" elapsed="0.001095"/>
+</kw>
+<kw name="Get Environment Variable" owner="OperatingSystem">
+<msg time="2026-11-19T14:42:17.824639" level="INFO">${password} = 12345678</msg>
+<var>${password}</var>
+<arg>OWNER_PASSWORD</arg>
+<arg>${EMPTY}</arg>
+<doc>Returns the value of an environment variable with the given name.</doc>
+<status status="PASS" start="2026-11-19T14:42:17.823857" elapsed="0.000887"/>
+</kw>
+<kw name="Skip If" owner="BuiltIn">
+<arg>not $email or not $password</arg>
+<arg>Set OWNER_EMAIL and OWNER_PASSWORD first.</arg>
+<doc>Conditionally stops the current test or task and sets its status to SKIP.</doc>
+<status status="PASS" start="2026-11-19T14:42:17.825125" elapsed="0.001281"/>
+</kw>
+<kw name="Go To" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:42:17.827408" level="INFO">Opening url 'http://localhost:5173/management/login'</msg>
+<arg>${BASE_URL}/management/login</arg>
+<doc>Navigates the current browser window to the provided ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:42:17.826849" elapsed="1.081997"/>
+</kw>
+<kw name="Wait Until Element Is Visible" owner="SeleniumLibrary">
+<arg>css:input[type="email"]</arg>
+<arg>15s</arg>
+<doc>Waits until the element ``locator`` is visible.</doc>
+<status status="PASS" start="2026-11-19T14:42:18.909549" elapsed="0.062638"/>
+</kw>
+<kw name="Input Text" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:42:18.974431" level="INFO">Typing text 'owner@gmail.com' into text field 'css:input[type="email"]'.</msg>
+<arg>css:input[type="email"]</arg>
+<arg>${email}</arg>
+<doc>Types the given ``text`` into the text field identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:42:18.973346" elapsed="0.318244"/>
+</kw>
+<kw name="Input Password" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:42:19.292733" level="INFO">Typing password into text field 'css:input[type="password"]'.</msg>
+<msg time="2026-11-19T14:42:19.347758" level="INFO">Temporally setting log level to: NONE</msg>
+<arg>css:input[type="password"]</arg>
+<arg>${password}</arg>
+<doc>Types the given password into the text field identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:42:19.291998" elapsed="0.179288"/>
+</kw>
+<kw name="Click Button" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:42:19.472665" level="INFO">Clicking button 'css:button[type="submit"]'.</msg>
+<arg>css:button[type="submit"]</arg>
+<doc>Clicks the button identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:42:19.472111" elapsed="0.150610"/>
+</kw>
+<kw name="Wait Until Location Is" owner="SeleniumLibrary">
+<arg>${BASE_URL}/management/dashboard</arg>
+<arg>20s</arg>
+<doc>Waits until the current URL is ``expected``.</doc>
+<status status="PASS" start="2026-11-19T14:42:19.623192" elapsed="0.676283"/>
+</kw>
+<status status="PASS" start="2026-11-19T14:42:17.820432" elapsed="2.479369"/>
+</kw>
+<kw name="Check Management Page">
+<kw name="Go To" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:42:20.302566" level="INFO">Opening url 'http://localhost:5173/management/service-types'</msg>
+<arg>${BASE_URL}${path}</arg>
+<doc>Navigates the current browser window to the provided ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:42:20.301814" elapsed="0.832415"/>
+</kw>
+<kw name="Wait Until Location Is" owner="SeleniumLibrary">
+<arg>${BASE_URL}${path}</arg>
+<arg>20s</arg>
+<doc>Waits until the current URL is ``expected``.</doc>
+<status status="PASS" start="2026-11-19T14:42:21.134753" elapsed="0.012008"/>
+</kw>
+<kw name="Wait Until Page Contains" owner="SeleniumLibrary">
+<arg>${expected_text}</arg>
+<arg>20s</arg>
+<doc>Waits until ``text`` appears on the current page.</doc>
+<status status="PASS" start="2026-11-19T14:42:21.147162" elapsed="0.213429"/>
+</kw>
+<arg>/management/service-types</arg>
+<arg>Service Types</arg>
+<status status="PASS" start="2026-11-19T14:42:20.300680" elapsed="1.060885"/>
+</kw>
+<kw name="Close Browser" owner="SeleniumLibrary" type="TEARDOWN">
+<doc>Closes the current browser.</doc>
+<status status="PASS" start="2026-11-19T14:42:21.362445" elapsed="2.462629"/>
+</kw>
+<status status="PASS" start="2026-11-19T14:42:14.408910" elapsed="9.416662"/>
+</test>
+<test id="s1-t20" name="20 - Technicians" line="98">
+<kw name="Open Browser" owner="SeleniumLibrary" type="SETUP">
+<msg time="2026-11-19T14:42:23.827065" level="INFO">Opening browser 'chrome' to base url 'http://localhost:5173'.</msg>
+<arg>${BASE_URL}</arg>
+<arg>${BROWSER}</arg>
+<doc>Opens a new browser instance to the optional ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:42:23.826781" elapsed="3.308588"/>
+</kw>
+<kw name="Login As Owner">
+<kw name="Get Environment Variable" owner="OperatingSystem">
+<msg time="2026-11-19T14:42:27.137854" level="INFO">${email} = owner@gmail.com</msg>
+<var>${email}</var>
+<arg>OWNER_EMAIL</arg>
+<arg>${EMPTY}</arg>
+<doc>Returns the value of an environment variable with the given name.</doc>
+<status status="PASS" start="2026-11-19T14:42:27.137201" elapsed="0.000757"/>
+</kw>
+<kw name="Get Environment Variable" owner="OperatingSystem">
+<msg time="2026-11-19T14:42:27.139035" level="INFO">${password} = 12345678</msg>
+<var>${password}</var>
+<arg>OWNER_PASSWORD</arg>
+<arg>${EMPTY}</arg>
+<doc>Returns the value of an environment variable with the given name.</doc>
+<status status="PASS" start="2026-11-19T14:42:27.138366" elapsed="0.000774"/>
+</kw>
+<kw name="Skip If" owner="BuiltIn">
+<arg>not $email or not $password</arg>
+<arg>Set OWNER_EMAIL and OWNER_PASSWORD first.</arg>
+<doc>Conditionally stops the current test or task and sets its status to SKIP.</doc>
+<status status="PASS" start="2026-11-19T14:42:27.139555" elapsed="0.001337"/>
+</kw>
+<kw name="Go To" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:42:27.141676" level="INFO">Opening url 'http://localhost:5173/management/login'</msg>
+<arg>${BASE_URL}/management/login</arg>
+<doc>Navigates the current browser window to the provided ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:42:27.141296" elapsed="1.046388"/>
+</kw>
+<kw name="Wait Until Element Is Visible" owner="SeleniumLibrary">
+<arg>css:input[type="email"]</arg>
+<arg>15s</arg>
+<doc>Waits until the element ``locator`` is visible.</doc>
+<status status="PASS" start="2026-11-19T14:42:28.189088" elapsed="0.052820"/>
+</kw>
+<kw name="Input Text" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:42:28.243126" level="INFO">Typing text 'owner@gmail.com' into text field 'css:input[type="email"]'.</msg>
+<arg>css:input[type="email"]</arg>
+<arg>${email}</arg>
+<doc>Types the given ``text`` into the text field identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:42:28.242377" elapsed="0.317137"/>
+</kw>
+<kw name="Input Password" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:42:28.560387" level="INFO">Typing password into text field 'css:input[type="password"]'.</msg>
+<msg time="2026-11-19T14:42:28.611090" level="INFO">Temporally setting log level to: NONE</msg>
+<arg>css:input[type="password"]</arg>
+<arg>${password}</arg>
+<doc>Types the given password into the text field identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:42:28.559873" elapsed="0.161448"/>
+</kw>
+<kw name="Click Button" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:42:28.722363" level="INFO">Clicking button 'css:button[type="submit"]'.</msg>
+<arg>css:button[type="submit"]</arg>
+<doc>Clicks the button identified by ``locator``.</doc>
+<status status="PASS" start="2026-11-19T14:42:28.721742" elapsed="0.141066"/>
+</kw>
+<kw name="Wait Until Location Is" owner="SeleniumLibrary">
+<arg>${BASE_URL}/management/dashboard</arg>
+<arg>20s</arg>
+<doc>Waits until the current URL is ``expected``.</doc>
+<status status="PASS" start="2026-11-19T14:42:28.863213" elapsed="0.671669"/>
+</kw>
+<status status="PASS" start="2026-11-19T14:42:27.136353" elapsed="2.398851"/>
+</kw>
+<kw name="Check Management Page">
+<kw name="Go To" owner="SeleniumLibrary">
+<msg time="2026-11-19T14:42:29.537571" level="INFO">Opening url 'http://localhost:5173/management/technicians'</msg>
+<arg>${BASE_URL}${path}</arg>
+<doc>Navigates the current browser window to the provided ``url``.</doc>
+<status status="PASS" start="2026-11-19T14:42:29.537052" elapsed="0.843076"/>
+</kw>
+<kw name="Wait Until Location Is" owner="SeleniumLibrary">
+<arg>${BASE_URL}${path}</arg>
+<arg>20s</arg>
+<doc>Waits until the current URL is ``expected``.</doc>
+<status status="PASS" start="2026-11-19T14:42:30.380501" elapsed="0.021455"/>
+</kw>
+<kw name="Wait Until Page Contains" owner="SeleniumLibrary">
+<arg>${expected_text}</arg>
+<arg>20s</arg>
+<doc>Waits until ``text`` appears on the current page.</doc>
+<status status="PASS" start="2026-11-19T14:42:30.402400" elapsed="0.191277"/>
+</kw>
+<arg>/management/technicians</arg>
+<arg>Technicians</arg>
+<status status="PASS" start="2026-11-19T14:42:29.536019" elapsed="1.057860"/>
+</kw>
+<kw name="Close Browser" owner="SeleniumLibrary" type="TEARDOWN">
+<doc>Closes the current browser.</doc>
+<status status="PASS" start="2026-11-19T14:42:30.594550" elapsed="2.486887"/>
+</kw>
+<status status="PASS" start="2026-11-19T14:42:23.826165" elapsed="9.255629"/>
+</test>
+<doc>AV Cooling System Management Tests</doc>
+<status status="PASS" start="2026-11-19T14:39:18.014485" elapsed="195.068857"/>
+</suite>
+<statistics>
+<total>
+<stat pass="20" fail="0" skip="0">All Tests</stat>
+</total>
+<tag>
+</tag>
+<suite>
+<stat name="Management" id="s1" pass="20" fail="0" skip="0">Management</stat>
+</suite>
+</statistics>
+<errors>
+</errors>
+</robot>

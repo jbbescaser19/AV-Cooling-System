@@ -1,3 +1,7 @@
+import RecordCategoryFilters, {
+  field,
+  useRecordFilters,
+} from "../../components/common/RecordCategoryFilters.jsx";
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
@@ -116,6 +120,10 @@ export default function ServicesPage() {
   const [actionError, setActionError] = useState("");
   const dialogRef = useRef(null);
 
+  const categories = useRecordFilters(services, [
+    field("serviceName", "Service types"),
+    field("status", "Statuses", (r) => r.displayStatus || r.status),
+  ]);
   const selectedService = services.find(
     (service) => String(service.requestId) === String(selectedRequestId),
   );
@@ -285,6 +293,11 @@ export default function ServicesPage() {
         </p>
       )}
 
+      {!loading && !error && <RecordCategoryFilters filters={categories} />}
+      {!loading &&
+        !error &&
+        services.length > 0 &&
+        !categories.filtered.length && <p>No matching service bookings.</p>}
       <div className="customer-record-list">
         {loading && <p role="status">Loading your service bookings...</p>}
 
@@ -315,7 +328,7 @@ export default function ServicesPage() {
 
         {!loading &&
           !error &&
-          services.map((service) => (
+          categories.filtered.map((service) => (
             <article
               className="surface customer-record customer-service-desktop-record"
               key={service.requestId}
@@ -383,12 +396,12 @@ export default function ServicesPage() {
           ))}
       </div>
 
-      {!loading && !error && services.length > 0 && (
+      {!loading && !error && categories.filtered.length > 0 && (
         <ul
           className="customer-service-mobile-list"
           aria-label="Service requests"
         >
-          {services.map((service) => (
+          {categories.filtered.map((service) => (
             <li
               className="surface customer-service-mobile-row"
               key={service.requestId}

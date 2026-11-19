@@ -1,0 +1,103 @@
+:root {
+  --av-brand-image: url("/av-cooling-logo.webp");
+}
+
+/* Ecommerce and management logos */
+
+.brand-mark,
+.mgmt-brand-logo {
+  width: 44px !important;
+  height: 44px !important;
+  flex: 0 0 44px !important;
+  box-sizing: border-box;
+  padding: 0 !important;
+  border-radius: 9px !important;
+
+  background-color: #fff !important;
+  background-image: var(--av-brand-image) !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-size: contain !important;
+
+  font-size: 0 !important;
+  overflow: hidden;
+}
+
+.brand-mark > svg,
+.mgmt-brand-logo > svg {
+  display: none !important;
+}
+
+/* Actual navbar image */
+
+.brand-mark.av-image-brand {
+  background-image: none !important;
+  display: grid !important;
+  place-items: center;
+}
+
+.av-image-brand > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.brand-mark.av-image-brand > svg {
+  display: block !important;
+  color: #087ca7;
+}
+
+/* Customer account */
+
+.customer-nav-shell .customer-mobile-brand > svg,
+.customer-nav-shell .customer-home > svg {
+  display: none !important;
+}
+
+.customer-nav-shell .customer-mobile-brand::before,
+.customer-nav-shell .customer-home::before {
+  content: "";
+  display: inline-block;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+
+  border-radius: 8px;
+  background: #fff var(--av-brand-image) center / contain no-repeat;
+}
+
+/* Customer login and registration */
+
+.auth-register-heading:has(> svg.lucide-snowflake) > svg {
+  display: none !important;
+}
+
+.auth-register-heading:has(> svg.lucide-snowflake)::before {
+  content: "";
+  display: block;
+
+  width: 64px;
+  height: 64px;
+  flex: 0 0 64px;
+
+  border-radius: 10px;
+  background: #fff var(--av-brand-image) center / contain no-repeat;
+}
+
+/* Mobile */
+
+@media (max-width: 760px) {
+  .brand-mark,
+  .mgmt-brand-logo {
+    width: 36px !important;
+    height: 36px !important;
+    flex-basis: 36px !important;
+  }
+
+  .auth-register-heading:has(> svg.lucide-snowflake)::before {
+    width: 48px;
+    height: 48px;
+    flex-basis: 48px;
+  }
+}

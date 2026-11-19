@@ -2,17 +2,22 @@ import { getDeliveryFee } from "../../shared/deliveryPricingService.js";
 import { paymongoConfigured } from "../../payments/paymongoService.js";
 import connectDB from "../../../utils/dbConn.js";
 import { createCustomerNotification } from "../notification/notificationService.js";
+
 import {
-  reserveAppointment,
+  checkPreferredAppointment,
   releaseAppointment,
 } from "../../scheduling/bookingScheduleService.js";
+
 import { orderModel } from "../../../models/customer/order/orderModel.js";
+
 import {
   reserveForOrder,
   releaseOrderReservation,
 } from "./stockReservationService.js";
+
 import { workspaceModel } from "../../../models/management/workspaceModel.js";
 import { validateCheckout } from "../../../validators/customer/order/orderValidator.js";
+
 import {
   validateOrderEdit,
   validateOrderCancellation,
@@ -26,9 +31,11 @@ function fail(message, status = 400) {
 
 function moneyCents(value) {
   const amount = Number(value);
+
   if (!Number.isFinite(amount) || amount < 0 || amount > 9999999999) {
     fail("Product price is unavailable. Please contact the store.", 409);
   }
+
   return Math.round(amount * 100);
 }
 
@@ -40,10 +47,16 @@ function checkedItem(row, quantity) {
   ) {
     fail("A selected product is no longer available. Review your cart.", 409);
   }
+
   const promo = Number(row.promoPrice);
   const srp = Number(row.srp);
+
   const unitCents = moneyCents(promo > 0 && promo < srp ? promo : srp);
-  if (unitCents === 0) fail("A selected product has no valid price.", 409);
+
+  if (unitCents === 0) {
+    fail("A selected product has no valid price.", 409);
+  }
+
   return {
     variantId: Number(row.variantId),
     productName: row.productName,
@@ -57,25 +70,39 @@ function checkedItem(row, quantity) {
 
 async function loadOrders(model, customerId, orderNumber = null) {
   const orders = await model.orders(customerId, orderNumber);
+
   const ids = orders.map((item) => item.orderId);
+
   const [rows, events] = await Promise.all([
     model.itemsForOrders(ids),
     model.historyForOrders(ids),
   ]);
+
   const history = new Map();
+
   for (const event of events) {
-    if (!history.has(event.orderId)) history.set(event.orderId, []);
+    if (!history.has(event.orderId)) {
+      history.set(event.orderId, []);
+    }
+
     history.get(event.orderId).push(event);
   }
+
   const lines = new Map();
+
   for (const line of rows) {
-    if (!lines.has(line.orderId)) lines.set(line.orderId, []);
+    if (!lines.has(line.orderId)) {
+      lines.set(line.orderId, []);
+    }
+
     lines.get(line.orderId).push(line);
   }
+
   return orders.map((order) => ({
     ...order,
     items: lines.get(order.orderId) || [],
     history: history.get(order.orderId) || [],
+
     canManage:
       order.channel === "ONLINE" &&
       order.status === "PENDING" &&
@@ -89,26 +116,42 @@ async function loadOrders(model, customerId, orderNumber = null) {
 
 export async function placeCustomerOrder(userId, rawInput) {
   const input = validateCheckout(rawInput);
+
   const orderNumber = `AV-${input.requestId.replaceAll("-", "").toUpperCase()}`;
+
   const db = await connectDB.getConnection();
+
   try {
     await db.beginTransaction();
+
     const model = orderModel(db);
-    // Same customer-row lock as the cart service: serialize cart edits/checkout.
+
+    // Serialize checkout requests from the same customer.
     const customer = await model.customer(userId, true);
-    if (!customer) fail("Active customer account required.", 403);
+
+    if (!customer) {
+      fail("Active customer account required.", 403);
+    }
+
     const existing = await model.existingByNumber(orderNumber);
+
     if (existing) {
       if (Number(existing.customerId) !== Number(customer.customerId)) {
         fail("Checkout reference already used. Start a new checkout.", 409);
       }
+
       const [replayed] = await loadOrders(
         model,
         customer.customerId,
         orderNumber,
       );
+
       await db.commit();
-      return { ...replayed, replayed: true };
+
+      return {
+        ...replayed,
+        replayed: true,
+      };
     }
 
     if (input.paymentCode !== "CASH" && !paymongoConfigured()) {
@@ -117,41 +160,54 @@ export async function placeCustomerOrder(userId, rawInput) {
         503,
       );
     }
+
     const methodId = await model.paymentMethod(input.paymentCode);
-    if (!methodId)
+
+    if (!methodId) {
       fail(
         "This payment method is currently unavailable. Choose another method.",
         409,
       );
+    }
 
     let cartId = null;
     const lines = [];
+
     if (input.source === "CART") {
       cartId = await model.activeCart(customer.customerId);
-      if (!cartId) fail("Your cart is empty. Review your selection.", 409);
+
+      if (!cartId) {
+        fail("Your cart is empty. Review your selection.", 409);
+      }
+
       for (const item of input.items) {
         const row = await model.cartLine(cartId, item.variantId);
+
         if (!row || Number(row.quantity) !== item.quantity) {
           fail(
             "Your selected cart changed. Return to the cart and review it.",
             409,
           );
         }
+
         lines.push(checkedItem(row, item.quantity));
       }
     } else {
       const horsepower = Number(input.hp.slice(0, -2));
+
       const row = await model.directVariant(input.productId, horsepower);
+
       lines.push(checkedItem(row, input.quantity));
     }
 
     const subtotalCents = lines.reduce((sum, item) => sum + item.cents, 0);
-    // Never trust the browser's delivery price. Validate the selected area
-    // against the customer's complete city/province address on the server.
+
     const deliveryFeeCents = Math.round(
       getDeliveryFee(input.deliveryArea, input.deliveryAddress) * 100,
     );
+
     const totalCents = subtotalCents + deliveryFeeCents;
+
     if (
       !Number.isSafeInteger(totalCents) ||
       totalCents <= 0 ||
@@ -159,37 +215,55 @@ export async function placeCustomerOrder(userId, rawInput) {
     ) {
       fail("Unable to calculate a valid order amount.", 409);
     }
+
     if (Math.round(input.expectedTotal * 100) !== totalCents) {
       fail(
         "Order subtotal or delivery fee changed. Review the total before placing your order.",
         409,
       );
     }
+
     const total = (totalCents / 100).toFixed(2);
+
     const orderId = await model.insertOrder({
       orderNumber,
       customerId: customer.customerId,
       paymentMethodId: methodId,
       fulfillment: input.fulfillment,
+
       subtotal: (subtotalCents / 100).toFixed(2),
+
       deliveryFee: (deliveryFeeCents / 100).toFixed(2),
+
       total,
       recipientName: input.recipientName,
       contactNumber: input.contactNumber,
+
       deliveryAddress:
         input.fulfillment === "DELIVERY" ? input.deliveryAddress : null,
+
       customerNotes: input.customerNotes,
+
       preferredSchedule: input.preferredSchedule
         ? `${input.preferredSchedule.replace("T", " ")}:00`
         : null,
     });
-    await reserveAppointment(db, "ORDER", orderId, input.preferredSchedule);
-    // Reserve actual free inventory atomically. Roll back the entire order
-    // if any HP option has run out since the customer opened the Shop.
+
+    // Secure the appointment immediately.
+    await checkPreferredAppointment(
+      db,
+      "ORDER",
+      orderId,
+      input.preferredSchedule,
+    );
+
+    // Secure inventory in the same transaction.
     await reserveForOrder(db, orderId, lines);
+
     for (const item of lines) {
       await model.insertItem(orderId, item);
     }
+
     await model.insertPayment(
       orderId,
       methodId,
@@ -198,15 +272,22 @@ export async function placeCustomerOrder(userId, rawInput) {
         ? "Cash collection to be arranged with the store."
         : `${input.paymentCode} selected. PayMongo Checkout will be available after staff confirms the order.`,
     );
+
     await model.insertStatus(orderId, userId);
+
+    const holdNotice = input.preferredSchedule
+      ? " Your appointment is held for up to 24 hours or until the appointment starts, whichever comes first. It is not confirmed yet."
+      : "";
+
     await createCustomerNotification(
       db,
       userId,
       "ORDER_PLACED",
       "Order received",
-      `Your order ${orderNumber} has been submitted. Delivery and installation are awaiting store confirmation.`,
+      `Your order ${orderNumber} has been submitted. Delivery and installation are awaiting store confirmation.${holdNotice}`,
       `/account/orders/${orderNumber}`,
     );
+
     await workspaceModel(db).notifyStaff(
       "New online order",
       `Order ${orderNumber} was placed and needs staff review.`,
@@ -214,21 +295,30 @@ export async function placeCustomerOrder(userId, rawInput) {
     );
 
     if (input.source === "CART") {
-      for (const item of input.items) {
+      for (const item of lines) {
         const removed = await model.removeCheckedLine(
           cartId,
           item.variantId,
           item.quantity,
         );
-        if (removed !== 1)
+
+        if (removed !== 1) {
           fail("Cart was updated during checkout. Please retry.", 409);
+        }
       }
     }
+
     const [saved] = await loadOrders(model, customer.customerId, orderNumber);
+
     await db.commit();
-    return { ...saved, replayed: false };
+
+    return {
+      ...saved,
+      replayed: false,
+    };
   } catch (error) {
     await db.rollback();
+
     throw error;
   } finally {
     db.release();
@@ -237,23 +327,37 @@ export async function placeCustomerOrder(userId, rawInput) {
 
 export async function listCustomerOrders(userId) {
   const model = orderModel(connectDB);
+
   const customer = await model.customer(userId);
-  if (!customer) fail("Active customer account required.", 403);
+
+  if (!customer) {
+    fail("Active customer account required.", 403);
+  }
+
   return loadOrders(model, customer.customerId);
 }
 
 export async function getCustomerOrder(userId, orderNumber) {
-  if (!/^AV-[0-9A-F]{32}$/.test(orderNumber)) fail("Invalid order number.");
+  if (!/^AV-[0-9A-F]{32}$/.test(orderNumber)) {
+    fail("Invalid order number.");
+  }
+
   const model = orderModel(connectDB);
+
   const customer = await model.customer(userId);
-  if (!customer) fail("Active customer account required.", 403);
+
+  if (!customer) {
+    fail("Active customer account required.", 403);
+  }
+
   const [order] = await loadOrders(model, customer.customerId, orderNumber);
-  if (!order) fail("Order not found.", 404);
+
+  if (!order) {
+    fail("Order not found.", 404);
+  }
+
   return order;
 }
-
-// Customer self-service: transactions recheck all restrictions under row locks.
-// Never accept customer-supplied order status, price, or payment changes.
 
 function validOrderNumber(orderNumber) {
   if (
@@ -262,22 +366,33 @@ function validOrderNumber(orderNumber) {
   ) {
     fail("Invalid online order reference.");
   }
+
   return orderNumber;
 }
 
 async function withEditableOrder(userId, orderNumber, work) {
   const db = await connectDB.getConnection();
+
   try {
     await db.beginTransaction();
+
     const model = orderModel(db);
+
     const customer = await model.customer(userId, true);
-    if (!customer) fail("Active customer account required.", 403);
+
+    if (!customer) {
+      fail("Active customer account required.", 403);
+    }
 
     const order = await model.lockCustomerOrder(
       customer.customerId,
       orderNumber,
     );
-    if (!order) fail("Order not found.", 404);
+
+    if (!order) {
+      fail("Order not found.", 404);
+    }
+
     if (
       order.status !== "PENDING" ||
       order.paymentStatus !== "PENDING" ||
@@ -289,13 +404,16 @@ async function withEditableOrder(userId, orderNumber, work) {
         409,
       );
     }
+
     if (await model.hasWorkOrders(order.orderId)) {
       fail(
         "Staff have started preparing this order. Please contact the store.",
         409,
       );
     }
+
     const paymentStates = await model.lockPaymentStates(order.orderId);
+
     if (
       !paymentStates.length ||
       paymentStates.some((status) => status !== "PENDING")
@@ -307,11 +425,15 @@ async function withEditableOrder(userId, orderNumber, work) {
     }
 
     await work(model, order, db);
+
     const [updated] = await loadOrders(model, customer.customerId, orderNumber);
+
     await db.commit();
+
     return updated;
   } catch (error) {
     await db.rollback();
+
     throw error;
   } finally {
     db.release();
@@ -320,7 +442,9 @@ async function withEditableOrder(userId, orderNumber, work) {
 
 export async function editCustomerOrder(userId, orderNumber, input) {
   validOrderNumber(orderNumber);
+
   const details = validateOrderEdit(input);
+
   return withEditableOrder(
     userId,
     orderNumber,
@@ -334,10 +458,13 @@ export async function editCustomerOrder(userId, orderNumber, input) {
           409,
         );
       }
+
       const normalized = {
         ...details,
+
         deliveryAddress:
           details.fulfillment === "DELIVERY" ? details.deliveryAddress : null,
+
         preferredSchedule: details.preferredSchedule
           ? `${details.preferredSchedule.replace("T", " ")}:00`
           : null,
@@ -356,22 +483,32 @@ export async function editCustomerOrder(userId, orderNumber, input) {
             field === "preferredSchedule"
               ? order.preferredSchedule || null
               : order[field] || null;
+
           const next =
             field === "preferredSchedule"
               ? details.preferredSchedule || null
               : normalized[field] || null;
+
           return previous !== next;
         })
         .map(([, label]) => label);
 
       if (!changedFields.length) return;
-      await reserveAppointment(
-        modelConnection,
-        "ORDER",
-        order.orderId,
-        details.preferredSchedule,
-      );
+
+      if (
+        changedFields.includes("preferred schedule") ||
+        changedFields.includes("fulfillment method")
+      ) {
+        await checkPreferredAppointment(
+          modelConnection,
+          "ORDER",
+          order.orderId,
+          details.preferredSchedule,
+        );
+      }
+
       await model.updateCustomerDetails(order.orderId, normalized);
+
       await model.addCustomerEvent(
         order.orderId,
         userId,
@@ -379,6 +516,7 @@ export async function editCustomerOrder(userId, orderNumber, input) {
         "PENDING",
         `Customer updated: ${changedFields.join(", ")}.`,
       );
+
       await createCustomerNotification(
         modelConnection,
         userId,
@@ -393,24 +531,36 @@ export async function editCustomerOrder(userId, orderNumber, input) {
 
 export async function cancelCustomerOrder(userId, orderNumber, input) {
   validOrderNumber(orderNumber);
+
   const { reason, details } = validateOrderCancellation(input);
+
   const labels = {
     CHANGED_MIND: "Changed my mind",
     WRONG_DETAILS: "Wrong order details",
     ORDERED_BY_MISTAKE: "Ordered by mistake",
     OTHER: "Other reason",
   };
+
   return withEditableOrder(
     userId,
     orderNumber,
     async (model, order, modelConnection) => {
       const affected = await model.cancelPendingOrder(order.orderId);
-      if (affected !== 1)
+
+      if (affected !== 1) {
         fail("Order changed during cancellation. Refresh and retry.", 409);
+      }
+
       await model.cancelPendingPayments(order.orderId);
+
       await releaseOrderReservation(modelConnection, order.orderId);
+
       await releaseAppointment(modelConnection, "ORDER", order.orderId);
-      const note = `Customer cancelled order: ${labels[reason]}${details ? `. ${details}` : ""}`;
+
+      const note =
+        `Customer cancelled order: ${labels[reason]}` +
+        `${details ? `. ${details}` : ""}`;
+
       await model.addCustomerEvent(
         order.orderId,
         userId,
@@ -418,6 +568,7 @@ export async function cancelCustomerOrder(userId, orderNumber, input) {
         "CANCELLED",
         note,
       );
+
       await createCustomerNotification(
         modelConnection,
         userId,

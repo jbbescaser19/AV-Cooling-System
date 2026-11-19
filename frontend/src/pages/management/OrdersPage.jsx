@@ -704,6 +704,7 @@ export default function OrdersPage() {
                   !["PENDING", "CANCELLED"].includes(details.status) && (
                     <>
                       <SourceTeamPanel
+                        scheduledStart={details.schedule}
                         key={`ORDER-${details.id}`}
                         kind="ORDER"
                         sourceId={details.id}
@@ -765,6 +766,9 @@ export default function OrdersPage() {
                     )}
                     {needsFieldWork && canApprove && (
                       <TechnicianTeamPicker
+                        scheduledStart={details.schedule}
+                        kind="ORDER"
+                        sourceId={details.id}
                         value={confirmationTeam}
                         onChange={setConfirmationTeam}
                         disabled={busy}

@@ -1,6 +1,8 @@
 import bcrypt from "bcrypt";
 import { randomBytes } from "node:crypto";
 
+import { strongPassword } from "../../validators/shared/passwordPolicy.js";
+
 import connectDB from "../../utils/dbConn.js";
 
 import { staffPasswordModel } from "../../models/management/staffPasswordModel.js";
@@ -108,7 +110,11 @@ export async function ownerResetStaffPassword(actor, input) {
       fail("Active non-owner staff account not found.", 404);
     }
 
-    const temporaryPassword = randomBytes(18).toString("base64url");
+    let temporaryPassword;
+
+    do {
+      temporaryPassword = randomBytes(24).toString("base64url");
+    } while (!strongPassword.safeParse(temporaryPassword).success);
 
     const hash = await bcrypt.hash(temporaryPassword, 12);
 

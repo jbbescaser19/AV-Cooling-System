@@ -1,10 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
 import {
-  BadgeCheck,
   Minus,
   Plus,
-  Printer,
   RefreshCw,
   Search,
   ShoppingCart,
@@ -14,10 +11,12 @@ import {
 } from "lucide-react";
 
 import api from "../../../api/api.js";
+
 import {
   sanitizePersonName,
   sanitizeContactNumber,
 } from "../../utils/fieldSanitizers.js";
+
 import { confirmAction } from "../../utils/confirmAction.js";
 import { getStaff } from "../../utils/authMock";
 
@@ -29,12 +28,14 @@ import {
 } from "../../utils/deliveryPricing.js";
 
 import useRealtimeRefresh from "../../hooks/useRealtimeRefresh.js";
+
 import AvailabilityPicker from "../../components/scheduling/AvailabilityPicker";
 import TechnicianTeamPicker from "../../components/management/TechnicianTeamPicker";
+import POSReasonField from "../../components/management/POSReasonField.jsx";
+import POSResultModal from "../../components/management/POSResultModal.jsx";
 import POSWalkInService from "../../components/management/POSWalkInService.jsx";
 import ReturningCustomerSearch from "../../components/management/ReturningCustomerSearch.jsx";
 import ActionGuidance from "../../components/common/ActionGuidance.jsx";
-import PayMongoAction from "../../components/payments/PayMongoAction.jsx";
 
 import "../../styles/management/sales-live.css";
 import "../../styles/management/pos-enhancements.css";
@@ -63,6 +64,9 @@ export default function POSPage() {
   const [customerPhone, setCustomerPhone] = useState("");
 
   const [discount, setDiscount] = useState("0");
+  const [discountReason, setDiscountReason] = useState("");
+  const [payLater, setPayLater] = useState(false);
+
   const [additionalFee, setAdditionalFee] = useState("0");
   const [additionalFeeReason, setAdditionalFeeReason] = useState("");
 
@@ -90,7 +94,15 @@ export default function POSPage() {
 
   const staff = getStaff();
 
-  const mayDiscount = ["OWNER", "MANAGER"].includes(staff?.role);
+  const canManage = ["OWNER", "MANAGER"].includes(staff?.role);
+
+  const mayDiscount = ["OWNER", "MANAGER", "SALES_CASHIER"].includes(
+    staff?.role,
+  );
+
+  const cashNow = paymentCode === "CASH" && !payLater;
+
+  const submitLock = useRef(false);
 
   useRealtimeRefresh(
     ["inventory", "catalog", "payments", "customers"],
@@ -100,7 +112,6 @@ export default function POSPage() {
   useEffect(() => {
     const controller = new AbortController();
 
-    // Show a loading screen only on the initial load.
     if (!hasLoadedCatalog.current) {
       setLoading(true);
     }
@@ -117,6 +128,7 @@ export default function POSPage() {
         }
 
         hasLoadedCatalog.current = true;
+
         setCatalogAvailable(true);
         setCatalog(data.items);
 
@@ -129,8 +141,6 @@ export default function POSPage() {
       .catch((requestError) => {
         if (controller.signal.aborted) return;
 
-        // Retain previous product cards if the network fails,
-        // but disable selling until stock has been verified.
         setCatalogAvailable(false);
 
         setError(
@@ -203,6 +213,7 @@ export default function POSPage() {
       cart
         .map((line) => ({
           ...line,
+
           product: catalog.find(
             (product) => String(product.variantId) === String(line.variantId),
           ),
@@ -234,6 +245,14 @@ export default function POSPage() {
 
   const reduction = Number(discount) || 0;
   const fee = Number(additionalFee) || 0;
+
+  const validDiscount =
+    Number.isFinite(Number(discount)) &&
+    reduction >= 0 &&
+    reduction < subtotal &&
+    (reduction > 0
+      ? discountReason.trim().length >= 5
+      : !discountReason.trim());
 
   const validFee =
     Number.isFinite(Number(additionalFee)) &&
@@ -274,19 +293,29 @@ export default function POSPage() {
 
   const change = Math.max(0, Math.round((cash - total) * 100) / 100);
 
+  useEffect(() => {
+    setCashVerified(false);
+  }, [total, cashReceived, paymentCode, payLater]);
+
   const canSave =
     !loading &&
     catalogAvailable &&
     !submitting &&
     paymentMethods.includes(paymentCode) &&
     rows.length > 0 &&
+    rows.length === cart.length &&
     customerName.trim().length >= 2 &&
     validPhone &&
     validFee &&
-    reduction >= 0 &&
-    reduction < subtotal &&
+    validDiscount &&
     (!reduction || mayDiscount) &&
-    (paymentCode !== "CASH" || (cash >= total && cashVerified)) &&
+    (!cashNow || (cash >= total && cashVerified)) &&
+    (!payLater || paymentCode === "CASH") &&
+    rows.every(
+      (line) =>
+        Number(line.product.horsepower) > 0 &&
+        line.quantity <= Number(line.product.available),
+    ) &&
     (!withDelivery ||
       (deliveryFee !== null &&
         Boolean(scheduledStart) &&
@@ -308,6 +337,11 @@ export default function POSPage() {
 
     rows.length === 0 ? "Add at least one product to the sale." : null,
 
+    rows.length !== cart.length ||
+    rows.some((line) => line.quantity > Number(line.product.available))
+      ? "Stock or catalog changed. Review your cart."
+      : null,
+
     customerName.trim().length < 2
       ? "Enter or select the customer's name."
       : null,
@@ -320,8 +354,8 @@ export default function POSPage() {
       ? "Discount must be less than the product subtotal."
       : null,
 
-    reduction > 0 && !mayDiscount
-      ? "Only Manager or Owner can approve discounts."
+    reduction > 0 && discountReason.trim().length < 5
+      ? "Select a discount reason."
       : null,
 
     !validFee
@@ -348,11 +382,11 @@ export default function POSPage() {
       ? "The delivery address is too long."
       : null,
 
-    paymentCode === "CASH" && cash < total
+    cashNow && cash < total
       ? `Cash received must cover ${money(total)}.`
       : null,
 
-    paymentCode === "CASH" && !cashVerified
+    cashNow && !cashVerified
       ? "Count and verify cash before recording a cash sale."
       : null,
   ].filter(Boolean);
@@ -360,7 +394,12 @@ export default function POSPage() {
   function add(product) {
     const available = Math.max(0, Number(product.available) || 0);
 
-    if (available < 1 || submitting || !catalogAvailable) {
+    if (
+      available < 1 ||
+      !(Number(product.horsepower) > 0) ||
+      submitting ||
+      !catalogAvailable
+    ) {
       return;
     }
 
@@ -383,6 +422,7 @@ export default function POSPage() {
         String(line.variantId) === String(product.variantId)
           ? {
               ...line,
+
               quantity: Math.min(available, 99, line.quantity + 1),
             }
           : line,
@@ -411,6 +451,7 @@ export default function POSPage() {
 
           return {
             ...line,
+
             quantity: Math.max(
               0,
               Math.min(99, available, line.quantity + amount),
@@ -426,17 +467,27 @@ export default function POSPage() {
   async function checkout(event) {
     event.preventDefault();
 
-    if (!canSave) return;
+    if (!canSave || submitLock.current) return;
+
+    submitLock.current = true;
+
+    setSubmitting(true);
 
     const approved = await confirmAction(
       `${remoteDelivery ? "First confirm this delivery is possible.\n\n" : ""}${
-        paymentCode === "CASH"
-          ? `Confirm that ${money(cash)} cash was received?`
-          : `Create a PENDING ${money(total)} order and reserve stock? You must generate a PayMongo link afterward.`
+        payLater
+          ? `Save an unpaid cash order for ${money(total)}?`
+          : cashNow
+            ? `Confirm that ${money(cash)} cash was received?`
+            : `Create a PENDING ${money(total)} order and reserve stock? You must generate a PayMongo link afterward.`
       }`,
     );
 
-    if (!approved) return;
+    if (!approved) {
+      submitLock.current = false;
+      setSubmitting(false);
+      return;
+    }
 
     setSubmitting(true);
     setError("");
@@ -444,11 +495,17 @@ export default function POSPage() {
     try {
       const { data } = await api.post("/api/management/sales/pos", {
         requestKey: requestKey.current,
+
         customerName: customerName.trim(),
         customerPhone: customerPhone.trim(),
+
         items: cart,
 
         discount: Math.round(reduction * 100) / 100,
+
+        discountReason: discountReason.trim(),
+
+        payLater,
 
         additionalFee: Math.round(fee * 100) / 100,
 
@@ -456,7 +513,7 @@ export default function POSPage() {
 
         paymentCode,
 
-        cashReceived: paymentCode === "CASH" ? Math.round(cash * 100) / 100 : 0,
+        cashReceived: cashNow ? Math.round(cash * 100) / 100 : 0,
 
         delivery: withDelivery,
 
@@ -468,7 +525,7 @@ export default function POSPage() {
 
         serviceAddress: withDelivery ? completedAddress : "",
 
-        technicianIds: withDelivery && mayDiscount ? technicianIds : [],
+        technicianIds: withDelivery && canManage ? technicianIds : [],
       });
 
       if (!data.success || !data.receipt) {
@@ -481,6 +538,8 @@ export default function POSPage() {
 
       setCart([]);
       setDiscount("0");
+      setDiscountReason("");
+      setPayLater(false);
       setAdditionalFee("0");
       setAdditionalFeeReason("");
       setCashReceived("");
@@ -494,8 +553,6 @@ export default function POSPage() {
       setServiceAddress("");
       setTechnicianIds([]);
 
-      // Refresh data in the background.
-      // The product panel does not return to its loading screen.
       setRefresh((value) => value + 1);
 
       window.dispatchEvent(new Event("av-management-updated"));
@@ -506,6 +563,7 @@ export default function POSPage() {
           "Cannot complete sale.",
       );
     } finally {
+      submitLock.current = false;
       setSubmitting(false);
     }
   }
@@ -574,14 +632,90 @@ export default function POSPage() {
           )}
 
           <div className="sales-columns pos-product-columns">
+            {/* CUSTOMER DETAILS */}
+
+            <section
+              className="sales-panel sales-checkout"
+              style={{ gridColumn: "1 / -1" }}
+              aria-label="Customer details"
+            >
+              <div className="sales-section-head">
+                <h2>Customer details</h2>
+              </div>
+
+              <ReturningCustomerSearch
+                disabled={submitting}
+                onSelect={(person) => {
+                  setCustomerName(person.name);
+                  setCustomerPhone(person.phone);
+
+                  if (person.address) {
+                    setServiceAddress(person.address);
+                  }
+
+                  setCashVerified(false);
+                }}
+              />
+
+              <div className="pos-walkin-fields pos-walkin-fields--two">
+                <label>
+                  Customer name
+                  <input
+                    form="pos-product-sale-form"
+                    value={customerName}
+                    maxLength={150}
+                    required
+                    onChange={(event) => {
+                      setCustomerName(sanitizePersonName(event.target.value));
+
+                      setCashVerified(false);
+                    }}
+                  />
+                  <small>
+                    Letters only. Numbers are not allowed in customer names.
+                  </small>
+                </label>
+
+                <label>
+                  Contact number (required)
+                  <input
+                    form="pos-product-sale-form"
+                    type="tel"
+                    value={customerPhone}
+                    minLength={7}
+                    maxLength={30}
+                    required
+                    autoComplete="tel"
+                    placeholder="e.g. 09XXXXXXXXX"
+                    onChange={(event) => {
+                      setCustomerPhone(
+                        sanitizeContactNumber(event.target.value),
+                      );
+
+                      setCashVerified(false);
+                    }}
+                  />
+                  {!validPhone && customerPhone.length > 0 && (
+                    <small className="pos-fee-fields__error">
+                      Enter a reachable contact number (at least 7 digits).
+                    </small>
+                  )}
+                </label>
+              </div>
+            </section>
+
+            {/* PRODUCTS */}
+
             <section className="sales-panel pos-products-panel">
               <div className="sales-section-head">
                 <h2>Products</h2>
+
                 <span>{catalog.length} variants</span>
               </div>
 
               <label className="sales-search">
                 <Search size={18} />
+
                 <input
                   value={search}
                   onChange={(event) => {
@@ -640,7 +774,7 @@ export default function POSPage() {
                   </label>
 
                   <label>
-                    3. Horsepower (HP)
+                    3. Horsepower (HP) *
                     <select
                       value={variantId}
                       disabled={!modelKey}
@@ -772,7 +906,13 @@ export default function POSPage() {
               </div>
             </section>
 
-            <form className="sales-panel sales-checkout" onSubmit={checkout}>
+            {/* CURRENT SALE */}
+
+            <form
+              id="pos-product-sale-form"
+              className="sales-panel sales-checkout"
+              onSubmit={checkout}
+            >
               <div className="sales-section-head">
                 <h2>Current sale</h2>
 
@@ -780,58 +920,6 @@ export default function POSPage() {
                   {cart.reduce((sum, item) => sum + item.quantity, 0)} items
                 </span>
               </div>
-
-              <ReturningCustomerSearch
-                disabled={submitting}
-                onSelect={(person) => {
-                  setCustomerName(person.name);
-                  setCustomerPhone(person.phone);
-
-                  if (person.address) {
-                    setServiceAddress(person.address);
-                  }
-
-                  setCashVerified(false);
-                }}
-              />
-
-              <label>
-                Customer name
-                <input
-                  value={customerName}
-                  maxLength={150}
-                  required
-                  onChange={(event) => {
-                    setCustomerName(sanitizePersonName(event.target.value));
-                    setCashVerified(false);
-                  }}
-                />
-                <small>
-                  Letters only. Numbers are not allowed in customer names.
-                </small>
-              </label>
-
-              <label>
-                Contact number (required)
-                <input
-                  type="tel"
-                  value={customerPhone}
-                  minLength={7}
-                  maxLength={30}
-                  required
-                  autoComplete="tel"
-                  placeholder="e.g. 09XXXXXXXXX"
-                  onChange={(event) => {
-                    setCustomerPhone(sanitizeContactNumber(event.target.value));
-                    setCashVerified(false);
-                  }}
-                />
-                {!validPhone && customerPhone.length > 0 && (
-                  <small className="pos-fee-fields__error">
-                    Enter a reachable contact number (at least 7 digits).
-                  </small>
-                )}
-              </label>
 
               {rows.length === 0 ? (
                 <p className="sales-empty">
@@ -945,6 +1033,7 @@ export default function POSPage() {
                       required
                       onChange={(event) => {
                         setDeliveryArea(event.target.value);
+
                         setCashVerified(false);
                       }}
                     >
@@ -1017,8 +1106,9 @@ export default function POSPage() {
                     </div>
                   )}
 
-                  {mayDiscount ? (
+                  {canManage ? (
                     <TechnicianTeamPicker
+                      scheduledStart={scheduledStart}
                       value={technicianIds}
                       onChange={setTechnicianIds}
                       disabled={submitting}
@@ -1034,6 +1124,7 @@ export default function POSPage() {
 
               <div className="sales-totals">
                 <span>Subtotal</span>
+
                 <strong>{money(subtotal)}</strong>
               </div>
 
@@ -1052,20 +1143,39 @@ export default function POSPage() {
               )}
 
               {mayDiscount && (
-                <label>
-                  Discount (₱)
-                  <input
-                    type="number"
-                    min="0"
-                    max={subtotal}
-                    step="0.01"
-                    value={discount}
-                    onChange={(event) => {
-                      setDiscount(event.target.value);
-                      setCashVerified(false);
-                    }}
-                  />
-                </label>
+                <>
+                  <label>
+                    Discount (₱)
+                    <input
+                      type="number"
+                      min="0"
+                      max={subtotal}
+                      step="0.01"
+                      value={discount}
+                      onChange={(event) => {
+                        setDiscount(event.target.value);
+
+                        if (Number(event.target.value) <= 0) {
+                          setDiscountReason("");
+                        }
+
+                        setCashVerified(false);
+                      }}
+                    />
+                  </label>
+
+                  {reduction > 0 && (
+                    <POSReasonField
+                      kind="discount"
+                      value={discountReason}
+                      onChange={(value) => {
+                        setDiscountReason(value);
+                        setCashVerified(false);
+                      }}
+                      disabled={submitting}
+                    />
+                  )}
+                </>
               )}
 
               <div className="pos-fee-fields">
@@ -1099,21 +1209,15 @@ export default function POSPage() {
                 </label>
 
                 {fee > 0 && (
-                  <label>
-                    Reason for extra fee (required)
-                    <input
-                      type="text"
-                      minLength={5}
-                      maxLength={255}
-                      required
-                      placeholder="e.g. Extra travel to a remote address"
-                      value={additionalFeeReason}
-                      onChange={(event) => {
-                        setAdditionalFeeReason(event.target.value);
-                        setCashVerified(false);
-                      }}
-                    />
-                  </label>
+                  <POSReasonField
+                    kind="fee"
+                    value={additionalFeeReason}
+                    onChange={(value) => {
+                      setAdditionalFeeReason(value);
+                      setCashVerified(false);
+                    }}
+                    disabled={submitting}
+                  />
                 )}
 
                 {!validFee && (
@@ -1133,11 +1237,42 @@ export default function POSPage() {
               )}
 
               <label>
+                Payment timing
+                <select
+                  value={payLater ? "LATER" : "NOW"}
+                  onChange={(event) => {
+                    const later = event.target.value === "LATER";
+
+                    setPayLater(later);
+
+                    if (later) {
+                      setPaymentCode("CASH");
+                    }
+
+                    setCashReceived("");
+                    setCashVerified(false);
+                  }}
+                  disabled={submitting}
+                >
+                  <option value="NOW">Pay Now</option>
+
+                  <option
+                    value="LATER"
+                    disabled={!paymentMethods.includes("CASH")}
+                  >
+                    Pay Later (cash)
+                  </option>
+                </select>
+              </label>
+
+              <label>
                 Payment method
                 <select
                   value={paymentCode}
+                  disabled={payLater || submitting}
                   onChange={(event) => {
                     setPaymentCode(event.target.value);
+
                     setCashVerified(false);
                   }}
                 >
@@ -1154,14 +1289,12 @@ export default function POSPage() {
               </label>
 
               <div className="sales-totals sales-total">
-                <span>
-                  Total {paymentCode === "CASH" ? "to collect" : "due"}
-                </span>
+                <span>Total {cashNow ? "to collect" : "due"}</span>
 
                 <strong>{money(total)}</strong>
               </div>
 
-              {paymentCode === "CASH" && (
+              {cashNow && (
                 <>
                   <label>
                     Cash received (₱)
@@ -1173,6 +1306,7 @@ export default function POSPage() {
                       value={cashReceived}
                       onChange={(event) => {
                         setCashReceived(event.target.value);
+
                         setCashVerified(false);
                       }}
                     />
@@ -1180,6 +1314,7 @@ export default function POSPage() {
 
                   <div className="sales-totals">
                     <span>Change to return</span>
+
                     <strong>{money(change)}</strong>
                   </div>
 
@@ -1201,9 +1336,11 @@ export default function POSPage() {
 
               <ActionGuidance
                 title={
-                  paymentCode === "CASH"
-                    ? "Complete before cash sale"
-                    : "Complete before creating a PayMongo invoice"
+                  payLater
+                    ? "Complete before saving unpaid sale"
+                    : cashNow
+                      ? "Complete before cash sale"
+                      : "Complete before creating a PayMongo invoice"
                 }
                 reasons={checkoutReasons}
                 readyText="Ready to complete the sale."
@@ -1218,120 +1355,30 @@ export default function POSPage() {
 
                 {submitting
                   ? "Saving…"
-                  : paymentCode === "CASH"
-                    ? "Complete cash sale"
-                    : "Create pending PayMongo sale"}
+                  : payLater
+                    ? "Save unpaid sale"
+                    : cashNow
+                      ? "Complete cash sale"
+                      : "Create pending PayMongo sale"}
               </button>
 
               <small className="sales-muted">
-                {paymentCode === "CASH"
-                  ? "Cash sales deduct stock immediately."
-                  : "PayMongo sales reserve stock until the provider verifies payment. Never release an unpaid purchase."}
+                {payLater
+                  ? "Cash remains pending. Stock is reserved until dispatch or confirmed pickup."
+                  : cashNow
+                    ? "Pickup stock is deducted at handover; scheduled orders reserve stock until dispatch."
+                    : "Online payments remain pending until PayMongo verifies payment."}
               </small>
             </form>
           </div>
 
           {receipt && (
-            <section className="sales-panel sales-receipt" role="status">
-              <div className="sales-section-head">
-                <h2>
-                  <BadgeCheck size={21} />
-                  Sale recorded
-                </h2>
-
-                <button
-                  className="sales-refresh"
-                  type="button"
-                  onClick={() => window.print()}
-                >
-                  <Printer size={17} />
-                  Print
-                </button>
-              </div>
-
-              <p>
-                <strong>Order:</strong> {receipt.orderNumber}
-              </p>
-
-              <p>
-                <strong>Customer:</strong> {receipt.customer}
-              </p>
-
-              <p>
-                <strong>Payment:</strong> {receipt.paymentStatus} ·{" "}
-                {receipt.method}
-              </p>
-
-              {receipt.contact && (
-                <p>
-                  <strong>Phone:</strong> {receipt.contact}
-                </p>
-              )}
-
-              {receipt.paymentStatus === "PENDING" && receipt.paymentId && (
-                <PayMongoAction
-                  kind="ORDER"
-                  identifier={receipt.paymentId}
-                  staff
-                />
-              )}
-
-              {receipt.items?.map((item) => (
-                <p key={item.variantId}>
-                  {item.quantity} × {item.productName} · {money(item.lineTotal)}
-                </p>
-              ))}
-
-              {receipt.subtotal != null && (
-                <div className="sales-totals">
-                  <span>Subtotal</span>
-                  <strong>{money(receipt.subtotal)}</strong>
-                </div>
-              )}
-
-              {Number(receipt.discount) > 0 && (
-                <div className="sales-totals">
-                  <span>Discount</span>
-                  <strong>−{money(receipt.discount)}</strong>
-                </div>
-              )}
-
-              {Number(receipt.additionalFee) > 0 && (
-                <div className="sales-totals pos-fee-summary">
-                  <span>Additional fee · {receipt.additionalFeeReason}</span>
-
-                  <strong>{money(receipt.additionalFee)}</strong>
-                </div>
-              )}
-
-              {receipt.deliveryFee != null && (
-                <div className="sales-totals">
-                  <span>Delivery fee</span>
-                  <strong>{money(receipt.deliveryFee)}</strong>
-                </div>
-              )}
-
-              <div className="sales-totals sales-total">
-                <span>
-                  {receipt.paymentStatus === "PAID"
-                    ? "Total paid"
-                    : "Amount due"}
-                </span>
-
-                <strong>{money(receipt.total)}</strong>
-              </div>
-
-              {receipt.cashReceived != null && (
-                <div className="sales-totals">
-                  <span>Change</span>
-                  <strong>{money(receipt.change)}</strong>
-                </div>
-              )}
-
-              {mayDiscount && (
-                <Link to="/management/orders">View in Orders</Link>
-              )}
-            </section>
+            <POSResultModal
+              kind="ORDER"
+              record={receipt}
+              canManage={canManage}
+              onClose={() => setReceipt(null)}
+            />
           )}
         </div>
       )}

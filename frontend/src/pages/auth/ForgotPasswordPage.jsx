@@ -1,3 +1,5 @@
+import PasswordStrength from "../../components/auth/PasswordStrength.jsx";
+import { isStrongPassword } from "../../utils/passwordPolicy.js";
 import { useState } from "react";
 
 import { Link, useNavigate } from "react-router-dom";
@@ -67,8 +69,8 @@ export default function ForgotPasswordPage() {
 
     if (busy) return;
 
-    if (password.length < 8) {
-      setError("New password must have at least eight characters.");
+    if (!isStrongPassword(password)) {
+      setError("Your password must meet all requirements.");
       return;
     }
 
@@ -197,12 +199,13 @@ export default function ForgotPasswordPage() {
               type="password"
               autoComplete="new-password"
               required
-              minLength={8}
+              minLength={12}
               maxLength={72}
               disabled={busy}
               value={password}
               onChange={(event) => setPassword(event.target.value)}
             />
+            <PasswordStrength value={password} />
 
             <label htmlFor="recovery-confirm">Confirm new password</label>
 
@@ -212,7 +215,7 @@ export default function ForgotPasswordPage() {
               type="password"
               autoComplete="new-password"
               required
-              minLength={8}
+              minLength={12}
               maxLength={72}
               disabled={busy}
               value={confirm}
@@ -226,7 +229,7 @@ export default function ForgotPasswordPage() {
           </>
         )}
 
-        <button className="btn btn-dark" type="submit" disabled={busy}>
+        <button className="btn btn-dark" type="submit" disabled={busy || (step === "verify" && (!isStrongPassword(password) || password !== confirm))}>
           {busy
             ? "Processing…"
             : step === "request"

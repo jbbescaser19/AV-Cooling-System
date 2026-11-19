@@ -1,3 +1,7 @@
+import RecordCategoryFilters, {
+  field,
+  useRecordFilters,
+} from "../../components/common/RecordCategoryFilters.jsx";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CreditCard, RefreshCw, ShieldCheck } from "lucide-react";
 import api from "../../../api/api.js";
@@ -92,6 +96,26 @@ export default function PaymentsPage() {
     [orders, services],
   );
 
+  const categories = useRecordFilters(records, [
+    field(
+      "kind",
+      "Record types",
+      (r) => r.kind,
+      (v) => (v === "ORDER" ? "Product orders" : "Services"),
+    ),
+    field(
+      "method",
+      "Payment methods",
+      (r) => r.method,
+      (v) =>
+        ({
+          CASH: "Cash",
+          GCASH: "GCash",
+          BANK_TRANSFER: "Bank transfer / QR Ph",
+        })[v] || v,
+    ),
+    field("status", "Payment statuses"),
+  ]);
   return (
     <div className="customer-module customer-transfers">
       <CustomerPageHeader
@@ -110,7 +134,7 @@ export default function PaymentsPage() {
       </div>
       <div className="customer-transfer-toolbar">
         <span>
-          {records.length} payment record{records.length === 1 ? "" : "s"}
+          {categories.filtered.length} of {records.length} payment records
         </span>
         <button
           type="button"
@@ -121,6 +145,11 @@ export default function PaymentsPage() {
           <RefreshCw size={15} /> Refresh status
         </button>
       </div>
+      <RecordCategoryFilters filters={categories} />
+      {!loading &&
+        !error &&
+        records.length > 0 &&
+        !categories.filtered.length && <p>No matching payments.</p>}
       {syncError && (
         <p role="status" className="customer-transfer-error">
           {syncError}
@@ -138,7 +167,7 @@ export default function PaymentsPage() {
         </p>
       )}
       <div className="customer-record-list">
-        {records.map((record) => (
+        {categories.filtered.map((record) => (
           <article
             className="surface customer-record customer-transfer-card"
             key={record.key}

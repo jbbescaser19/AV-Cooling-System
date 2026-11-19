@@ -1,3 +1,7 @@
+import RecordCategoryFilters, {
+  field,
+  useRecordFilters,
+} from "../../components/common/RecordCategoryFilters.jsx";
 import { useEffect, useState } from "react";
 import {
   CheckCircle2,
@@ -38,6 +42,15 @@ export default function FeedbackPage() {
     [success, setSuccess] = useState(""),
     [revision, setRevision] = useState(0);
 
+  const historyFilters = useRecordFilters(history, [
+    field("category", "Feedback categories"),
+    field(
+      "rating",
+      "Ratings",
+      (r) => r.rating,
+      (v) => v + " stars",
+    ),
+  ]);
   useRealtimeRefresh(["feedback", "orders", "services"], setRevision);
 
   useEffect(() => {
@@ -258,15 +271,18 @@ export default function FeedbackPage() {
             Refresh
           </button>
         </div>
+        <RecordCategoryFilters filters={historyFilters} />
         {loading ? (
           <p className="customer-feedback-state">Loading feedback…</p>
         ) : history.length === 0 ? (
           <p className="surface customer-feedback-empty">
             You haven't submitted feedback yet. Your reviews will appear here.
           </p>
+        ) : !historyFilters.filtered.length ? (
+          <p>No matching feedback.</p>
         ) : (
           <div className="customer-feedback-list">
-            {history.map((item) => (
+            {historyFilters.filtered.map((item) => (
               <article className="surface customer-feedback-card" key={item.id}>
                 <div className="customer-feedback-card-top">
                   <strong>{item.category}</strong>

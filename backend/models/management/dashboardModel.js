@@ -1,7 +1,39 @@
-/**
- * Management dashboard reads only.
- * All dashboard SQL stays inside this model.
- */
+/** Read-only dashboard database queries. */
+
+const paidFacts = `
+  SELECT p.amount,p.paid_at,p.created_at,
+         'PAID' AS payment_status,
+         'PRODUCT' AS source
+  FROM payments p
+  WHERE p.payment_status='PAID'
+    OR (
+      p.payment_status='REFUNDED'
+      AND EXISTS (
+        SELECT 1 FROM order_payment_refunds r
+        WHERE r.payment_id=p.payment_id
+      )
+    )
+
+  UNION ALL
+
+  SELECT amount,paid_at,created_at,
+         status AS payment_status,
+         'SERVICE' AS source
+  FROM service_payments
+
+  UNION ALL
+
+  SELECT -amount,refunded_at,refunded_at,
+         'REFUND','SERVICE'
+  FROM service_payment_refunds
+
+  UNION ALL
+
+  SELECT -amount,refunded_at,refunded_at,
+         'REFUND','PRODUCT'
+  FROM order_payment_refunds
+`;
+
 export function dashboardModel(db) {
   return {
     async feedbackSentimentSummary() {
@@ -10,137 +42,231 @@ export function dashboardModel(db) {
                 SUM(CASE WHEN sentiment='POSITIVE' THEN 1 ELSE 0 END) AS positive,
                 SUM(CASE WHEN sentiment='NEUTRAL' THEN 1 ELSE 0 END) AS neutral,
                 SUM(CASE WHEN sentiment='NEGATIVE' THEN 1 ELSE 0 END) AS negative,
-                SUM(CASE WHEN sentiment='NOT_ANALYZED' OR sentiment IS NULL THEN 1 ELSE 0 END) AS unanalyzed
+                SUM(CASE WHEN sentiment='NOT_ANALYZED' OR sentiment IS NULL
+                    THEN 1 ELSE 0 END) AS unanalyzed
          FROM feedback`,
       );
+
       return rows[0] || {};
     },
+
     async orderSummary() {
       const [rows] = await db.execute(
-        `SELECT
-           COUNT(*) AS total,
-           SUM(CASE WHEN order_status = 'PENDING' THEN 1 ELSE 0 END) AS pending,
-           SUM(CASE WHEN order_status IN ('CONFIRMED', 'SCHEDULED', 'IN_PROGRESS') THEN 1 ELSE 0 END) AS active,
-           SUM(CASE WHEN order_status = 'COMPLETED' THEN 1 ELSE 0 END) AS completed,
-           SUM(CASE WHEN order_status = 'CANCELLED' THEN 1 ELSE 0 END) AS cancelled,
-           SUM(CASE WHEN payment_status = 'PENDING' AND order_status <> 'CANCELLED'
-             THEN total_amount ELSE 0 END) AS awaitingPaymentAmount
+        `SELECT COUNT(*) AS total,
+                SUM(CASE WHEN order_status='PENDING'
+                    THEN 1 ELSE 0 END) AS pending,
+                SUM(CASE WHEN order_status IN (
+                    'CONFIRMED','SCHEDULED','IN_PROGRESS'
+                ) THEN 1 ELSE 0 END) AS active,
+                SUM(CASE WHEN order_status='COMPLETED'
+                    THEN 1 ELSE 0 END) AS completed,
+                SUM(CASE WHEN order_status='CANCELLED'
+                    THEN 1 ELSE 0 END) AS cancelled,
+                SUM(CASE WHEN payment_status='PENDING'
+                    AND order_status<>'CANCELLED'
+                    THEN total_amount ELSE 0 END) AS awaitingPaymentAmount
          FROM orders`,
       );
+
       return rows[0];
     },
 
     async paymentSummary() {
       const [rows] = await db.execute(
-        `SELECT SUM(CASE WHEN payment_status='PAID' THEN 1 ELSE 0 END) AS paidCount,
-                COALESCE(SUM(amount), 0) AS paidAmount
-         FROM (SELECT amount,paid_at,created_at,payment_status FROM payments
-           UNION ALL SELECT amount,paid_at,created_at,status AS payment_status FROM service_payments
-           UNION ALL SELECT -amount AS amount,refunded_at AS paid_at,
-             refunded_at AS created_at,'REFUND' AS payment_status
-             FROM service_payment_refunds) paid_facts
+        `SELECT
+           SUM(CASE WHEN payment_status='PAID'
+             THEN 1 ELSE 0 END) AS paidCount,
+
+           COALESCE(SUM(amount),0) AS paidAmount,
+
+           COALESCE(SUM(
+             CASE WHEN source='PRODUCT'
+               THEN amount ELSE 0 END
+           ),0) AS productSales,
+
+           COALESCE(SUM(
+             CASE WHEN source='SERVICE'
+               THEN amount ELSE 0 END
+           ),0) AS serviceRevenue
+
+         FROM (${paidFacts}) paid_facts
          WHERE payment_status IN ('PAID','REFUND')`,
       );
+
+      return rows[0];
+    },
+
+    async pendingServicePayments() {
+      const [rows] = await db.execute(
+        `SELECT COALESCE(SUM(sp.amount),0) AS amount
+         FROM service_payments sp
+         INNER JOIN service_requests sr
+           ON sr.service_request_id=sp.service_request_id
+         WHERE sp.status='PENDING'
+           AND sr.status<>'CANCELLED'`,
+      );
+
       return rows[0];
     },
 
     async dailyPaidPayments() {
       const [rows] = await db.execute(
-        `SELECT DATE_FORMAT(COALESCE(paid_at, created_at), '%Y-%m-%d') AS bucket,
-                SUM(CASE WHEN payment_status='PAID' THEN 1 ELSE 0 END) AS paymentCount,
-                COALESCE(SUM(amount), 0) AS amount
-         FROM (SELECT amount,paid_at,created_at,payment_status FROM payments
-           UNION ALL SELECT amount,paid_at,created_at,status AS payment_status FROM service_payments
-           UNION ALL SELECT -amount AS amount,refunded_at AS paid_at,
-             refunded_at AS created_at,'REFUND' AS payment_status
-             FROM service_payment_refunds) paid_facts
+        `SELECT
+           DATE_FORMAT(
+             COALESCE(paid_at,created_at),
+             '%Y-%m-%d'
+           ) AS bucket,
+
+           SUM(CASE WHEN payment_status='PAID'
+               THEN 1 ELSE 0 END) AS paymentCount,
+
+           COALESCE(SUM(amount),0) AS amount
+
+         FROM (${paidFacts}) paid_facts
+
          WHERE payment_status IN ('PAID','REFUND')
-           AND COALESCE(paid_at, created_at) >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
-           AND COALESCE(paid_at, created_at) < DATE_ADD(CURDATE(), INTERVAL 1 DAY)
-         GROUP BY DATE_FORMAT(COALESCE(paid_at, created_at), '%Y-%m-%d')
+           AND COALESCE(paid_at,created_at)
+             >= DATE_SUB(CURDATE(),INTERVAL 6 DAY)
+           AND COALESCE(paid_at,created_at)
+             < DATE_ADD(CURDATE(),INTERVAL 1 DAY)
+
+         GROUP BY DATE_FORMAT(
+           COALESCE(paid_at,created_at),
+           '%Y-%m-%d'
+         )
+
          ORDER BY bucket ASC`,
       );
+
       return rows;
     },
 
     async weeklyPaidPayments() {
       const [rows] = await db.execute(
         `SELECT DATE_FORMAT(
-                  DATE_SUB(DATE(COALESCE(paid_at, created_at)),
-                    INTERVAL WEEKDAY(COALESCE(paid_at, created_at)) DAY),
-                  '%Y-%m-%d'
-                ) AS bucket,
-                SUM(CASE WHEN payment_status='PAID' THEN 1 ELSE 0 END) AS paymentCount,
-                COALESCE(SUM(amount), 0) AS amount
-         FROM (SELECT amount,paid_at,created_at,payment_status FROM payments
-           UNION ALL SELECT amount,paid_at,created_at,status AS payment_status FROM service_payments
-           UNION ALL SELECT -amount AS amount,refunded_at AS paid_at,
-             refunded_at AS created_at,'REFUND' AS payment_status
-             FROM service_payment_refunds) paid_facts
+           DATE_SUB(
+             DATE(COALESCE(paid_at,created_at)),
+             INTERVAL WEEKDAY(
+               COALESCE(paid_at,created_at)
+             ) DAY
+           ),
+           '%Y-%m-%d'
+         ) AS bucket,
+
+         SUM(CASE WHEN payment_status='PAID'
+           THEN 1 ELSE 0 END) AS paymentCount,
+
+         COALESCE(SUM(amount),0) AS amount
+
+         FROM (${paidFacts}) paid_facts
+
          WHERE payment_status IN ('PAID','REFUND')
-           AND COALESCE(paid_at, created_at) >= DATE_SUB(
-             DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY),
-             INTERVAL 7 WEEK
-           )
-           AND COALESCE(paid_at, created_at) < DATE_ADD(CURDATE(), INTERVAL 1 DAY)
+           AND COALESCE(paid_at,created_at)
+             >= DATE_SUB(
+               DATE_SUB(
+                 CURDATE(),
+                 INTERVAL WEEKDAY(CURDATE()) DAY
+               ),
+               INTERVAL 7 WEEK
+             )
+           AND COALESCE(paid_at,created_at)
+             < DATE_ADD(CURDATE(),INTERVAL 1 DAY)
+
          GROUP BY DATE_FORMAT(
-           DATE_SUB(DATE(COALESCE(paid_at, created_at)),
-             INTERVAL WEEKDAY(COALESCE(paid_at, created_at)) DAY),
+           DATE_SUB(
+             DATE(COALESCE(paid_at,created_at)),
+             INTERVAL WEEKDAY(
+               COALESCE(paid_at,created_at)
+             ) DAY
+           ),
            '%Y-%m-%d'
          )
+
          ORDER BY bucket ASC`,
       );
+
       return rows;
     },
 
     async monthlyPaidPayments() {
       const [rows] = await db.execute(
-        `SELECT DATE_FORMAT(COALESCE(paid_at, created_at), '%Y-%m') AS month,
-                SUM(CASE WHEN payment_status='PAID' THEN 1 ELSE 0 END) AS paymentCount,
-                SUM(amount) AS amount
-         FROM (SELECT amount,paid_at,created_at,payment_status FROM payments
-           UNION ALL SELECT amount,paid_at,created_at,status AS payment_status FROM service_payments
-           UNION ALL SELECT -amount AS amount,refunded_at AS paid_at,
-             refunded_at AS created_at,'REFUND' AS payment_status
-             FROM service_payment_refunds) paid_facts
+        `SELECT DATE_FORMAT(
+           COALESCE(paid_at,created_at),
+           '%Y-%m'
+         ) AS month,
+
+         SUM(CASE WHEN payment_status='PAID'
+             THEN 1 ELSE 0 END) AS paymentCount,
+
+         SUM(amount) AS amount
+
+         FROM (${paidFacts}) paid_facts
+
          WHERE payment_status IN ('PAID','REFUND')
-           AND COALESCE(paid_at, created_at) >=
-             DATE_SUB(DATE_FORMAT(CURRENT_DATE(), '%Y-%m-01'), INTERVAL 5 MONTH)
-           AND COALESCE(paid_at, created_at) < DATE_ADD(CURDATE(), INTERVAL 1 DAY)
-         GROUP BY DATE_FORMAT(COALESCE(paid_at, created_at), '%Y-%m')
+           AND COALESCE(paid_at,created_at)
+             >= DATE_SUB(
+               DATE_FORMAT(CURRENT_DATE(),'%Y-%m-01'),
+               INTERVAL 5 MONTH
+             )
+           AND COALESCE(paid_at,created_at)
+             < DATE_ADD(CURDATE(),INTERVAL 1 DAY)
+
+         GROUP BY DATE_FORMAT(
+           COALESCE(paid_at,created_at),
+           '%Y-%m'
+         )
+
          ORDER BY month ASC`,
       );
+
       return rows;
     },
 
     async yearlyPaidPayments() {
       const [rows] = await db.execute(
-        `SELECT DATE_FORMAT(COALESCE(paid_at, created_at), '%Y') AS bucket,
-                SUM(CASE WHEN payment_status='PAID' THEN 1 ELSE 0 END) AS paymentCount,
-                COALESCE(SUM(amount), 0) AS amount
-         FROM (SELECT amount,paid_at,created_at,payment_status FROM payments
-           UNION ALL SELECT amount,paid_at,created_at,status AS payment_status FROM service_payments
-           UNION ALL SELECT -amount AS amount,refunded_at AS paid_at,
-             refunded_at AS created_at,'REFUND' AS payment_status
-             FROM service_payment_refunds) paid_facts
+        `SELECT DATE_FORMAT(
+           COALESCE(paid_at,created_at),
+           '%Y'
+         ) AS bucket,
+
+         SUM(CASE WHEN payment_status='PAID'
+             THEN 1 ELSE 0 END) AS paymentCount,
+
+         COALESCE(SUM(amount),0) AS amount
+
+         FROM (${paidFacts}) paid_facts
+
          WHERE payment_status IN ('PAID','REFUND')
-           AND COALESCE(paid_at, created_at) >= MAKEDATE(YEAR(CURDATE()) - 4, 1)
-           AND COALESCE(paid_at, created_at) < DATE_ADD(CURDATE(), INTERVAL 1 DAY)
-         GROUP BY DATE_FORMAT(COALESCE(paid_at, created_at), '%Y')
+           AND COALESCE(paid_at,created_at)
+             >= MAKEDATE(YEAR(CURDATE())-4,1)
+           AND COALESCE(paid_at,created_at)
+             < DATE_ADD(CURDATE(),INTERVAL 1 DAY)
+
+         GROUP BY DATE_FORMAT(
+           COALESCE(paid_at,created_at),
+           '%Y'
+         )
+
          ORDER BY bucket ASC`,
       );
+
       return rows;
     },
 
     async serviceSummary() {
       const [rows] = await db.execute(
         `SELECT COUNT(*) AS total,
-                SUM(CASE WHEN status = 'PENDING' THEN 1 ELSE 0 END) AS pending,
-                SUM(CASE WHEN status = 'CONFIRMED' THEN 1 ELSE 0 END) AS active,
-                SUM(CASE WHEN status = 'COMPLETED' THEN 1 ELSE 0 END) AS completed,
-                SUM(CASE WHEN status = 'CANCELLED' THEN 1 ELSE 0 END) AS cancelled
+                SUM(CASE WHEN status='PENDING'
+                    THEN 1 ELSE 0 END) AS pending,
+                SUM(CASE WHEN status='CONFIRMED'
+                    THEN 1 ELSE 0 END) AS active,
+                SUM(CASE WHEN status='COMPLETED'
+                    THEN 1 ELSE 0 END) AS completed,
+                SUM(CASE WHEN status='CANCELLED'
+                    THEN 1 ELSE 0 END) AS cancelled
          FROM service_requests`,
       );
+
       return rows[0];
     },
 
@@ -148,36 +274,54 @@ export function dashboardModel(db) {
       const [rows] = await db.execute(
         `SELECT COUNT(*) AS active
          FROM customers c
-         INNER JOIN users u ON u.user_id = c.user_id
-         WHERE c.status = 'ACTIVE'
-           AND u.status = 'ACTIVE'
-           AND u.account_type = 'CUSTOMER'`,
+         INNER JOIN users u
+           ON u.user_id=c.user_id
+         WHERE c.status='ACTIVE'
+           AND u.status='ACTIVE'
+           AND u.account_type='CUSTOMER'`,
       );
+
       return rows[0];
     },
 
     async inventorySummary() {
       const [rows] = await db.execute(
         `SELECT COUNT(*) AS tracked,
-                SUM(CASE WHEN GREATEST(on_hand_quantity - reserved_quantity, 0)
-                  <= reorder_level THEN 1 ELSE 0 END) AS lowStock
+                SUM(
+                  CASE
+                    WHEN on_hand_quantity <= reorder_level
+                    THEN 1
+                    ELSE 0
+                  END
+                ) AS lowStock
          FROM inventory`,
       );
+
       return rows[0];
     },
 
     async recentOrders() {
       const [rows] = await db.execute(
-        `SELECT order_id AS id, order_number AS reference,
-                recipient_name AS customer, order_status AS status,
+        `SELECT order_id AS id,
+                CONCAT(
+                  'AV-',YEAR(ordered_at),'-',
+                  CASE
+                    WHEN order_id < 1000000
+                    THEN LPAD(order_id,6,'0')
+                    ELSE CAST(order_id AS CHAR)
+                  END
+                ) AS reference,
+                recipient_name AS customer,
+                order_status AS status,
                 payment_status AS paymentStatus,
                 order_channel AS channel,
                 total_amount AS amount,
                 updated_at AS updatedAt
          FROM orders
-         ORDER BY updated_at DESC, order_id DESC
+         ORDER BY updated_at DESC,order_id DESC
          LIMIT 6`,
       );
+
       return rows;
     },
 
@@ -189,12 +333,16 @@ export function dashboardModel(db) {
                 sr.status AS status,
                 sr.updated_at AS updatedAt
          FROM service_requests sr
-         INNER JOIN service_types st ON st.service_type_id = sr.service_type_id
-         INNER JOIN customers c ON c.customer_id = sr.customer_id
-         LEFT JOIN users u ON u.user_id = c.user_id
-         ORDER BY sr.updated_at DESC, sr.service_request_id DESC
+         INNER JOIN service_types st
+           ON st.service_type_id=sr.service_type_id
+         INNER JOIN customers c
+           ON c.customer_id=sr.customer_id
+         LEFT JOIN users u
+           ON u.user_id=c.user_id
+         ORDER BY sr.updated_at DESC,sr.service_request_id DESC
          LIMIT 6`,
       );
+
       return rows;
     },
 
@@ -206,14 +354,18 @@ export function dashboardModel(db) {
                 sr.status AS status,
                 sr.preferred_start AS preferredStart
          FROM service_requests sr
-         INNER JOIN service_types st ON st.service_type_id = sr.service_type_id
-         INNER JOIN customers c ON c.customer_id = sr.customer_id
-         LEFT JOIN users u ON u.user_id = c.user_id
-         WHERE sr.status IN ('PENDING', 'CONFIRMED')
+         INNER JOIN service_types st
+           ON st.service_type_id=sr.service_type_id
+         INNER JOIN customers c
+           ON c.customer_id=sr.customer_id
+         LEFT JOIN users u
+           ON u.user_id=c.user_id
+         WHERE sr.status IN ('PENDING','CONFIRMED')
            AND sr.preferred_start >= NOW()
-         ORDER BY sr.preferred_start ASC, sr.service_request_id ASC
+         ORDER BY sr.preferred_start ASC,sr.service_request_id ASC
          LIMIT 5`,
       );
+
       return rows;
     },
   };

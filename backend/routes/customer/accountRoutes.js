@@ -4,7 +4,10 @@ import { requireCustomerAuth } from "../../middleware/requireCustomerAuth.js";
 
 import { requireServiceWriteOrigin } from "../../middleware/requireServiceWriteOrigin.js";
 
-import { getCustomerProfileController } from "../../controllers/customer/account/profileController.js";
+import {
+  getCustomerProfileController,
+  updateCustomerProfileController,
+} from "../../controllers/customer/account/profileController.js";
 
 import { changeCustomerPasswordController } from "../../controllers/customer/account/passwordController.js";
 
@@ -28,6 +31,12 @@ router.use(requireCustomerAuth);
 
 // Customer profile
 router.get("/profile", getCustomerProfileController);
+
+router.patch(
+  "/profile",
+  requireServiceWriteOrigin,
+  updateCustomerProfileController,
+);
 
 // Change customer password
 router.patch(

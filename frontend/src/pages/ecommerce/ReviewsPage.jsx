@@ -1,3 +1,7 @@
+import RecordCategoryFilters, {
+  field,
+  useRecordFilters,
+} from "../../components/common/RecordCategoryFilters.jsx";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { MessageSquareHeart, RefreshCw, Star } from "lucide-react";
@@ -10,6 +14,15 @@ export default function ReviewsPage() {
     [busy, setBusy] = useState(true),
     [error, setError] = useState(""),
     [refresh, setRefresh] = useState(0);
+  const categories = useRecordFilters(items, [
+    field("category", "Review categories"),
+    field(
+      "rating",
+      "Ratings",
+      (r) => r.rating,
+      (v) => v + " stars",
+    ),
+  ]);
   useRealtimeRefresh(["feedback"], setRefresh);
 
   useEffect(() => {
@@ -44,6 +57,10 @@ export default function ReviewsPage() {
             customer permission.
           </p>
         </header>
+        {!busy && !error && <RecordCategoryFilters filters={categories} />}
+        {!busy && !error && items.length > 0 && !categories.filtered.length && (
+          <p>No matching reviews.</p>
+        )}
         {busy ? (
           <p role="status">Loading reviews…</p>
         ) : error ? (
@@ -60,9 +77,9 @@ export default function ReviewsPage() {
               Try again
             </button>
           </div>
-        ) : items.length ? (
+        ) : categories.filtered.length ? (
           <div className="public-reviews-grid">
-            {items.map((item) => (
+            {categories.filtered.map((item) => (
               <article className="public-review-card" key={item.id}>
                 <div
                   aria-label={`${item.rating} out of 5 stars`}

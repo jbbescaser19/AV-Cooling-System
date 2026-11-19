@@ -11,6 +11,9 @@ import "../../styles/ecommerce/pages.css";
 import "../../styles/ecommerce/service-booking.css";
 
 function resolveServiceType(service) {
+  if (typeof service?.serviceType === "string") {
+    return service.serviceType.trim().toLowerCase();
+  }
   const value =
     service?.serviceType ?? service?.type ?? service?.id ?? service?.name ?? "";
   const slug = String(value)

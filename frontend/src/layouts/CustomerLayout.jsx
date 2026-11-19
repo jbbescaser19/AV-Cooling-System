@@ -119,6 +119,7 @@ export default function CustomerLayout() {
 
     return () => {
       document.body.style.overflow = previousOverflow;
+
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("resize", onResize);
     };
@@ -139,10 +140,12 @@ export default function CustomerLayout() {
         }
       } catch (error) {
         if (!active) return;
+
         if ([401, 403].includes(error.response?.status)) {
           // A failed access-token refresh means the customer session
           // really ended. Do not keep polling with a rejected cookie.
           setUnreadCount(0);
+
           navigate("/login", {
             replace: true,
             state: {
@@ -150,6 +153,7 @@ export default function CustomerLayout() {
             },
           });
         }
+
         // Temporary network problems never force a logout.
       }
     }
@@ -162,7 +166,9 @@ export default function CustomerLayout() {
 
     return () => {
       active = false;
+
       window.clearInterval(interval);
+
       window.removeEventListener("av-notifications-changed", refreshUnread);
     };
   }, [navigate]);
@@ -324,13 +330,14 @@ export default function CustomerLayout() {
               )}
             </NavLink>
           ))}
+
           <Link
             to="/"
             className="customer-return-store-nav"
             onClick={() => setMenuOpen(false)}
           >
             <Store size={19} aria-hidden="true" />
-            <span>Back to Shop</span>
+            <span>Back to Home</span>
           </Link>
         </nav>
 
@@ -361,8 +368,9 @@ export default function CustomerLayout() {
       <main className="customer-main" id="customer-account-content">
         <Link to="/" className="customer-return-store-link">
           <ArrowLeft size={17} aria-hidden="true" />
-          <span>Back to Shop</span>
+          <span>Back to Home</span>
         </Link>
+
         <Outlet />
       </main>
     </div>

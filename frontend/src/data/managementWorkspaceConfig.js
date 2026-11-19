@@ -1,4 +1,5 @@
-/** The UI schema controls display only. Validation and permissions live on the backend. */
+/** UI display schema. Validation and permissions live on the backend. */
+
 const text = (key, label, required = true, maxLength = 150) => ({
   key,
   label,
@@ -6,6 +7,7 @@ const text = (key, label, required = true, maxLength = 150) => ({
   required,
   maxLength,
 });
+
 const number = (key, label, { min = 0, max = 1000000, step = 1 } = {}) => ({
   key,
   label,
@@ -15,6 +17,7 @@ const number = (key, label, { min = 0, max = 1000000, step = 1 } = {}) => ({
   step,
   required: true,
 });
+
 const choice = (key, label, choices) => ({
   key,
   label,
@@ -22,6 +25,7 @@ const choice = (key, label, choices) => ({
   choices,
   required: true,
 });
+
 const reference = (key, label, optionGroup, nullable = false) => ({
   key,
   label,
@@ -30,6 +34,7 @@ const reference = (key, label, optionGroup, nullable = false) => ({
   nullable,
   required: !nullable,
 });
+
 const note = (key, label, required = false) => ({
   key,
   label,
@@ -37,13 +42,16 @@ const note = (key, label, required = false) => ({
   required,
   maxLength: 2000,
 });
+
 const date = (key, label, type = "date") => ({
   key,
   label,
   type,
   required: true,
 });
+
 const activityStatus = choice("status", "Status", ["ACTIVE", "INACTIVE"]);
+
 export const workspaceConfig = {
   categories: {
     title: "Product Categories",
@@ -63,6 +71,7 @@ export const workspaceConfig = {
       activityStatus,
     ],
   },
+
   products: {
     title: "Products",
     description:
@@ -81,12 +90,19 @@ export const workspaceConfig = {
       text("name", "Product name"),
       text("brand", "Brand"),
       text("model", "Model"),
-      number("horsepower", "Horsepower", { min: 0.5, max: 10, step: 0.5 }),
+
+      number("horsepower", "Horsepower", {
+        min: 0.5,
+        max: 10,
+        step: 0.5,
+      }),
+
       number("srp", "Suggested retail price (PHP)", {
         min: 0.01,
         max: 10000000,
         step: 0.01,
       }),
+
       {
         ...number("promoPrice", "Promotional price (optional)", {
           min: 0.01,
@@ -104,6 +120,7 @@ export const workspaceConfig = {
       activityStatus,
     ],
   },
+
   variants: {
     title: "Product Variants & Prices",
     description:
@@ -117,7 +134,12 @@ export const workspaceConfig = {
       ["status", "Status"],
     ],
     update: [
-      number("srp", "SRP (PHP)", { min: 0.01, max: 10000000, step: 0.01 }),
+      number("srp", "SRP (PHP)", {
+        min: 0.01,
+        max: 10000000,
+        step: 0.01,
+      }),
+
       {
         ...number("promoPrice", "Promo price (optional)", {
           min: 0.01,
@@ -127,9 +149,11 @@ export const workspaceConfig = {
         nullable: true,
         required: false,
       },
+
       activityStatus,
     ],
   },
+
   inventory: {
     title: "Inventory",
     description:
@@ -143,6 +167,7 @@ export const workspaceConfig = {
     ],
     create: [
       reference("variantId", "Variant", "variants"),
+
       choice("movementType", "Movement type", [
         "STOCK_IN",
         "STOCK_OUT",
@@ -150,15 +175,23 @@ export const workspaceConfig = {
         "RETURN",
         "ADJUSTMENT",
       ]),
+
       number("quantity", "Quantity (signed for adjustment)", {
         min: -100000,
         max: 100000,
       }),
+
       note("note", "Reason / supplier reference", true),
     ],
-    update: [number("reorderLevel", "Reorder level", { min: 0, max: 1000000 })],
+    update: [
+      number("reorderLevel", "Reorder level", {
+        min: 0,
+        max: 1000000,
+      }),
+    ],
     createLabel: "Record stock movement",
   },
+
   "stock-movements": {
     title: "Stock Movements",
     description:
@@ -172,6 +205,7 @@ export const workspaceConfig = {
       ["createdAt", "Date"],
     ],
   },
+
   "service-types": {
     title: "Service Types",
     description:
@@ -187,16 +221,28 @@ export const workspaceConfig = {
       text("name", "Service name"),
       text("code", "Unique code", true, 40),
       note("description", "Description"),
-      number("price", "Base price (PHP)", { min: 0, max: 1000000, step: 0.01 }),
+
+      number("price", "Base price (PHP)", {
+        min: 0,
+        max: 1000000,
+        step: 0.01,
+      }),
     ],
     update: [
       text("name", "Service name"),
-      text("code", "Code", true, 40),
+      text("code", "Unique code", true, 40),
       note("description", "Description"),
-      number("price", "Base price (PHP)", { min: 0, max: 1000000, step: 0.01 }),
+
+      number("price", "Base price (PHP)", {
+        min: 0,
+        max: 1000000,
+        step: 0.01,
+      }),
+
       activityStatus,
     ],
   },
+
   technicians: {
     title: "Technicians",
     description:
@@ -215,6 +261,7 @@ export const workspaceConfig = {
       choice("status", "Availability", ["ACTIVE", "INACTIVE", "UNAVAILABLE"]),
     ],
   },
+
   schedules: {
     title: "Schedules",
     description:
@@ -231,13 +278,16 @@ export const workspaceConfig = {
       reference("technicianId", "Technician", "technicians"),
       date("date", "Day"),
       choice("status", "Availability", ["AVAILABLE", "OFF"]),
+
       text("reason", "Reason (meeting, leave, training, etc.)", false, 200),
+
       {
         key: "startTime",
         label: "Unavailable from (optional)",
         type: "time",
         required: false,
       },
+
       {
         key: "endTime",
         label: "Unavailable until (optional)",
@@ -248,12 +298,14 @@ export const workspaceConfig = {
     update: [
       choice("status", "Availability", ["AVAILABLE", "OFF"]),
       text("reason", "Reason", false, 200),
+
       {
         key: "startTime",
         label: "Unavailable from (optional)",
         type: "time",
         required: false,
       },
+
       {
         key: "endTime",
         label: "Unavailable until (optional)",
@@ -262,6 +314,7 @@ export const workspaceConfig = {
       },
     ],
   },
+
   customers: {
     title: "Customers",
     description:
@@ -276,6 +329,7 @@ export const workspaceConfig = {
     ],
     update: [activityStatus],
   },
+
   feedback: {
     title: "Customer Feedback",
     description:
@@ -296,6 +350,7 @@ export const workspaceConfig = {
       ),
     ],
   },
+
   "facebook-requests": {
     title: "Facebook Agreements",
     description:
@@ -317,20 +372,32 @@ export const workspaceConfig = {
       choice("requestKind", "Agreed request", ["AIRCON", "SERVICE"]),
       text("customerName", "Customer name"),
       text("contactNumber", "Phone", true, 30),
+
       text(
         "facebookAccount",
         "Facebook account / name you spoke with",
         true,
         150,
       ),
+
       note("address", "Service location / relocation pickup address", true),
       note("destinationAddress", "Relocation destination address"),
+
       date("scheduledStart", "Agreed date and time", "datetime-local"),
+
       reference("variantId", "Aircon model", "variants", true),
-      number("quantity", "Quantity", { min: 1, max: 100000 }),
+
+      number("quantity", "Quantity", {
+        min: 1,
+        max: 100000,
+      }),
+
       reference("serviceTypeId", "Service type", "serviceTypes", true),
+
       text("airconBrand", "Aircon brand (service requests)", false, 100),
+
       text("airconModel", "Aircon model (service requests)", false, 150),
+
       {
         ...number("airconHp", "Aircon horsepower (service requests)", {
           min: 0.5,
@@ -340,19 +407,23 @@ export const workspaceConfig = {
         nullable: true,
         required: false,
       },
+
       text(
         "conversationUrl",
         "Optional Messenger conversation link",
         false,
         500,
       ),
+
       note("notes", "What was agreed with the customer"),
     ],
     update: [
       choice("action", "Next action", ["CONFIRM", "CONVERT", "CANCEL"]),
+
       note("note", "Staff note / cancellation reason"),
     ],
   },
+
   reports: {
     title: "Revenue Reports",
     description:
@@ -367,6 +438,7 @@ export const workspaceConfig = {
       ["revenue", "Total paid revenue"],
     ],
   },
+
   notifications: {
     title: "Notifications",
     description: "Your management alerts, stored in the database.",
@@ -379,6 +451,7 @@ export const workspaceConfig = {
     ],
     update: [choice("isRead", "Mark as", ["true", "false"])],
   },
+
   staff: {
     title: "Staff Accounts",
     description:
@@ -392,8 +465,14 @@ export const workspaceConfig = {
     ],
     create: [
       text("name", "Full name"),
-      { ...text("email", "Email"), type: "email" },
+
+      {
+        ...text("email", "Email"),
+        type: "email",
+      },
+
       choice("role", "Role", ["MANAGER", "SALES_CASHIER", "TECHNICIAN"]),
+
       {
         ...text("password", "Temporary password", true, 128),
         type: "password",
@@ -401,9 +480,11 @@ export const workspaceConfig = {
     ],
     update: [
       choice("role", "Role", ["MANAGER", "SALES_CASHIER", "TECHNICIAN"]),
+
       choice("status", "Status", ["ACTIVE", "INACTIVE", "SUSPENDED"]),
     ],
   },
+
   "audit-logs": {
     title: "Audit Logs",
     description:
@@ -412,7 +493,6 @@ export const workspaceConfig = {
       ["action", "Action"],
       ["module", "Module"],
       ["staff", "Staff"],
-      ["recordType", "Record type"],
       ["recordId", "Record ID"],
       ["createdAt", "Date"],
     ],

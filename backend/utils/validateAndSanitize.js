@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { strongPassword } from "../validators/shared/passwordPolicy.js";
 
 export function validateRegister(data) {
   const registerSchema = z.object({
@@ -11,7 +12,7 @@ export function validateRegister(data) {
 
     phone: z.string().trim().min(10, "Enter a valid phone number."),
 
-    password: z.string().min(8, "Password must be at least 8 characters."),
+    password: strongPassword,
 
     acceptTerms: z.literal(true, {
       error: "You must accept the Terms and Conditions.",

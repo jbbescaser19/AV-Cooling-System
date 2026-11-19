@@ -3,6 +3,12 @@ export function workOrderModel(db) {
   const select = async (sql, values = []) => (await db.execute(sql, values))[0];
   const execute = async (sql, values = []) =>
     (await db.execute(sql, values))[0];
+
+  // A cancelled source must not remain actionable through an old assignment.
+  const nonCancelledSource = `
+    AND (w.order_id IS NULL OR o.order_status <> 'CANCELLED')
+    AND (w.service_request_id IS NULL OR sr.status <> 'CANCELLED')`;
+
   return {
     async listWorkOrders(staffId) {
       return select(`SELECT
@@ -43,34 +49,51 @@ export function workOrderModel(db) {
                    LEFT JOIN orders o ON o.order_id=w.order_id
                    ORDER BY w.work_order_id DESC LIMIT 200`);
     },
-    /** Scoped to the authenticated technician's staff user ID, not a client ID. */
+
+    /** Scoped to the authenticated technician's staff user ID. */
     async techJobSummary(staffId) {
       const rows = await select(
         `SELECT
-           COUNT(DISTINCT CASE WHEN w.status IN ('ASSIGNED','IN_PROGRESS')
-             THEN w.work_order_id END) AS active,
-           COUNT(DISTINCT CASE WHEN w.status='ASSIGNED'
-             THEN w.work_order_id END) AS awaitingStart,
-           COUNT(DISTINCT CASE WHEN w.status='ASSIGNED' AND w.work_type='SERVICE'
-             THEN w.work_order_id END) AS pendingServices,
-           COUNT(DISTINCT CASE WHEN w.status='ASSIGNED' AND w.work_type IN ('DELIVERY','INSTALLATION')
-             THEN w.work_order_id END) AS pendingOrderJobs,
-           COUNT(DISTINCT CASE WHEN w.status='IN_PROGRESS'
-             THEN w.work_order_id END) AS inProgress,
-           COUNT(DISTINCT CASE WHEN w.status='COMPLETED'
-             THEN w.work_order_id END) AS completed,
-           COUNT(DISTINCT CASE WHEN w.status IN ('ASSIGNED','IN_PROGRESS')
-             AND DATE(w.scheduled_start)=CURRENT_DATE()
-             THEN w.work_order_id END) AS dueToday
-         FROM work_orders w
-         JOIN technician_assignments a ON a.work_order_id=w.work_order_id
-         JOIN technicians t ON t.technician_id=a.technician_id
-         WHERE t.user_id=? AND a.status IN ('ASSIGNED','IN_PROGRESS','COMPLETED')
-           AND w.status IN ('ASSIGNED','IN_PROGRESS','COMPLETED')`,
+           COALESCE(SUM(j.jobStatus IN ('ASSIGNED','IN_PROGRESS')), 0) AS active,
+           COALESCE(SUM(j.jobStatus='ASSIGNED'), 0) AS awaitingStart,
+           COALESCE(SUM(j.jobStatus='ASSIGNED' AND j.isService=1), 0) AS pendingServices,
+           COALESCE(SUM(j.jobStatus='ASSIGNED' AND j.isOrderJob=1), 0) AS pendingOrderJobs,
+           COALESCE(SUM(j.jobStatus='IN_PROGRESS'), 0) AS inProgress,
+           COALESCE(SUM(j.jobStatus='COMPLETED'), 0) AS completed,
+           COALESCE(SUM(j.jobStatus IN ('ASSIGNED','IN_PROGRESS') AND j.dueToday=1), 0) AS dueToday
+         FROM (
+           SELECT
+             CASE WHEN w.order_id IS NOT NULL
+                       AND w.work_type IN ('DELIVERY','INSTALLATION')
+                  THEN CONCAT('order-', w.order_id)
+                  ELSE CONCAT('job-', w.work_order_id)
+             END AS jobKey,
+             CASE
+               WHEN MIN(w.status='ASSIGNED')=1 THEN 'ASSIGNED'
+               WHEN MIN(w.status='IN_PROGRESS')=1 THEN 'IN_PROGRESS'
+               WHEN MIN(w.status='COMPLETED')=1 THEN 'COMPLETED'
+               ELSE 'NEEDS_REVIEW'
+             END AS jobStatus,
+             MAX(w.work_type='SERVICE') AS isService,
+             MAX(w.work_type IN ('DELIVERY','INSTALLATION')) AS isOrderJob,
+             MAX(DATE(w.scheduled_start)=CURRENT_DATE()) AS dueToday
+           FROM work_orders w
+           JOIN technician_assignments a ON a.work_order_id=w.work_order_id
+           JOIN technicians t ON t.technician_id=a.technician_id
+           LEFT JOIN orders o ON o.order_id=w.order_id
+           LEFT JOIN service_requests sr ON sr.service_request_id=w.service_request_id
+           WHERE t.user_id=?
+             AND a.status IN ('ASSIGNED','IN_PROGRESS','COMPLETED')
+             AND w.status IN ('ASSIGNED','IN_PROGRESS','COMPLETED')
+             ${nonCancelledSource}
+           GROUP BY jobKey
+         ) j`,
         [staffId],
       );
+
       return rows[0] || {};
     },
+
     async techJobs(staffId) {
       return select(
         `SELECT
@@ -131,14 +154,17 @@ export function workOrderModel(db) {
          JOIN technicians t ON t.technician_id=a.technician_id
          LEFT JOIN orders o ON o.order_id=w.order_id
          LEFT JOIN service_requests sr ON sr.service_request_id=w.service_request_id
-         WHERE t.user_id=? AND a.status IN ('ASSIGNED','IN_PROGRESS','COMPLETED')
+         WHERE t.user_id=?
+           AND a.status IN ('ASSIGNED','IN_PROGRESS','COMPLETED')
            AND w.status IN ('ASSIGNED','IN_PROGRESS','COMPLETED')
+           ${nonCancelledSource}
          ORDER BY CASE w.status WHEN 'IN_PROGRESS' THEN 0 WHEN 'ASSIGNED' THEN 1 ELSE 2 END,
                   w.scheduled_start ASC, w.work_order_id DESC
          LIMIT 200`,
         [staffId],
       );
     },
+
     createWork(data) {
       return execute(
         `INSERT INTO work_orders(order_id,service_request_id,work_type,scheduled_start,status,recipient_name,contact_number,service_address) VALUES (?,?,?,?,?,?,?,?)`,
@@ -154,32 +180,38 @@ export function workOrderModel(db) {
         ],
       );
     },
+
     lockWork(id) {
       return select(
         `SELECT *,DATE_FORMAT(scheduled_start,'%Y-%m-%dT%H:%i') AS scheduledStartLocal FROM work_orders WHERE work_order_id=? FOR UPDATE`,
         [id],
       );
     },
+
     rescheduleRelatedWorkOrders(kind, sourceId, start) {
       const field = kind === "ORDER" ? "order_id" : "service_request_id";
+
       return execute(
         `UPDATE work_orders SET scheduled_start=?
          WHERE ${field}=? AND status NOT IN ('CANCELLED','COMPLETED')`,
         [start, sourceId],
       );
     },
+
     rescheduleWork(id, start) {
       return execute(
         `UPDATE work_orders SET scheduled_start=? WHERE work_order_id=?`,
         [start, id],
       );
     },
+
     updateWork(id, status, notes) {
       return execute(
         `UPDATE work_orders SET status=?,completion_notes=IF(?='',completion_notes,?) WHERE work_order_id=?`,
         [status, notes, notes, id],
       );
     },
+
     syncAssignmentStatus(workId, status) {
       return execute(
         `UPDATE technician_assignments SET status=?
@@ -187,19 +219,23 @@ export function workOrderModel(db) {
         [status, workId],
       );
     },
+
     addWorkHistory(id, oldStatus, newStatus, staffId, notes) {
       return execute(
         `INSERT INTO work_order_status_history(work_order_id,old_status,new_status,changed_by,notes) VALUES (?,?,?,?,?)`,
         [id, oldStatus, newStatus, staffId, notes],
       );
     },
+
     async deliveryCompleted(orderId) {
       const rows = await select(
         `SELECT work_order_id FROM work_orders WHERE order_id=? AND work_type='DELIVERY' AND status='COMPLETED' LIMIT 1`,
         [orderId],
       );
+
       return rows.length > 0;
     },
+
     existingWorkSource(type, id, workType) {
       return select(
         type === "ORDER"
@@ -208,6 +244,7 @@ export function workOrderModel(db) {
         [id, workType],
       );
     },
+
     workFromFb(fb, kind, serviceRequestId = null) {
       return execute(
         `INSERT INTO work_orders(facebook_request_id,service_request_id,work_type,scheduled_start,status,recipient_name,contact_number,service_address) VALUES (?,?,?,?,'PENDING',?,?,?)`,
@@ -222,6 +259,7 @@ export function workOrderModel(db) {
         ],
       );
     },
+
     async hasActiveAssignedTeam(workId) {
       const rows = await select(
         `SELECT a.assignment_id FROM technician_assignments a
@@ -231,11 +269,24 @@ export function workOrderModel(db) {
            AND t.status='ACTIVE' AND u.status='ACTIVE' LIMIT 1`,
         [workId],
       );
+
       return rows.length > 0;
     },
+
     assignedToStaff(workId, userId) {
       return select(
-        `SELECT a.assignment_id FROM technician_assignments a JOIN technicians t ON t.technician_id=a.technician_id WHERE a.work_order_id=? AND t.user_id=? AND a.status<>'CANCELLED' LIMIT 1`,
+        `SELECT a.assignment_id
+         FROM technician_assignments a
+         JOIN technicians t ON t.technician_id=a.technician_id
+         JOIN work_orders w ON w.work_order_id=a.work_order_id
+         LEFT JOIN orders o ON o.order_id=w.order_id
+         LEFT JOIN service_requests sr ON sr.service_request_id=w.service_request_id
+         WHERE a.work_order_id=?
+           AND t.user_id=?
+           AND a.status<>'CANCELLED'
+           AND w.status<>'CANCELLED'
+           ${nonCancelledSource}
+         LIMIT 1 FOR UPDATE`,
         [workId, userId],
       );
     },

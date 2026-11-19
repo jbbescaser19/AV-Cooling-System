@@ -1,7 +1,17 @@
 /** Completed job history. All history SQL remains in this dedicated model. */
 const historySql = `
   SELECT w.work_order_id AS id,
-         COALESCE(o.order_number, CONCAT('Service #', sr.service_request_id)) AS reference,
+         COALESCE(
+           CONCAT(
+             'AV-', YEAR(o.ordered_at), '-',
+             CASE
+               WHEN o.order_id < 1000000
+               THEN LPAD(o.order_id, 6, '0')
+               ELSE CAST(o.order_id AS CHAR)
+             END
+           ),
+           CONCAT('Service #', sr.service_request_id)
+         ) AS reference,
          IF(w.order_id IS NOT NULL, 'PRODUCT ORDER', 'SERVICE REQUEST') AS source,
          CASE WHEN w.work_type = 'INSTALLATION' OR st.service_code = 'installation'
               THEN 'INSTALLATION' ELSE 'SERVICE' END AS category,
@@ -42,21 +52,27 @@ const historySql = `
 function filtersSql(filters) {
   const conditions = [];
   const params = [];
+
   if (filters.category !== "ALL") {
     conditions.push("h.category = ?");
     params.push(filters.category);
   }
+
   if (filters.startDate) {
     conditions.push("h.completedAt >= ?");
     params.push(filters.startDate);
   }
+
   if (filters.endExclusiveDate) {
     conditions.push("h.completedAt < ?");
     params.push(filters.endExclusiveDate);
   }
+
   if (filters.search) {
     const escaped = filters.search.replace(/[!%_]/g, (char) => `!${char}`);
+
     const pattern = `%${escaped}%`;
+
     const columns = [
       "h.reference",
       "h.customer",
@@ -64,11 +80,14 @@ function filtersSql(filters) {
       "h.team",
       "h.source",
     ];
+
     conditions.push(
       `(${columns.map((column) => `COALESCE(${column}, '') LIKE ? ESCAPE '!'`).join(" OR ")})`,
     );
+
     params.push(...columns.map(() => pattern));
   }
+
   return {
     clause: conditions.length ? `WHERE ${conditions.join(" AND ")}` : "",
     params,
@@ -80,22 +99,33 @@ export function installationHistoryModel(db) {
     async completedInstallations(filters) {
       const { clause, params } = filtersSql(filters);
       const base = `(${historySql}) h`;
+
       const [counts] = await db.execute(
         `SELECT h.category, COUNT(*) AS total FROM ${base} ${clause} GROUP BY h.category`,
         params,
       );
-      const totals = { INSTALLATION: 0, SERVICE: 0 };
+
+      const totals = {
+        INSTALLATION: 0,
+        SERVICE: 0,
+      };
+
       for (const row of counts) {
-        if (Object.hasOwn(totals, row.category))
+        if (Object.hasOwn(totals, row.category)) {
           totals[row.category] = Number(row.total);
+        }
       }
+
       const total = totals.INSTALLATION + totals.SERVICE;
+
       const offset = (filters.page - 1) * filters.pageSize;
+
       const [rows] = await db.execute(
         `SELECT h.* FROM ${base} ${clause}
          ORDER BY h.completedAt DESC, h.id DESC LIMIT ? OFFSET ?`,
         [...params, filters.pageSize, offset],
       );
+
       return {
         installations: rows,
         counts: totals,

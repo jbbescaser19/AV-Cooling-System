@@ -1,17 +1,9 @@
 import { z } from "zod";
+import { strongPassword } from "../../shared/passwordPolicy.js";
 
 const email = z.string().trim().toLowerCase().email().max(255);
 
 const code = z.string().regex(/^\d{6}$/, "Enter the six-digit code.");
-
-const password = z
-  .string()
-  .min(8, "Use at least 8 characters.")
-  .max(72, "Password is too long.")
-  .refine(
-    (value) => Buffer.byteLength(value, "utf8") <= 72,
-    "Password is too long.",
-  );
 
 function parse(schema, input) {
   const result = schema.safeParse(input);
@@ -36,8 +28,8 @@ export function validateResetConfirmation(input) {
       .object({
         email,
         code,
-        newPassword: password,
-        confirmPassword: password,
+        newPassword: strongPassword,
+        confirmPassword: z.string().min(1).max(128),
       })
       .strict()
       .refine((data) => data.newPassword === data.confirmPassword, {

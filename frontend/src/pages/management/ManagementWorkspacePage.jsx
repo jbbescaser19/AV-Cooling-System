@@ -1,5 +1,22 @@
+import PasswordStrength from "../../components/auth/PasswordStrength.jsx";
+import InternalStaffNoteField, {
+  CustomerProgressReasonField,
+} from "../../components/management/InternalStaffNoteField.jsx";
+import FacebookDeliveryFields, {
+  prepareFacebookDelivery,
+} from "../../components/management/FacebookDeliveryFields.jsx";
+import { isStrongPassword } from "../../utils/passwordPolicy.js";
+import RecordCategoryFilters, {
+  field,
+  useRecordFilters,
+  hpLabel,
+} from "../../components/common/RecordCategoryFilters.jsx";
+
+import useRealtimeRefresh from "../../hooks/useRealtimeRefresh.js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import TemporaryPasswordField from "../../components/management/TemporaryPasswordField.jsx";
+
 import {
   AlertCircle,
   Archive,
@@ -13,30 +30,37 @@ import {
   RefreshCw,
   Search,
   ShieldCheck,
-  TrendingUp,
   X,
 } from "lucide-react";
 
 import api from "../../../api/api.js";
 import { confirmAction } from "../../utils/confirmAction.jsx";
+import { getStaff } from "../../utils/authMock";
+import { workspaceConfig } from "../../data/managementWorkspaceConfig.js";
+
+import InventoryRemoveStockButton from "../../components/management/InventoryRemoveStockButton.jsx";
+import POSResultModal from "../../components/management/POSResultModal.jsx";
 import AvailabilityPicker from "../../components/scheduling/AvailabilityPicker";
 import TechnicianTeamPicker from "../../components/management/TechnicianTeamPicker";
 import SourceTeamPanel from "../../components/management/SourceTeamPanel";
 import FacebookReturningCustomerSearch from "../../components/management/FacebookReturningCustomerSearch.jsx";
 import ArchiveRecordAction from "../../components/management/ArchiveRecordAction.jsx";
 import ManagementRecordDetailsModal from "../../components/management/ManagementRecordDetailsModal.jsx";
-import { getStaff } from "../../utils/authMock";
-import { workspaceConfig } from "../../data/managementWorkspaceConfig.js";
+
 import "../../styles/management/workspace.css";
 import "../../styles/management/schedule-availability.css";
 import "../../styles/management/record-pagination.css";
 import "../../styles/management/note-visibility.css";
 
 function show(value, key) {
-  if (value === null || value === undefined || value === "") return "—";
+  if (value === null || value === undefined || value === "") {
+    return "—";
+  }
+
   if (key === "publicReview" || key === "isRead") {
     return Number(value) === 1 || value === true ? "Yes" : "No";
   }
+
   if (
     [
       "startingPrice",
@@ -53,23 +77,34 @@ function show(value, key) {
       currency: "PHP",
     }).format(Number(value));
   }
+
   if (key === "createdAt" || key === "lastLogin") {
     const date = new Date(value);
+
     return Number.isNaN(date.getTime()) ? "—" : date.toLocaleString("en-PH");
   }
+
   return String(value);
 }
 
 function normalizedSentiment(value) {
   const text = String(value || "").toUpperCase();
+
   if (text.startsWith("POSITIVE")) return "POSITIVE";
   if (text.startsWith("NEGATIVE")) return "NEGATIVE";
   if (text.startsWith("NEUTRAL")) return "NEUTRAL";
+
   return "NOT_ANALYZED";
 }
 
 function SentimentSummary({ feedback, loading }) {
-  const counts = { POSITIVE: 0, NEUTRAL: 0, NEGATIVE: 0, NOT_ANALYZED: 0 };
+  const counts = {
+    POSITIVE: 0,
+    NEUTRAL: 0,
+    NEGATIVE: 0,
+    NOT_ANALYZED: 0,
+  };
+
   feedback.forEach((item) => {
     counts[normalizedSentiment(item.sentiment)] += 1;
   });
@@ -102,16 +137,20 @@ function SentimentSummary({ feedback, loading }) {
           <span className="wsm-sentiment-eyebrow">
             Automatic feedback classification
           </span>
+
           <h2 id="wsm-sentiment-heading">Feedback Sentiment Analysis</h2>
+
           <p>
             Estimated using the customer's rating and English/Filipino comment
             keywords. Read the original feedback before making decisions.
           </p>
         </div>
+
         <span className="wsm-sentiment-total">
           {feedback.length} recent feedback records
         </span>
       </div>
+
       <div className="wsm-sentiment-grid">
         {groups.map((group) => (
           <div
@@ -119,11 +158,14 @@ function SentimentSummary({ feedback, loading }) {
             key={group.key}
           >
             <span className="wsm-sentiment-card-name">{group.name}</span>
+
             <strong>{counts[group.key]}</strong>
+
             <small>{group.description}</small>
           </div>
         ))}
       </div>
+
       {loading ? (
         <p className="wsm-sentiment-note" role="status">
           Loading feedback sentiment from MySQL…
@@ -152,9 +194,11 @@ function makeForm(fields = [], row = null) {
   return Object.fromEntries(
     fields.map((field) => {
       let value = row?.[field.key];
+
       if (field.key === "isRead" && value !== undefined) {
         value = Boolean(value) ? "true" : "false";
       }
+
       if (
         field.key === "status" &&
         field.choices &&
@@ -162,8 +206,10 @@ function makeForm(fields = [], row = null) {
       ) {
         value = field.choices[0];
       }
+
       return [
         field.key,
+
         value ??
           (field.nullable
             ? ""
@@ -176,45 +222,72 @@ function makeForm(fields = [], row = null) {
 }
 
 function prepare(fields, form) {
-  return Object.fromEntries(
+  const payload = Object.fromEntries(
     fields.map((field) => {
       let value = form[field.key];
+
       if (field.type === "number") {
         value = value === "" && field.nullable ? null : Number(value);
       }
+
       if (field.type === "reference") {
         value = value === "" && field.nullable ? null : Number(value);
       }
+
       if (field.key === "isRead") {
         value = value === "true" || value === true;
       }
+
       return [field.key, value];
     }),
   );
+
+  if (
+    fields.some(
+      (field) => field.key === "password" && field.type === "password",
+    )
+  ) {
+    payload.mustChangePassword = form.mustChangePassword === true;
+  }
+
+  return payload;
 }
 
 function ExportButton({ columns, items, slug }) {
   function download() {
     const csv = [
       columns.map(([, label]) => label),
+
       ...items.map((item) => columns.map(([key]) => show(item[key], key))),
     ]
       .map((row) =>
         row
           .map((cell) => {
             const value = String(cell);
-            return `"${(/^\s*[=+\-@]/.test(value) ? "'" : "") + value.replaceAll('"', '""')}"`;
+
+            return `"${
+              (/^\s*[=+\-@]/.test(value) ? "'" : "") +
+              value.replaceAll('"', '""')
+            }"`;
           })
           .join(","),
       )
       .join("\r\n");
 
-    const blob = new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" });
+    const blob = new Blob(["\uFEFF", csv], {
+      type: "text/csv;charset=utf-8",
+    });
+
     const url = URL.createObjectURL(blob);
+
     const anchor = document.createElement("a");
+
     anchor.href = url;
+
     anchor.download = `av-cooling-${slug}-${new Date().toISOString().slice(0, 10)}.csv`;
+
     anchor.click();
+
     URL.revokeObjectURL(url);
   }
 
@@ -225,7 +298,8 @@ function ExportButton({ columns, items, slug }) {
       onClick={download}
       disabled={!items.length}
     >
-      <Download size={16} aria-hidden="true" /> Export CSV
+      <Download size={16} aria-hidden="true" />
+      Export CSV
     </button>
   );
 }
@@ -239,39 +313,63 @@ function InputField({
   disabled,
   module,
 }) {
+  if (module === "staff" && field.key === "password") {
+    return (
+      <TemporaryPasswordField
+        value={value ?? ""}
+        onChange={(password) => onChange(field.key, password)}
+        mustChangePassword={form.mustChangePassword === true}
+        onTemporaryChange={(checked) => onChange("mustChangePassword", checked)}
+        disabled={disabled}
+      />
+    );
+  }
+
   if (
     module === "schedules" &&
     ["reason", "startTime", "endTime"].includes(field.key) &&
     form.status !== "OFF"
-  )
+  ) {
     return null;
-  if (field.key === "variantId" && form.requestKind === "SERVICE") return null;
-  if (field.key === "serviceTypeId" && form.requestKind === "AIRCON")
+  }
+
+  if (field.key === "variantId" && form.requestKind === "SERVICE") {
     return null;
-  if (field.key === "quantity" && form.requestKind === "SERVICE") return null;
+  }
+
+  if (field.key === "serviceTypeId" && form.requestKind === "AIRCON") {
+    return null;
+  }
+
+  if (field.key === "quantity" && form.requestKind === "SERVICE") {
+    return null;
+  }
+
   if (module === "facebook-requests" && field.key === "destinationAddress") {
     const selectedType = (options.serviceTypes || []).find(
       (item) => String(item.id) === String(form.serviceTypeId),
     );
-    if (form.requestKind !== "SERVICE" || selectedType?.code !== "relocation")
+
+    if (form.requestKind !== "SERVICE" || selectedType?.code !== "relocation") {
       return null;
+    }
   }
 
   const needsServiceAircon = form.requestKind === "SERVICE";
+
   if (
     ["airconBrand", "airconModel", "airconHp"].includes(field.key) &&
     !needsServiceAircon
   ) {
     return null;
   }
+
   const required =
     field.required ||
     (module === "facebook-requests" && field.key === "destinationAddress") ||
     (needsServiceAircon &&
       ["airconBrand", "airconModel", "airconHp"].includes(field.key));
 
-  // Only the Work Orders editor should conditionally hide technician selection.
-  // Schedules must always show the technician selector when creating a record.
   if (
     module === "work-orders" &&
     field.key === "technicianId" &&
@@ -281,6 +379,7 @@ function InputField({
   ) {
     return null;
   }
+
   if (
     field.key === "scheduledStart" &&
     form.status !== "RESCHEDULE" &&
@@ -295,6 +394,7 @@ function InputField({
         ? "requests"
         : "orders"
       : field.optionGroup;
+
   const choices =
     field.type === "reference" ? options[group] || [] : field.choices || [];
 
@@ -311,12 +411,15 @@ function InputField({
       </div>
     );
   }
+
   return (
     <label className="wsm-field">
       <span>
         {field.label}
+
         {required && <i aria-label="Required"> *</i>}
       </span>
+
       {field.type === "textarea" ? (
         <textarea
           rows={3}
@@ -336,6 +439,7 @@ function InputField({
           {(field.type === "reference" || field.nullable) && (
             <option value="">{required ? "Choose an option" : "None"}</option>
           )}
+
           {choices.map((option) =>
             typeof option === "string" ? (
               <option key={option} value={option}>
@@ -352,6 +456,7 @@ function InputField({
                 }
               >
                 {option.label}
+
                 {module === "facebook-requests" && field.key === "variantId"
                   ? Number(option.available) <= 0
                     ? " — OUT OF STOCK"
@@ -382,7 +487,6 @@ function InputField({
     </label>
   );
 }
-
 function Editor({
   module,
   mode,
@@ -395,16 +499,16 @@ function Editor({
   onSuccess,
 }) {
   const config = workspaceConfig[module];
+
   const isNew = mode === "create";
+
+  const isFacebook = module === "facebook-requests";
+
   const isStockIn = module === "inventory" && isNew && intent === "stock-in";
 
   const fields = (config[mode] || [])
     .map((field) => {
-      if (
-        module === "facebook-requests" &&
-        mode === "update" &&
-        field.key === "action"
-      ) {
+      if (isFacebook && mode === "update" && field.key === "action") {
         return {
           ...field,
           choices:
@@ -415,6 +519,7 @@ function Editor({
                 : [],
         };
       }
+
       if (isStockIn && field.key === "quantity") {
         return {
           ...field,
@@ -424,61 +529,131 @@ function Editor({
           step: 1,
         };
       }
+
       return field;
     })
     .filter((field) => !(isStockIn && field.key === "movementType"));
 
   const [form, setForm] = useState(() => ({
     ...makeForm(fields, row),
+
+    ...(module === "staff" && isNew
+      ? {
+          password: "",
+          mustChangePassword: false,
+        }
+      : {}),
+
     ...(isStockIn
       ? {
           variantId: presetVariantId ? String(presetVariantId) : "",
+
           quantity: 1,
           note: "",
         }
       : {}),
+
+    ...(isFacebook
+      ? {
+          deliveryArea: row?.deliveryArea || "",
+
+          deliveryAddress: row?.address || "",
+
+          customDeliveryFee:
+            row?.deliveryArea === "OTHER" ? (row?.deliveryFee ?? "") : "",
+
+          deliveryFeeReason: row?.deliveryFeeReason || "",
+        }
+      : {}),
   }));
+
   const [technicianIds, setTechnicianIds] = useState([]);
+
   const [saving, setSaving] = useState(false);
+
   const [error, setError] = useState("");
+
   const dialogRef = useRef(null);
+
+  const needsFacebookDelivery =
+    isFacebook &&
+    (isNew
+      ? form.requestKind === "AIRCON"
+      : row?.requestKind === "AIRCON" &&
+        ["CONFIRM", "CONVERT"].includes(form.action));
+
+  const invalidStaffPassword =
+    module === "staff" && isNew && !isStrongPassword(form.password);
 
   useEffect(() => {
     function handleKeyDown(event) {
-      if (event.key === "Escape" && !saving) onClose();
+      if (event.key === "Escape" && !saving) {
+        onClose();
+      }
     }
+
     const previous = document.body.style.overflow;
+
     document.body.style.overflow = "hidden";
+
     document.addEventListener("keydown", handleKeyDown);
+
     dialogRef.current?.focus();
+
     return () => {
       document.body.style.overflow = previous;
+
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, [onClose, saving]);
 
   function update(key, value) {
-    setForm((prev) => ({
-      ...prev,
+    setForm((previous) => ({
+      ...previous,
+
       [key]: value,
+
       ...(key === "requestKind"
         ? {
             variantId: "",
             serviceTypeId: "",
             quantity: 1,
             destinationAddress: "",
+            deliveryArea: "",
+            customDeliveryFee: "",
+            deliveryFeeReason: "",
           }
         : {}),
-      ...(key === "serviceTypeId" ? { destinationAddress: "" } : {}),
-      ...(key === "sourceType" ? { sourceId: "" } : {}),
+
+      ...(key === "serviceTypeId"
+        ? {
+            destinationAddress: "",
+          }
+        : {}),
+
+      ...(key === "sourceType"
+        ? {
+            sourceId: "",
+          }
+        : {}),
+
+      ...(key === "deliveryArea" && value !== "OTHER"
+        ? {
+            customDeliveryFee: "",
+            deliveryFeeReason: "",
+          }
+        : {}),
     }));
+
     setError("");
   }
 
   const selectedInventory = isStockIn
     ? inventoryRows.find((item) => String(item.id) === String(form.variantId))
     : null;
+
   const addedQuantity = Number(form.quantity);
+
   const canPreviewStock =
     selectedInventory &&
     Number.isSafeInteger(addedQuantity) &&
@@ -486,44 +661,83 @@ function Editor({
 
   async function submit(event) {
     event.preventDefault();
+
     if (saving) return;
 
+    if (invalidStaffPassword) {
+      setError("Your password must meet all requirements.");
+
+      return;
+    }
+
+    let deliveryPayload = {};
+
+    if (needsFacebookDelivery) {
+      try {
+        deliveryPayload = prepareFacebookDelivery(form, isNew);
+      } catch (validationError) {
+        setError(validationError.message);
+        return;
+      }
+    }
+
     if (
-      module === "facebook-requests" &&
+      isFacebook &&
       !(await confirmAction({
         title: "Save Facebook agreement",
+
         message:
           "Save this manually entered Messenger agreement? Check all customer details first.",
+
         confirmText: "Save agreement",
       }))
-    )
+    ) {
       return;
+    }
 
     if (
       !isNew &&
       ["customers", "staff", "facebook-requests"].includes(module) &&
       !(await confirmAction({
         title: "Confirm management update",
+
         message: "Confirm this management action?",
+
         confirmText: "Save changes",
       }))
-    )
+    ) {
       return;
+    }
 
     if (
       isStockIn &&
       !(await confirmAction({
         title: "Add inventory stock",
-        message: `Add ${form.quantity} unit(s) to ${selectedInventory?.name || "the selected product"}?`,
+
+        message:
+          `Add ${form.quantity} unit(s) to ` +
+          `${selectedInventory?.name || "the selected product"}?`,
+
         confirmText: "Add stock",
       }))
-    )
+    ) {
       return;
+    }
 
     setSaving(true);
+
     setError("");
+
     try {
-      const payload = prepare(fields, form);
+      const payload = {
+        ...prepare(fields, form),
+        ...deliveryPayload,
+      };
+
+      if (module === "staff" && isNew) {
+        payload.mustChangePassword = form.mustChangePassword === true;
+      }
+
       if (module === "schedules") {
         if (
           isNew &&
@@ -531,51 +745,57 @@ function Editor({
             Number(payload.technicianId) < 1)
         ) {
           setError("Choose a technician before saving a schedule.");
-          setSaving(false);
+
           return;
         }
+
         if (payload.status !== "OFF") {
           payload.reason = "";
           payload.startTime = "";
           payload.endTime = "";
         }
+
         if (
           payload.status === "OFF" &&
           String(payload.reason || "").trim().length < 3
         ) {
           setError("Enter why the technician is unavailable.");
-          setSaving(false);
+
           return;
         }
       }
-      if (isStockIn) payload.movementType = "STOCK_IN";
-      if (
-        module === "facebook-requests" &&
-        !isNew &&
-        form.action === "CONVERT"
-      ) {
+
+      if (isStockIn) {
+        payload.movementType = "STOCK_IN";
+      }
+
+      if (isFacebook && !isNew && form.action === "CONVERT") {
         payload.technicianIds = technicianIds;
       }
-      if (module === "facebook-requests" && isNew) {
+
+      if (isFacebook && isNew) {
         const selectedType = (options.serviceTypes || []).find(
           (item) => String(item.id) === String(payload.serviceTypeId),
         );
+
         if (
           payload.requestKind === "SERVICE" &&
           selectedType?.code === "relocation"
         ) {
           if (String(payload.destinationAddress || "").trim().length < 5) {
             setError("Enter a destination address for Aircon Relocation.");
-            setSaving(false);
+
             return;
           }
         } else {
           payload.destinationAddress = "";
         }
+
         if (payload.requestKind === "AIRCON") {
           const selectedVariant = (options.variants || []).find(
             (item) => String(item.id) === String(payload.variantId),
           );
+
           if (
             !selectedVariant ||
             Number(selectedVariant.available) < Number(payload.quantity)
@@ -583,24 +803,31 @@ function Editor({
             setError(
               "The selected aircon is out of stock or does not have enough available units.",
             );
-            setSaving(false);
+
             return;
           }
         }
+
         payload.variantId =
           payload.requestKind === "AIRCON" ? payload.variantId : null;
+
         payload.serviceTypeId =
           payload.requestKind === "SERVICE" ? payload.serviceTypeId : null;
+
         payload.quantity =
           payload.requestKind === "AIRCON" ? payload.quantity : 1;
       }
 
       const endpoint = `/api/management/workspace/${encodeURIComponent(module)}`;
+
       const response = isNew
         ? await api.post(endpoint, payload)
         : await api.patch(`${endpoint}/${row.id}`, payload);
-      if (!response.data?.success)
+
+      if (!response.data?.success) {
         throw new Error("The server did not confirm this change.");
+      }
+
       onSuccess(
         response.data.message ||
           (isStockIn ? "Stock added successfully." : "Saved successfully."),
@@ -627,7 +854,9 @@ function Editor({
     <div
       className="wsm-backdrop"
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget && !saving) onClose();
+        if (event.target === event.currentTarget && !saving) {
+          onClose();
+        }
       }}
     >
       <section
@@ -641,8 +870,10 @@ function Editor({
         <div className="wsm-dialog-head">
           <div>
             <small>{config.title}</small>
+
             <h2 id="wsm-dialog-title">{heading}</h2>
           </div>
+
           <button
             type="button"
             className="wsm-close"
@@ -653,6 +884,7 @@ function Editor({
             <X size={19} />
           </button>
         </div>
+
         <form onSubmit={submit} className="wsm-form">
           {isStockIn && (
             <p className="wsm-info">
@@ -662,26 +894,33 @@ function Editor({
               Stock Movement record.
             </p>
           )}
-          {module === "facebook-requests" && isNew && (
+
+          {isFacebook && isNew && (
             <FacebookReturningCustomerSearch
               disabled={saving}
               onSelect={(person) => {
                 setForm((previous) => ({
                   ...previous,
+
                   customerName: person.name || previous.customerName,
+
                   contactNumber: person.phone || previous.contactNumber,
+
                   address: person.address || previous.address,
                 }));
+
                 setError("");
               }}
             />
           )}
-          {module === "facebook-requests" && (
+
+          {isFacebook && (
             <p className="wsm-info">
               <ShieldCheck size={17} />
               Staff must enter only details genuinely agreed on Messenger.
             </p>
           )}
+
           {module === "schedules" &&
             isNew &&
             (options.technicians || []).length === 0 && (
@@ -691,6 +930,7 @@ function Editor({
                 technician in Management first, then refresh Schedules.
               </p>
             )}
+
           {fields.map((field) => (
             <InputField
               module={module}
@@ -703,30 +943,43 @@ function Editor({
               disabled={saving}
             />
           ))}
-          {module === "facebook-requests" &&
-            !isNew &&
-            form.action === "CONVERT" && (
-              <TechnicianTeamPicker
-                value={technicianIds}
-                onChange={setTechnicianIds}
-                disabled={saving}
-              />
-            )}
+
+          {needsFacebookDelivery && (
+            <FacebookDeliveryFields
+              form={form}
+              onChange={update}
+              isNew={isNew}
+              disabled={saving}
+            />
+          )}
+
+          {isFacebook && !isNew && form.action === "CONVERT" && (
+            <TechnicianTeamPicker
+              value={technicianIds}
+              onChange={setTechnicianIds}
+              disabled={saving}
+            />
+          )}
+
           {isStockIn && canPreviewStock && (
             <div className="wsm-stock-preview" role="status">
               <span>Stock after addition (if no other changes occur)</span>
+
               <strong>
                 {Number(selectedInventory.onHand)} + {addedQuantity} ={" "}
                 {Number(selectedInventory.onHand) + addedQuantity} units
               </strong>
             </div>
           )}
+
           {error && (
             <p className="wsm-error" role="alert">
               <AlertCircle size={16} />
+
               {error}
             </p>
           )}
+
           <div className="wsm-form-actions">
             <button
               type="button"
@@ -736,11 +989,13 @@ function Editor({
             >
               Cancel
             </button>
+
             <button
               type="submit"
               className="wsm-primary"
               disabled={
                 saving ||
+                invalidStaffPassword ||
                 (module === "schedules" &&
                   isNew &&
                   (options.technicians || []).length === 0)
@@ -761,36 +1016,90 @@ function Editor({
 
 export default function ManagementWorkspacePage({ module }) {
   const config = workspaceConfig[module];
+
   const navigate = useNavigate();
+
   const [items, setItems] = useState([]);
   const [options, setOptions] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [search, setSearch] = useState("");
+
   const [statusFilter, setStatusFilter] = useState("ALL");
+
   const [categoryFilter, setCategoryFilter] = useState("ALL");
+
   const [page, setPage] = useState(1);
+
   const [detailsRecord, setDetailsRecord] = useState(null);
-  const closeDetails = useCallback(() => setDetailsRecord(null), []);
+
   const [clearBusy, setClearBusy] = useState(null);
+
   const [editor, setEditor] = useState(null);
+
+  const [convertedReceipt, setConvertedReceipt] = useState(null);
+
   const [teamSource, setTeamSource] = useState(null);
+
   const [reload, setReload] = useState(0);
 
+  const loadedModule = useRef(null);
+
+  const closeDetails = useCallback(() => setDetailsRecord(null), []);
+
+  const moduleTopics = {
+    customers: ["customers", "orders", "services"],
+    categories: ["catalog"],
+    products: ["catalog", "inventory"],
+    variants: ["catalog", "inventory"],
+    inventory: ["inventory"],
+    "stock-movements": ["inventory"],
+    "service-types": ["services", "catalog"],
+    technicians: ["staff", "jobs"],
+    schedules: ["schedules", "staff", "jobs"],
+    staff: ["staff"],
+    feedback: ["feedback"],
+
+    "facebook-requests": [
+      "orders",
+      "services",
+      "schedules",
+      "inventory",
+      "customers",
+    ],
+
+    reports: ["reports", "payments", "orders", "services"],
+
+    "audit-logs": ["audit"],
+
+    notifications: ["notifications"],
+  };
+
+  useRealtimeRefresh(
+    [...(moduleTopics[module] || ["dashboard"]), "archive"],
+
+    setReload,
+  );
+
   const staff = getStaff();
-  const mobilePrimary = config.columns[0]?.[0];
-  const mobileStatus = config.columns.find(([field]) =>
+
+  const mobilePrimary = config?.columns?.[0]?.[0];
+
+  const mobileStatus = config?.columns?.find(([field]) =>
     ["status", "paymentStatus", "sentiment"].includes(field),
   )?.[0];
-  const mobileSecondary = config.columns.find(
+
+  const mobileSecondary = config?.columns?.find(
     ([field]) => field !== mobilePrimary && field !== mobileStatus,
   )?.[0];
+
   const mobileThird =
     mobileStatus ||
-    config.columns.find(
+    config?.columns?.find(
       ([field]) => field !== mobilePrimary && field !== mobileSecondary,
     )?.[0];
+
   const mobileSlot = (field) =>
     field === mobilePrimary
       ? "primary"
@@ -799,7 +1108,9 @@ export default function ManagementWorkspacePage({ module }) {
         : field === mobileThird
           ? "status"
           : undefined;
+
   const ownerOrManager = ["OWNER", "MANAGER"].includes(staff?.role);
+
   const writable =
     ownerOrManager ||
     (["notifications", "facebook-requests"].includes(module) &&
@@ -807,7 +1118,7 @@ export default function ManagementWorkspacePage({ module }) {
       (module === "notifications" || staff.role === "SALES_CASHIER"));
 
   const hasRowActions =
-    (config.update && writable) ||
+    (config?.update && writable) ||
     module === "facebook-requests" ||
     (ownerOrManager &&
       [
@@ -821,6 +1132,9 @@ export default function ManagementWorkspacePage({ module }) {
 
   const writableCreate =
     writable &&
+    (module !== "technicians" ||
+      (loadedModule.current === module &&
+        (options.techUsers || []).length > 0)) &&
     ![
       "variants",
       "customers",
@@ -834,7 +1148,11 @@ export default function ManagementWorkspacePage({ module }) {
 
   useEffect(() => {
     const controller = new AbortController();
-    setLoading(true);
+
+    if (loadedModule.current !== module) {
+      setLoading(true);
+    }
+
     setError("");
 
     api
@@ -842,40 +1160,57 @@ export default function ManagementWorkspacePage({ module }) {
         signal: controller.signal,
       })
       .then(({ data }) => {
-        if (!controller.signal.aborted) {
-          setItems(data.items || []);
-          setOptions(data.options || {});
-        }
+        if (controller.signal.aborted) return;
+
+        const rows = Array.isArray(data.items) ? data.items : [];
+
+        loadedModule.current = module;
+
+        setItems(rows);
+        setOptions(data.options || {});
+
+        setDetailsRecord((previous) =>
+          previous
+            ? rows.find((row) => row.id === previous.id) || null
+            : previous,
+        );
       })
       .catch((requestError) => {
-        if (!controller.signal.aborted) {
+        if (controller.signal.aborted) return;
+
+        if (loadedModule.current !== module) {
           setItems([]);
-          setError(
-            requestError.response?.data?.message ||
-              "Could not load records from MySQL.",
-          );
         }
+
+        setError(
+          requestError.response?.data?.message ||
+            "Could not load records from MySQL.",
+        );
       })
       .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
       });
+
     return () => controller.abort();
   }, [module, reload]);
 
-  // Optional category filters for modules without a simple status column.
-  // This refines the displayed 16-record pages; the backend still decides
-  // which records the staff account is authorized to see.
   const categoryOptions = useMemo(() => {
-    if (module === "inventory")
+    if (module === "inventory") {
       return [
         { key: "ALL", label: "All stock" },
+        { key: "NEEDS_RESTOCK", label: "Needs Restock" },
         { key: "OUT", label: "Out of stock" },
         { key: "LOW", label: "Low stock" },
         { key: "AVAILABLE", label: "In stock" },
       ];
-    if (module === "stock-movements")
+    }
+
+    if (module === "stock-movements") {
       return [
         { key: "ALL", label: "All movements" },
+
         ...[
           ...new Set(
             items
@@ -884,9 +1219,15 @@ export default function ManagementWorkspacePage({ module }) {
           ),
         ]
           .sort()
-          .map((key) => ({ key, label: key.replaceAll("_", " ") })),
+          .map((key) => ({
+            key,
+
+            label: key.replaceAll("_", " "),
+          })),
       ];
-    if (module === "feedback")
+    }
+
+    if (module === "feedback") {
       return [
         { key: "ALL", label: "All feedback" },
         { key: "POSITIVE", label: "Positive" },
@@ -894,27 +1235,94 @@ export default function ManagementWorkspacePage({ module }) {
         { key: "NEGATIVE", label: "Negative" },
         { key: "NOT_ANALYZED", label: "Not analyzed" },
       ];
+    }
+
     return [];
   }, [items, module]);
+
   const matchesCategory = (item) => {
     if (categoryFilter === "ALL") return true;
+
     if (module === "inventory") {
       const available = Number(item.available ?? 0);
+
       const reorderLevel = Number(item.reorderLevel ?? 0);
-      if (categoryFilter === "OUT") return available <= 0;
-      if (categoryFilter === "LOW")
+
+      const onHand = Number(item.onHand ?? 0);
+
+      if (categoryFilter === "NEEDS_RESTOCK") {
+        return onHand <= reorderLevel;
+      }
+
+      if (categoryFilter === "OUT") {
+        return available <= 0;
+      }
+
+      if (categoryFilter === "LOW") {
         return available > 0 && available <= reorderLevel;
+      }
+
       return available > reorderLevel;
     }
-    if (module === "stock-movements")
+
+    if (module === "stock-movements") {
       return String(item.movementType || "").toUpperCase() === categoryFilter;
-    if (module === "feedback")
+    }
+
+    if (module === "feedback") {
       return normalizedSentiment(item.sentiment) === categoryFilter;
+    }
+
     return true;
   };
+
+  const extraFields =
+    {
+      products: [field("brand", "Brands"), field("category", "Categories")],
+
+      variants: [
+        field("brand", "Brands"),
+
+        field("hp", "HP sizes", (r) => hpLabel(r.horsepower)),
+      ],
+
+      inventory: [
+        field("brand", "Brands"),
+
+        field("hp", "HP sizes", (r) => hpLabel(r.horsepower)),
+      ],
+
+      "stock-movements": [
+        field("brand", "Brands"),
+
+        field("hp", "HP sizes", (r) => hpLabel(r.horsepower)),
+      ],
+
+      "facebook-requests": [field("requestKind", "Request types")],
+
+      staff: [field("role", "Roles")],
+
+      feedback: [
+        field("category", "Feedback categories"),
+
+        field(
+          "rating",
+          "Ratings",
+          (r) => r.rating,
+          (v) => `${v} stars`,
+        ),
+      ],
+
+      "audit-logs": [field("module", "Modules"), field("action", "Actions")],
+
+      schedules: [field("technician", "Technicians")],
+    }[module] || [];
+
+  const extra = useRecordFilters(items, extraFields, module);
+
   const filtered = useMemo(
     () =>
-      items.filter(
+      extra.filtered.filter(
         (item) =>
           (statusFilter === "ALL" ||
             String(item.status).toUpperCase() === statusFilter) &&
@@ -926,46 +1334,61 @@ export default function ManagementWorkspacePage({ module }) {
               String(value).toLowerCase().includes(search.trim().toLowerCase()),
           ),
       ),
-    // The module and category filters are captured from render and memoized.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [items, search, statusFilter, categoryFilter, module],
-  );
-  const statusChoices = useMemo(
-    () =>
-      [
-        ...new Set(
-          items
-            .map((item) => String(item.status || "").toUpperCase())
-            .filter(Boolean),
-        ),
-      ].sort(),
-    [items],
-  );
-  const totalPages = Math.max(1, Math.ceil(filtered.length / 16));
-  const pageItems = filtered.slice((page - 1) * 16, page * 16);
 
-  if (!config) return <p>Unknown management module.</p>;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [extra.filtered, search, statusFilter, categoryFilter, module],
+  );
+
+  const statusChoices = useMemo(() => {
+    const configured =
+      (config?.update || []).find(
+        (item) => item.key === "status" && Array.isArray(item.choices),
+      )?.choices || [];
+
+    const fixed =
+      module === "facebook-requests"
+        ? ["PENDING", "CONFIRMED", "CONVERTED", "CANCELLED"]
+        : configured;
+
+    const observed = items
+      .map((item) => String(item.status || "").toUpperCase())
+      .filter(Boolean);
+
+    return [...new Set([...fixed, ...observed])];
+  }, [items, module, config]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / 16));
+
+  const safePage = Math.min(page, totalPages);
+
+  const pageItems = filtered.slice((safePage - 1) * 16, safePage * 16);
+
+  if (!config) {
+    return <p>Unknown management module.</p>;
+  }
 
   function complete(message, result = {}) {
     setEditor(null);
     setSuccess(message);
+
     setReload((count) => count + 1);
+
     window.dispatchEvent(new Event("av-management-updated"));
 
-    // A converted agreement now opens the REAL record it created.
-    if (module === "facebook-requests") {
-      if (
-        Number.isSafeInteger(Number(result.convertedOrderId)) &&
-        Number(result.convertedOrderId) > 0
-      ) {
-        navigate(`/management/orders?orderId=${result.convertedOrderId}`);
-      } else if (
-        Number.isSafeInteger(Number(result.convertedServiceRequestId)) &&
-        Number(result.convertedServiceRequestId) > 0
-      ) {
-        navigate(
-          `/management/service-requests?requestId=${result.convertedServiceRequestId}`,
-        );
+    if (module === "facebook-requests" && result.convertedReference) {
+      const kind = result.convertedOrderId ? "ORDER" : "SERVICE";
+
+      const id = Number(
+        result.convertedOrderId || result.convertedServiceRequestId,
+      );
+
+      if (Number.isSafeInteger(id) && id > 0) {
+        setConvertedReceipt({
+          kind,
+          id,
+
+          reference: result.convertedReference,
+        });
       }
     }
   }
@@ -974,23 +1397,43 @@ export default function ManagementWorkspacePage({ module }) {
     setError("");
     setSuccess(message);
     setPage(1);
+
     setReload((n) => n + 1);
+
+    window.dispatchEvent(new Event("av-management-updated"));
+  }
+
+  function stockRemovalFinished(message) {
+    setError("");
+    setSuccess(message);
+
+    setReload((value) => value + 1);
+
     window.dispatchEvent(new Event("av-management-updated"));
   }
 
   async function clearOffSchedule(item) {
-    if (!ownerOrManager || item.status !== "OFF" || clearBusy) return;
+    if (!ownerOrManager || item.status !== "OFF" || clearBusy) {
+      return;
+    }
+
     if (
       !(await confirmAction({
         title: "Clear technician unavailability",
+
         message: `Clear the unavailability for ${item.technician || "this technician"} on ${item.date}? This keeps a database record as AVAILABLE.`,
+
         confirmText: "Clear unavailability",
+
         danger: true,
       }))
-    )
+    ) {
       return;
+    }
+
     setClearBusy(item.id);
     setError("");
+
     try {
       await api.patch(`/api/management/workspace/schedules/${item.id}`, {
         status: "AVAILABLE",
@@ -998,10 +1441,13 @@ export default function ManagementWorkspacePage({ module }) {
         startTime: "",
         endTime: "",
       });
+
       setSuccess(
         "Schedule unavailability cleared. The date is now available, subject to existing bookings.",
       );
+
       setReload((n) => n + 1);
+
       window.dispatchEvent(new Event("av-management-updated"));
     } catch (requestError) {
       setError(
@@ -1014,7 +1460,13 @@ export default function ManagementWorkspacePage({ module }) {
   }
 
   function openStock(variantId = null) {
-    setEditor({ mode: "create", intent: "stock-in", variantId });
+    setEditor({
+      mode: "create",
+
+      intent: "stock-in",
+
+      variantId,
+    });
   }
 
   return (
@@ -1022,11 +1474,14 @@ export default function ManagementWorkspacePage({ module }) {
       <header className="wsm-head">
         <div>
           <span className="wsm-kicker">AV COOLING · MANAGEMENT</span>
+
           <h1>
             {module === "feedback" ? "Feedback & Sentiment" : config.title}
           </h1>
+
           <p>{config.description}</p>
         </div>
+
         <div className="wsm-top-actions">
           <button
             type="button"
@@ -1034,8 +1489,10 @@ export default function ManagementWorkspacePage({ module }) {
             onClick={() => setReload((n) => n + 1)}
             disabled={loading}
           >
-            <RefreshCw size={17} aria-hidden="true" /> Refresh
+            <RefreshCw size={17} aria-hidden="true" />
+            Refresh
           </button>
+
           {ownerOrManager &&
             [
               "products",
@@ -1047,9 +1504,11 @@ export default function ManagementWorkspacePage({ module }) {
               "facebook-requests",
             ].includes(module) && (
               <Link to="/management/archive" className="wsm-secondary">
-                <Archive size={17} aria-hidden="true" /> View Archive
+                <Archive size={17} aria-hidden="true" />
+                View Archive
               </Link>
             )}
+
           {module === "inventory" && writableCreate ? (
             <>
               <button
@@ -1057,26 +1516,45 @@ export default function ManagementWorkspacePage({ module }) {
                 className="wsm-primary av-workspace-create"
                 onClick={() => openStock()}
               >
-                <Plus size={17} aria-hidden="true" /> Add Stock
+                <Plus size={17} aria-hidden="true" />
+                Add Stock
               </button>
+
+              <InventoryRemoveStockButton
+                disabled={loading}
+                onRemoved={stockRemovalFinished}
+              />
+
               <button
                 type="button"
                 className="wsm-secondary av-workspace-movement"
                 onClick={() =>
-                  setEditor({ mode: "create", intent: "movement" })
+                  setEditor({
+                    mode: "create",
+
+                    intent: "movement",
+                  })
                 }
               >
-                <MinusCircle size={17} aria-hidden="true" /> Other Movement
+                <MinusCircle size={17} aria-hidden="true" />
+                Other Movement
               </button>
             </>
           ) : writableCreate ? (
             <button
               type="button"
               className="wsm-primary av-workspace-create"
-              onClick={() => setEditor({ mode: "create" })}
+              onClick={() =>
+                setEditor({
+                  mode: "create",
+                })
+              }
             >
               <Plus size={17} aria-hidden="true" />
-              {config.createLabel || "Add record"}
+
+              {module === "technicians"
+                ? "Link existing account"
+                : config.createLabel || "Add record"}
             </button>
           ) : null}
         </div>
@@ -1087,32 +1565,36 @@ export default function ManagementWorkspacePage({ module }) {
           <ChevronRight size={17} aria-hidden="true" />
           Adjust individual variant prices under
           <Link to="/management/variants">
-            Product Variants &amp; Prices <ArrowUpRight size={15} />
+            Product Variants &amp; Prices
+            <ArrowUpRight size={15} />
           </Link>
           .
         </p>
       )}
+
       {module === "inventory" && (
         <p className="wsm-info">
           <Plus size={17} aria-hidden="true" />
-          To receive 100 aircons, click <strong>Add Stock</strong> and enter
-          100. To receive one, enter 1. Create a product and HP variant first if
-          this list is empty. Stock changes appear in{" "}
+          Use Add Stock to record received products and Remove Stock for
+          damaged, missing, or returned units. Reserved stock cannot be removed.
+          All adjustments appear in{" "}
           <Link to="/management/stock-movements">
-            Stock Movements <ArrowUpRight size={15} />
+            Stock Movements
+            <ArrowUpRight size={15} />
           </Link>
           .
         </p>
       )}
+
       {module === "facebook-requests" && (
         <p className="wsm-info">
           <ChevronRight size={17} aria-hidden="true" />
-          After confirming an agreement, choose Convert. Aircon sales then
-          appear in Orders; service-only agreements appear in Service Requests.
-          Assign the technician team directly in the corresponding record. Cash
-          stays pending until collected.
+          Confirm an agreement to create its order or service request. Assign
+          the technician team in the corresponding record. Cash stays pending
+          until collected.
         </p>
       )}
+
       {module === "feedback" && (
         <SentimentSummary feedback={items} loading={loading} />
       )}
@@ -1120,12 +1602,15 @@ export default function ManagementWorkspacePage({ module }) {
       {error && (
         <p className="wsm-error" role="alert">
           <AlertCircle size={17} />
+
           {error}
         </p>
       )}
+
       {success && (
         <p className="wsm-success" role="status">
           <ShieldCheck size={17} />
+
           {success}
         </p>
       )}
@@ -1138,25 +1623,29 @@ export default function ManagementWorkspacePage({ module }) {
                 ? "Customer feedback records"
                 : `${config.title} records`}
             </h2>
+
             <small>
               {filtered.length} matching · showing{" "}
-              {filtered.length ? (page - 1) * 16 + 1 : 0}–
-              {Math.min(page * 16, filtered.length)}
+              {filtered.length ? (safePage - 1) * 16 + 1 : 0}–
+              {Math.min(safePage * 16, filtered.length)}
             </small>
           </div>
+
           <div className="wsm-table-tools">
             <label className="wsm-search">
               <Search size={18} aria-hidden="true" />
+
               <input
                 aria-label="Search records"
                 placeholder="Search records…"
                 value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
+                onChange={(event) => {
+                  setSearch(event.target.value);
                   setPage(1);
                 }}
               />
             </label>
+
             {categoryOptions.length > 0 && (
               <select
                 className="wsm-status-filter"
@@ -1164,6 +1653,7 @@ export default function ManagementWorkspacePage({ module }) {
                 aria-label="Filter record category"
                 onChange={(event) => {
                   setCategoryFilter(event.target.value);
+
                   setPage(1);
                 }}
               >
@@ -1174,17 +1664,20 @@ export default function ManagementWorkspacePage({ module }) {
                 ))}
               </select>
             )}
+
             {statusChoices.length > 0 && (
               <select
                 className="wsm-status-filter"
                 value={statusFilter}
                 aria-label="Filter record status"
-                onChange={(e) => {
-                  setStatusFilter(e.target.value);
+                onChange={(event) => {
+                  setStatusFilter(event.target.value);
+
                   setPage(1);
                 }}
               >
                 <option value="ALL">All statuses</option>
+
                 {statusChoices.map((status) => (
                   <option value={status} key={status}>
                     {status.replaceAll("_", " ")}
@@ -1192,6 +1685,7 @@ export default function ManagementWorkspacePage({ module }) {
                 ))}
               </select>
             )}
+
             <ExportButton
               items={filtered}
               columns={config.columns}
@@ -1200,6 +1694,8 @@ export default function ManagementWorkspacePage({ module }) {
           </div>
         </div>
 
+        <RecordCategoryFilters filters={extra} onChange={() => setPage(1)} />
+
         {loading ? (
           <div className="wsm-empty" role="status">
             Loading records from MySQL…
@@ -1207,9 +1703,11 @@ export default function ManagementWorkspacePage({ module }) {
         ) : !filtered.length ? (
           <div className="wsm-empty">
             <ClipboardList size={27} aria-hidden="true" />
+
             <strong>
               {items.length ? "No matching results" : "No records yet"}
             </strong>
+
             <p>
               {items.length
                 ? "Try a different search."
@@ -1226,7 +1724,9 @@ export default function ManagementWorkspacePage({ module }) {
                       {label}
                     </th>
                   ))}
+
                   {hasRowActions && <th>Actions</th>}
+
                   <th
                     data-mobile="action"
                     className="av-mobile-only av-smart-more-head"
@@ -1235,6 +1735,7 @@ export default function ManagementWorkspacePage({ module }) {
                   </th>
                 </tr>
               </thead>
+
               <tbody>
                 {pageItems.map((item) => (
                   <tr
@@ -1259,7 +1760,8 @@ export default function ManagementWorkspacePage({ module }) {
                             rel="noopener noreferrer"
                             aria-label="Open Messenger conversation in a new tab"
                           >
-                            Open chat <ArrowUpRight size={15} />
+                            Open chat
+                            <ArrowUpRight size={15} />
                           </a>
                         ) : field === "sentiment" ? (
                           <span
@@ -1287,6 +1789,7 @@ export default function ManagementWorkspacePage({ module }) {
                         )}
                       </td>
                     ))}
+
                     {hasRowActions && (
                       <td className="av-desktop-actions">
                         <div className="wsm-row-actions">
@@ -1302,15 +1805,27 @@ export default function ManagementWorkspacePage({ module }) {
                                 Clear OFF block
                               </button>
                             )}
-                          {module === "inventory" && (
-                            <button
-                              type="button"
-                              className="wsm-primary wsm-row-action"
-                              onClick={() => openStock(item.id)}
-                            >
-                              <Plus size={16} aria-hidden="true" /> Add Stock
-                            </button>
+
+                          {module === "inventory" && ownerOrManager && (
+                            <>
+                              <button
+                                type="button"
+                                className="wsm-primary wsm-row-action"
+                                onClick={() => openStock(item.id)}
+                              >
+                                <Plus size={16} aria-hidden="true" />
+                                Add Stock
+                              </button>
+
+                              <InventoryRemoveStockButton
+                                variantId={item.id}
+                                disabled={Number(item.available) <= 0}
+                                className="wsm-row-action"
+                                onRemoved={stockRemovalFinished}
+                              />
+                            </>
                           )}
+
                           {module === "facebook-requests" &&
                             item.status === "CONVERTED" && (
                               <>
@@ -1319,25 +1834,27 @@ export default function ManagementWorkspacePage({ module }) {
                                     className="wsm-primary wsm-row-action"
                                     to={`/management/orders?orderId=${item.convertedOrderId}`}
                                   >
-                                    View Order{" "}
+                                    View Order
                                     <ArrowUpRight
                                       size={15}
                                       aria-hidden="true"
                                     />
                                   </Link>
                                 )}
+
                                 {item.convertedServiceRequestId && (
                                   <Link
                                     className="wsm-primary wsm-row-action"
                                     to={`/management/service-requests?requestId=${item.convertedServiceRequestId}`}
                                   >
-                                    View Service{" "}
+                                    View Service
                                     <ArrowUpRight
                                       size={15}
                                       aria-hidden="true"
                                     />
                                   </Link>
                                 )}
+
                                 {ownerOrManager &&
                                   (item.convertedOrderId ||
                                     item.convertedServiceRequestId) && (
@@ -1349,6 +1866,7 @@ export default function ManagementWorkspacePage({ module }) {
                                           kind: item.convertedOrderId
                                             ? "ORDER"
                                             : "SERVICE",
+
                                           id:
                                             item.convertedOrderId ||
                                             item.convertedServiceRequestId,
@@ -1360,6 +1878,7 @@ export default function ManagementWorkspacePage({ module }) {
                                   )}
                               </>
                             )}
+
                           {writable &&
                             !(
                               module === "facebook-requests" &&
@@ -1369,15 +1888,21 @@ export default function ManagementWorkspacePage({ module }) {
                                 type="button"
                                 className="wsm-secondary wsm-row-action"
                                 onClick={() =>
-                                  setEditor({ mode: "update", row: item })
+                                  setEditor({
+                                    mode: "update",
+
+                                    row: item,
+                                  })
                                 }
                               >
                                 {module === "inventory"
                                   ? "Reorder level"
-                                  : "Manage"}{" "}
+                                  : "Manage"}
+
                                 <ChevronRight size={16} aria-hidden="true" />
                               </button>
                             )}
+
                           <ArchiveRecordAction
                             module={module}
                             record={item}
@@ -1387,6 +1912,7 @@ export default function ManagementWorkspacePage({ module }) {
                         </div>
                       </td>
                     )}
+
                     <td
                       className="av-mobile-only av-smart-more-cell"
                       data-mobile="action"
@@ -1398,6 +1924,7 @@ export default function ManagementWorkspacePage({ module }) {
                         onClick={() => setDetailsRecord(item)}
                       >
                         <Eye size={14} aria-hidden="true" />
+
                         <span>View Details</span>
                       </button>
                     </td>
@@ -1407,26 +1934,29 @@ export default function ManagementWorkspacePage({ module }) {
             </table>
           </div>
         )}
+
         {!loading && filtered.length > 16 && (
           <nav
             className="av-management-pages"
             aria-label={`${config.title} pages`}
           >
             <span>
-              Page {page} of {totalPages}
+              Page {safePage} of {totalPages}
             </span>
+
             <div>
               <button
                 type="button"
-                disabled={page <= 1}
-                onClick={() => setPage((n) => Math.max(1, n - 1))}
+                disabled={safePage <= 1}
+                onClick={() => setPage(safePage - 1)}
               >
                 Previous
               </button>
+
               <button
                 type="button"
-                disabled={page >= totalPages}
-                onClick={() => setPage((n) => n + 1)}
+                disabled={safePage >= totalPages}
+                onClick={() => setPage(safePage + 1)}
               >
                 Next
               </button>
@@ -1442,6 +1972,7 @@ export default function ManagementWorkspacePage({ module }) {
           fields={[
             ...config.columns.map(([field, label]) => ({
               label,
+
               value:
                 field === "conversationUrl" &&
                 /^https?:\/\//i.test(String(detailsRecord[field] || "")) ? (
@@ -1450,17 +1981,19 @@ export default function ManagementWorkspacePage({ module }) {
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    Open Messenger chat{" "}
+                    Open Messenger chat
                     <ArrowUpRight size={14} aria-hidden="true" />
                   </a>
                 ) : (
                   show(detailsRecord[field], field)
                 ),
             })),
+
             ...(module === "facebook-requests"
               ? [
                   {
                     label: "Customer agreement notes",
+
                     value: (
                       <span className="av-notes-plain">
                         {detailsRecord.notes?.trim() ||
@@ -1470,6 +2003,7 @@ export default function ManagementWorkspacePage({ module }) {
                   },
                   {
                     label: "Private staff notes and cancellation reasons",
+
                     value: (
                       <span className="av-notes-plain">
                         {detailsRecord.staffNotes?.trim() ||
@@ -1497,18 +2031,31 @@ export default function ManagementWorkspacePage({ module }) {
                 Clear OFF block
               </button>
             )}
-          {module === "inventory" && (
-            <button
-              type="button"
-              className="wsm-primary wsm-row-action"
-              onClick={() => {
-                closeDetails();
-                openStock(detailsRecord.id);
-              }}
-            >
-              <Plus size={15} aria-hidden="true" /> Add Stock
-            </button>
+
+          {module === "inventory" && ownerOrManager && (
+            <>
+              <button
+                type="button"
+                className="wsm-primary wsm-row-action"
+                onClick={() => {
+                  closeDetails();
+
+                  openStock(detailsRecord.id);
+                }}
+              >
+                <Plus size={15} aria-hidden="true" />
+                Add Stock
+              </button>
+
+              <InventoryRemoveStockButton
+                variantId={detailsRecord.id}
+                disabled={Number(detailsRecord.available) <= 0}
+                className="wsm-row-action"
+                onRemoved={stockRemovalFinished}
+              />
+            </>
           )}
+
           {module === "facebook-requests" &&
             detailsRecord.status === "CONVERTED" && (
               <>
@@ -1517,17 +2064,21 @@ export default function ManagementWorkspacePage({ module }) {
                     className="wsm-primary wsm-row-action"
                     to={`/management/orders?orderId=${detailsRecord.convertedOrderId}`}
                   >
-                    View Order <ArrowUpRight size={15} aria-hidden="true" />
+                    View Order
+                    <ArrowUpRight size={15} aria-hidden="true" />
                   </Link>
                 )}
+
                 {detailsRecord.convertedServiceRequestId && (
                   <Link
                     className="wsm-primary wsm-row-action"
                     to={`/management/service-requests?requestId=${detailsRecord.convertedServiceRequestId}`}
                   >
-                    View Service <ArrowUpRight size={15} aria-hidden="true" />
+                    View Service
+                    <ArrowUpRight size={15} aria-hidden="true" />
                   </Link>
                 )}
+
                 {ownerOrManager &&
                   (detailsRecord.convertedOrderId ||
                     detailsRecord.convertedServiceRequestId) && (
@@ -1539,10 +2090,12 @@ export default function ManagementWorkspacePage({ module }) {
                           kind: detailsRecord.convertedOrderId
                             ? "ORDER"
                             : "SERVICE",
+
                           id:
                             detailsRecord.convertedOrderId ||
                             detailsRecord.convertedServiceRequestId,
                         });
+
                         closeDetails();
                       }}
                     >
@@ -1551,6 +2104,7 @@ export default function ManagementWorkspacePage({ module }) {
                   )}
               </>
             )}
+
           {writable &&
             !(
               module === "facebook-requests" &&
@@ -1560,20 +2114,28 @@ export default function ManagementWorkspacePage({ module }) {
                 type="button"
                 className="wsm-secondary wsm-row-action"
                 onClick={() => {
-                  setEditor({ mode: "update", row: detailsRecord });
+                  setEditor({
+                    mode: "update",
+
+                    row: detailsRecord,
+                  });
+
                   closeDetails();
                 }}
               >
                 {module === "inventory" ? "Reorder Level" : "Manage Record"}
+
                 <ChevronRight size={15} aria-hidden="true" />
               </button>
             )}
+
           <ArchiveRecordAction
             module={module}
             record={detailsRecord}
             canArchive={ownerOrManager}
             onArchived={(message) => {
               closeDetails();
+
               archiveFinished(message);
             }}
           />
@@ -1586,6 +2148,7 @@ export default function ManagementWorkspacePage({ module }) {
           separately. Facebook messages are not automatically accessible.
         </p>
       )}
+
       {module === "feedback" && (
         <p className="wsm-footnote">
           New feedback receives an estimated sentiment automatically. Review the
@@ -1593,11 +2156,14 @@ export default function ManagementWorkspacePage({ module }) {
           because they are negative.
         </p>
       )}
+
       {teamSource && module === "facebook-requests" && (
         <div
           className="wsm-backdrop"
-          onMouseDown={(e) => {
-            if (e.target === e.currentTarget) setTeamSource(null);
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setTeamSource(null);
+            }
           }}
         >
           <section
@@ -1609,6 +2175,7 @@ export default function ManagementWorkspacePage({ module }) {
           >
             <div className="wsm-dialog-head">
               <h2>Assign technician team</h2>
+
               <button
                 type="button"
                 className="wsm-close"
@@ -1618,16 +2185,19 @@ export default function ManagementWorkspacePage({ module }) {
                 <X size={18} />
               </button>
             </div>
+
             <div className="wsm-form">
               <p>
                 Set or change the team for this converted Facebook agreement
                 here.
               </p>
+
               <SourceTeamPanel
                 key={`${teamSource.kind}-${teamSource.id}`}
                 kind={teamSource.kind}
                 sourceId={teamSource.id}
               />
+
               <button
                 type="button"
                 className="wsm-secondary"
@@ -1639,6 +2209,27 @@ export default function ManagementWorkspacePage({ module }) {
           </section>
         </div>
       )}
+
+      {convertedReceipt && (
+        <POSResultModal
+          kind={convertedReceipt.kind}
+          record={convertedReceipt}
+          referenceOnly
+          onClose={() => setConvertedReceipt(null)}
+          onContinue={() => {
+            const { kind, id } = convertedReceipt;
+
+            setConvertedReceipt(null);
+
+            navigate(
+              kind === "ORDER"
+                ? `/management/orders?orderId=${id}`
+                : `/management/service-requests?requestId=${id}`,
+            );
+          }}
+        />
+      )}
+
       {editor && (
         <Editor
           key={`${module}-${editor.mode}-${editor.intent || "default"}-${editor.variantId || editor.row?.id || "new"}`}

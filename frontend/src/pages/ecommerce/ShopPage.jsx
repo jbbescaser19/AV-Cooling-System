@@ -1,3 +1,8 @@
+import RecordCategoryFilters, {
+  field,
+  useRecordFilters,
+  hpLabel,
+} from "../../components/common/RecordCategoryFilters.jsx";
 import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import ProductRail from "../../components/ecommerce/ProductRail";
@@ -13,15 +18,21 @@ export default function ShopPage() {
   const [brand, setBrand] = useState("All");
 
   const brands = useMemo(() => readCatalogBrands(catalog), [catalog]);
+  const categories = useRecordFilters(catalog, [
+    field("category", "Product types"),
+    field("hp", "HP sizes", (r) =>
+      (r.variants || []).map((v) => hpLabel(v.hp)),
+    ),
+  ]);
   const filtered = useMemo(() => {
     const n = query.trim().toLowerCase();
-    return catalog.filter((p) => {
+    return categories.filtered.filter((p) => {
       const inBrand = brand === "All" || p.brand === brand;
       const text =
         `${p.brand} ${p.name} ${p.category} ${p.tagline || ""} ${p.variants?.map((v) => v.hp).join(" ") || ""}`.toLowerCase();
       return inBrand && (!n || text.includes(n));
     });
-  }, [catalog, query, brand]);
+  }, [categories.filtered, query, brand]);
   const visible = brand === "All" ? brands : [brand];
   return (
     <section className="page-shell">
@@ -82,6 +93,7 @@ export default function ShopPage() {
             ))}
           </select>
         </div>
+        <RecordCategoryFilters filters={categories} />
         <div className="shop-brand-nav">
           <button
             className={brand === "All" ? "active" : ""}

@@ -79,22 +79,7 @@ const access = {
     "notifications",
     "archive",
   ],
-  SALES_CASHIER: [
-    "dashboard",
-    "capacity-calculator",
-    "pos",
-    "booking-calendar",
-    "orders",
-    "installation-history",
-    "payments",
-    "products",
-    "variants",
-    "customers",
-    "facebook-requests",
-    "notifications",
-    "schedules",
-    "service-requests",
-  ],
+  SALES_CASHIER: ["capacity-calculator", "pos"],
   TECHNICIAN: [
     "dashboard",
     "capacity-calculator",
@@ -307,7 +292,16 @@ export default function ManagementLayout() {
   const allowed = access[staff.role] || [];
 
   if (!allowed.includes(slug)) {
-    return <Navigate to="/management/dashboard" replace />;
+    return (
+      <Navigate
+        to={
+          staff.role === "SALES_CASHIER"
+            ? "/management/pos"
+            : "/management/dashboard"
+        }
+        replace
+      />
+    );
   }
 
   return (

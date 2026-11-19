@@ -1,53 +1,76 @@
-/** Database queries for staff notifications and live inventory warnings. */
+import { formatNotificationOrderReferences } from "../../shared/notificationOrderReferenceModel.js";
+
 export function notificationModel(db) {
   const select = async (sql, params = []) => (await db.execute(sql, params))[0];
+
   const execute = async (sql, params = []) =>
     (await db.execute(sql, params))[0];
 
   const stockFrom = `
     FROM product_variants v
-    JOIN products p ON p.product_id = v.product_id
-    LEFT JOIN inventory i ON i.variant_id = v.variant_id
-    WHERE p.status = 'ACTIVE'
-      AND v.status = 'ACTIVE'
-      AND COALESCE(i.on_hand_quantity, 0) - COALESCE(i.reserved_quantity, 0)
-          <= COALESCE(i.reorder_level, 2)
+    JOIN products p
+      ON p.product_id=v.product_id
+    LEFT JOIN inventory i
+      ON i.variant_id=v.variant_id
+    WHERE p.status='ACTIVE'
+      AND v.status='ACTIVE'
+      AND COALESCE(i.on_hand_quantity,0)
+          <= COALESCE(i.reorder_level,2)
   `;
 
   return {
-    listNotifications(staffId) {
-      return select(
-        `SELECT notification_id AS id, notification_type AS type, title, message,
-                target_path AS targetPath, is_read AS isRead, created_at AS createdAt
+    async listNotifications(staffId) {
+      const rows = await select(
+        `SELECT notification_id AS id,
+                notification_type AS type,
+                title,
+                message,
+                target_path AS targetPath,
+                is_read AS isRead,
+                created_at AS createdAt
          FROM notifications
-         WHERE user_id = ?
-         ORDER BY notification_id DESC LIMIT 100`,
+         WHERE user_id=?
+         ORDER BY notification_id DESC
+         LIMIT 100`,
         [staffId],
       );
+
+      return formatNotificationOrderReferences(db, rows);
     },
 
-    listRecentNotifications(staffId) {
-      return select(
-        `SELECT notification_id AS id, notification_type AS type, title, message,
-                target_path AS targetPath, is_read AS isRead, created_at AS createdAt
+    async listRecentNotifications(staffId) {
+      const rows = await select(
+        `SELECT notification_id AS id,
+                notification_type AS type,
+                title,
+                message,
+                target_path AS targetPath,
+                is_read AS isRead,
+                created_at AS createdAt
          FROM notifications
-         WHERE user_id = ?
-         ORDER BY notification_id DESC LIMIT 8`,
+         WHERE user_id=?
+         ORDER BY notification_id DESC
+         LIMIT 8`,
         [staffId],
       );
+
+      return formatNotificationOrderReferences(db, rows);
     },
 
     async unreadNotificationCount(staffId) {
       const rows = await select(
-        `SELECT COUNT(*) AS total FROM notifications
-         WHERE user_id = ? AND is_read = 0`,
+        `SELECT COUNT(*) AS total
+         FROM notifications
+         WHERE user_id=? AND is_read=0`,
         [staffId],
       );
+
       return Number(rows[0]?.total || 0);
     },
 
     async lowStockCount() {
       const rows = await select(`SELECT COUNT(*) AS total ${stockFrom}`);
+
       return Number(rows[0]?.total || 0);
     },
 
@@ -56,27 +79,53 @@ export function notificationModel(db) {
         12,
         Math.max(1, Math.trunc(Number(limit) || 6)),
       );
-      // The LIMIT is clamped locally, not received as arbitrary SQL.
+
       return select(
         `SELECT v.variant_id AS id,
-                CONCAT(p.brand, ' ', p.model, ' · ', v.horsepower, ' HP') AS name,
-                GREATEST(0, COALESCE(i.on_hand_quantity, 0) -
-                  COALESCE(i.reserved_quantity, 0)) AS available,
-                COALESCE(i.reorder_level, 2) AS reorderLevel
+                CONCAT(
+                  p.brand,' ',p.model,
+                  ' · ',v.horsepower,' HP'
+                ) AS name,
+
+                GREATEST(
+                  0,
+                  COALESCE(i.on_hand_quantity,0)
+                  - COALESCE(i.reserved_quantity,0)
+                ) AS available,
+
+                COALESCE(i.on_hand_quantity,0) AS onHand,
+
+                COALESCE(i.reorder_level,2) AS reorderLevel
+
          ${stockFrom}
-         ORDER BY available ASC, p.brand, p.model, v.horsepower
+
+         ORDER BY
+           onHand ASC,
+           p.brand,
+           p.model,
+           v.horsepower
+
          LIMIT ${safeLimit}`,
       );
     },
 
     notifyStaff(title, message, roles = ["OWNER", "MANAGER"]) {
-      if (!roles.length) return Promise.resolve({ affectedRows: 0 });
+      if (!roles.length) {
+        return Promise.resolve({
+          affectedRows: 0,
+        });
+      }
+
       const placeholders = roles.map(() => "?").join(",");
+
       return execute(
-        `INSERT INTO notifications (user_id, notification_type, title, message)
-         SELECT user_id, 'MANAGEMENT', ?, ?
+        `INSERT INTO notifications (
+           user_id,notification_type,title,message
+         )
+         SELECT user_id,'MANAGEMENT',?,?
          FROM users
-         WHERE account_type = 'STAFF' AND status = 'ACTIVE'
+         WHERE account_type='STAFF'
+           AND status='ACTIVE'
            AND role IN (${placeholders})`,
         [title, message, ...roles],
       );
@@ -85,8 +134,10 @@ export function notificationModel(db) {
     markOwnNotification(id, staffId, read) {
       return execute(
         `UPDATE notifications
-         SET is_read = ?, read_at = IF(?, CURRENT_TIMESTAMP, NULL)
-         WHERE notification_id = ? AND user_id = ?`,
+         SET is_read=?,
+             read_at=IF(?,CURRENT_TIMESTAMP,NULL)
+         WHERE notification_id=?
+           AND user_id=?`,
         [read ? 1 : 0, read ? 1 : 0, id, staffId],
       );
     },
@@ -94,21 +145,29 @@ export function notificationModel(db) {
     markAllOwnNotificationsRead(staffId) {
       return execute(
         `UPDATE notifications
-         SET is_read = 1, read_at = CURRENT_TIMESTAMP
-         WHERE user_id = ? AND is_read = 0`,
+         SET is_read=1,
+             read_at=CURRENT_TIMESTAMP
+         WHERE user_id=?
+           AND is_read=0`,
         [staffId],
       );
     },
 
     deleteOwnNotification(id, staffId) {
       return execute(
-        `DELETE FROM notifications WHERE notification_id = ? AND user_id = ?`,
+        `DELETE FROM notifications
+         WHERE notification_id=?
+           AND user_id=?`,
         [id, staffId],
       );
     },
 
     clearOwnNotifications(staffId) {
-      return execute(`DELETE FROM notifications WHERE user_id = ?`, [staffId]);
+      return execute(
+        `DELETE FROM notifications
+         WHERE user_id=?`,
+        [staffId],
+      );
     },
   };
 }

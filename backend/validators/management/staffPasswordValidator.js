@@ -1,13 +1,5 @@
 import { z } from "zod";
-
-const password = z
-  .string()
-  .min(8, "Use at least eight characters.")
-  .max(72, "Password is too long.")
-  .refine(
-    (value) => Buffer.byteLength(value, "utf8") <= 72,
-    "Password is too long.",
-  );
+import { strongPassword } from "../shared/passwordPolicy.js";
 
 function parse(schema, input) {
   const result = schema.safeParse(input);
@@ -27,8 +19,8 @@ export function validateStaffChange(input) {
     z
       .object({
         currentPassword: z.string().min(1).max(128),
-        newPassword: password,
-        confirmPassword: password,
+        newPassword: strongPassword,
+        confirmPassword: z.string().min(1).max(128),
       })
       .strict()
       .refine((value) => value.newPassword === value.confirmPassword, {

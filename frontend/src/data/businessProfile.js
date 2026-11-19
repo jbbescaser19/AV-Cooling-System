@@ -5,7 +5,7 @@ export const businessProfile = {
 
   phones: ["0999-377-2086", "0918-454-9781"],
 
-  email: "hello@avcooling.local",
+  email: "avcs18@yahoo.com",
 
   address: "B43 L21 Asia 1, Kapayapaan Ville, Canlubang, Calamba City, Laguna",
 

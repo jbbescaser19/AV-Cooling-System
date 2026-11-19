@@ -1,7 +1,15 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CreditCard, Eye, RefreshCw, Search, ShieldCheck } from "lucide-react";
-import api from "../../../api/api.js";
+
+import RecordCategoryFilters, {
+  field,
+  useRecordFilters,
+} from "../../components/common/RecordCategoryFilters.jsx";
+
 import ManagementRecordDetailsModal from "../../components/management/ManagementRecordDetailsModal.jsx";
+
+import api from "../../../api/api.js";
+
 import "../../styles/management/sales-live.css";
 
 const money = (value) =>
@@ -9,102 +17,273 @@ const money = (value) =>
     style: "currency",
     currency: "PHP",
   }).format(Number(value) || 0);
+
 const date = (value) => (value ? new Date(value).toLocaleString("en-PH") : "—");
+
+const reference = (payment) =>
+  payment.displayOrderNumber || payment.orderNumber;
+
+const keyFor = (payment) => `${payment.channel}:${payment.id}`;
+
+const pickup = (payment) =>
+  payment.channel === "POS" && payment.fulfillment === "PICKUP";
+
+function canCollect(payment) {
+  if (
+    !["ONLINE", "FACEBOOK", "SERVICE", "POS"].includes(payment.channel) ||
+    payment.status !== "PENDING" ||
+    payment.method !== "CASH"
+  ) {
+    return false;
+  }
+
+  if (pickup(payment)) {
+    return payment.orderStatus === "CONFIRMED";
+  }
+
+  if (payment.channel === "SERVICE") {
+    return ["CONFIRMED", "COMPLETED"].includes(payment.orderStatus);
+  }
+
+  return ["CONFIRMED", "SCHEDULED", "IN_PROGRESS", "COMPLETED"].includes(
+    payment.orderStatus,
+  );
+}
+
+function canRefund(payment) {
+  return (
+    payment.status === "PAID" &&
+    payment.method === "CASH" &&
+    Number(payment.canRefund) === 1
+  );
+}
 
 export default function PaymentsPage() {
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [busyId, setBusyId] = useState(null);
+
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("ALL");
+
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [refresh, setRefresh] = useState(0);
-  const [selected, setSelected] = useState(null);
+
   const [detailsPayment, setDetailsPayment] = useState(null);
-  const closeDetails = useCallback(() => setDetailsPayment(null), []);
-  const [collected, setCollected] = useState(false);
+  const [selected, setSelected] = useState(null);
+
+  const [mode, setMode] = useState("collect");
+
+  const [verified, setVerified] = useState(false);
+  const [released, setReleased] = useState(false);
   const [note, setNote] = useState("");
+
+  const [actionError, setActionError] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const lock = useRef(false);
+
+  const closeDetails = useCallback(() => setDetailsPayment(null), []);
+
+  useEffect(() => {
+    const refreshList = () => setRefresh((value) => value + 1);
+
+    window.addEventListener("av-management-updated", refreshList);
+
+    return () =>
+      window.removeEventListener("av-management-updated", refreshList);
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
+
     setLoading(true);
+
     api
-      .get("/api/management/sales/payments", { signal: controller.signal })
+      .get("/api/management/sales/payments", {
+        signal: controller.signal,
+      })
       .then(({ data }) => {
         if (controller.signal.aborted) return;
-        setPayments(data.payments || []);
+
+        const rows = Array.isArray(data.payments) ? data.payments : [];
+
+        setPayments([
+          ...new Map(
+            rows.map((payment) => [keyFor(payment), payment]),
+          ).values(),
+        ]);
+
         setError("");
       })
       .catch((err) => {
-        if (!controller.signal.aborted)
+        if (!controller.signal.aborted) {
           setError(err.response?.data?.message || "Cannot load payments.");
+        }
       })
       .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
       });
+
     return () => controller.abort();
   }, [refresh]);
 
+  const categories = useRecordFilters(payments, [
+    field("channel", "Channels"),
+    field("method", "Payment methods"),
+  ]);
+
   const filtered = useMemo(
     () =>
-      payments.filter(
-        (p) =>
-          (status === "ALL" || p.status === status) &&
-          `${p.orderNumber} ${p.customer} ${p.channel} ${p.transferReference || ""}`
+      categories.filtered.filter(
+        (payment) =>
+          (status === "ALL" || payment.status === status) &&
+          `${reference(payment)} ${payment.orderNumber} ${
+            payment.customer
+          } ${payment.channel} ${
+            payment.transferReference || ""
+          } ${payment.refundReference || ""}`
             .toLowerCase()
             .includes(search.toLowerCase()),
       ),
-    [payments, search, status],
+    [categories.filtered, search, status],
   );
+
   const summary = useMemo(
     () =>
       payments.reduce(
-        (a, p) => {
-          if (p.status === "PAID") a.paid += Number(p.amount);
-          if (p.status === "PENDING") a.pending += Number(p.amount);
-          return a;
+        (result, payment) => {
+          if (payment.status === "PAID") {
+            result.paid += Number(payment.amount);
+          }
+
+          if (payment.status === "PENDING") {
+            result.pending += Number(payment.amount);
+          }
+
+          return result;
         },
-        { paid: 0, pending: 0 },
+        {
+          paid: 0,
+          pending: 0,
+        },
       ),
     [payments],
   );
 
-  function open(p) {
-    setSelected(p);
-    setCollected(false);
+  function open(payment, nextMode) {
+    if (lock.current) return;
+
+    setDetailsPayment(null);
+    setSelected(payment);
+    setMode(nextMode);
+
+    setVerified(false);
+    setReleased(false);
     setNote("");
-    setError("");
+    setActionError("");
     setSuccess("");
   }
-  async function confirm(event) {
+
+  const refund = mode === "refund";
+
+  const needsHandover = selected && !refund && pickup(selected);
+
+  const eligible =
+    selected && (refund ? canRefund(selected) : canCollect(selected));
+
+  const ready =
+    eligible &&
+    verified &&
+    (!needsHandover || released) &&
+    (!refund || note.trim().length >= 5);
+
+  async function submit(event) {
     event.preventDefault();
-    if (!selected || !collected || busyId) return;
-    setBusyId(selected.id);
-    setError("");
+
+    if (!ready || lock.current) return;
+
+    lock.current = true;
+
+    setBusy(true);
+    setActionError("");
+
     try {
+      const id = String(selected.id).replace(/^S/, "");
+
+      const segment =
+        selected.channel === "SERVICE" ? "service-payments" : "payments";
+
+      const body = refund
+        ? {
+            cashReturned: true,
+            reason: note.trim(),
+          }
+        : {
+            cashCollected: true,
+            pickupReleased: Boolean(needsHandover && released),
+            note: note.trim(),
+          };
+
+      const action = refund ? "confirm-refund" : "confirm-cash";
+
       const { data } = await api.post(
-        selected.channel === "SERVICE"
-          ? `/api/management/sales/service-payments/${String(selected.id).replace(/^S/, "")}/confirm-cash`
-          : `/api/management/sales/payments/${selected.id}/confirm-cash`,
-        { cashCollected: true, note: note.trim() },
+        `/api/management/sales/${segment}/${encodeURIComponent(id)}/${action}`,
+        body,
       );
-      if (!data.success) throw new Error("Payment confirmation was not saved.");
+
+      if (!data.success) {
+        throw new Error("The operation was not saved.");
+      }
+
       setSuccess(
-        `Cash payment for ${selected.displayOrderNumber || selected.orderNumber} confirmed in MySQL.`,
+        refund
+          ? `${reference(selected)}: ${
+              data.message || "Refund recorded."
+            } Voucher: ${data.refundReference || "See payment details"}.`
+          : `${reference(selected)}: cash payment recorded as PAID.`,
       );
+
       setSelected(null);
-      setRefresh((n) => n + 1);
+
       window.dispatchEvent(new Event("av-management-updated"));
     } catch (err) {
-      setError(
+      setActionError(
         err.response?.data?.message ||
-          err.message ||
-          "Could not confirm payment.",
+          "Could not verify the result. Refresh and check the payment before retrying.",
       );
     } finally {
-      setBusyId(null);
+      lock.current = false;
+      setBusy(false);
     }
+  }
+
+  function actions(payment) {
+    return (
+      <>
+        {canCollect(payment) && (
+          <button
+            type="button"
+            className="sales-small-action"
+            onClick={() => open(payment, "collect")}
+          >
+            Confirm Cash
+          </button>
+        )}
+
+        {canRefund(payment) && (
+          <button
+            type="button"
+            className="sales-small-action"
+            onClick={() => open(payment, "refund")}
+          >
+            Cancel &amp; Refund
+          </button>
+        )}
+      </>
+    );
   }
 
   return (
@@ -114,12 +293,15 @@ export default function PaymentsPage() {
           <span className="sales-kicker">
             <CreditCard size={17} /> PAYMENT RECORDS
           </span>
+
           <h1>Payments</h1>
+
           <p>
             Product orders and service appointments · real payment records from
             MySQL.
           </p>
         </div>
+
         <button
           type="button"
           className="sales-refresh"
@@ -129,72 +311,101 @@ export default function PaymentsPage() {
           <RefreshCw size={17} /> Refresh
         </button>
       </header>
+
       {error && (
         <p className="sales-error" role="alert">
           {error}
         </p>
       )}
+
       {success && (
         <p className="sales-success" role="status">
           {success}
         </p>
       )}
+
       <div className="sales-summary-cards">
         <div className="sales-panel">
           <small>Collected payments · latest {payments.length}</small>
+
           <strong>{money(summary.paid)}</strong>
         </div>
+
         <div className="sales-panel">
           <small>Pending payments · latest {payments.length}</small>
+
           <strong>{money(summary.pending)}</strong>
         </div>
       </div>
+
       <section className="sales-panel">
         <div className="sales-section-head">
           <h2>Payment history</h2>
           <span>{filtered.length} shown</span>
         </div>
+
         <div className="sales-filters">
           <label className="sales-search">
             <Search size={18} />
+
             <input
               value={search}
-              placeholder="Search order, service, or customer"
+              placeholder="Search reference or customer"
               aria-label="Search payments"
               onChange={(e) => setSearch(e.target.value)}
             />
           </label>
+
           <select
             aria-label="Filter payment status"
             value={status}
             onChange={(e) => setStatus(e.target.value)}
           >
             <option value="ALL">All statuses</option>
-            <option value="PENDING">Pending</option>
-            <option value="PAID">Paid</option>
-            <option value="FAILED">Failed</option>
-            <option value="REFUNDED">Refunded</option>
+
+            {[
+              ...new Set([
+                "PENDING",
+                "PAID",
+                "FAILED",
+                "REFUNDED",
+                "CANCELLED",
+                ...payments.map((payment) => payment.status).filter(Boolean),
+              ]),
+            ].map((value) => (
+              <option key={value} value={value}>
+                {value.replaceAll("_", " ")}
+              </option>
+            ))}
           </select>
         </div>
+
+        <RecordCategoryFilters filters={categories} />
+
         {loading ? (
           <p className="sales-empty" role="status">
             Loading payments…
           </p>
-        ) : filtered.length === 0 ? (
+        ) : !filtered.length ? (
           <p className="sales-empty">No matching payment records yet.</p>
         ) : (
           <div className="sales-table-scroll">
             <table className="sales-table av-smart-table av-smart-table--expand">
               <thead>
                 <tr>
-                  <th data-mobile="primary">Order</th>
+                  <th data-mobile="primary">Order / Service</th>
+
                   <th data-mobile="secondary">Customer</th>
+
                   <th>Channel</th>
                   <th>Method</th>
+
                   <th data-mobile="status">Status</th>
+
                   <th>Amount</th>
                   <th>Date</th>
                   <th>Action</th>
+
                   <th
                     data-mobile="action"
                     className="av-mobile-only av-smart-more-head"
@@ -203,56 +414,62 @@ export default function PaymentsPage() {
                   </th>
                 </tr>
               </thead>
+
               <tbody>
-                {filtered.map((p) => (
-                  <tr className="av-smart-record" key={p.id}>
+                {filtered.map((payment) => (
+                  <tr className="av-smart-record" key={keyFor(payment)}>
                     <td data-mobile="primary">
-                      <strong title={p.orderNumber}>
-                        {p.displayOrderNumber || p.orderNumber}
+                      <strong title={reference(payment)}>
+                        {reference(payment)}
                       </strong>
                     </td>
-                    <td data-mobile="secondary">{p.customer}</td>
-                    <td>{p.channel}</td>
+
+                    <td data-mobile="secondary">{payment.customer}</td>
+
+                    <td>{payment.channel}</td>
+
                     <td>
-                      {p.method}
-                      {p.transferReference && (
+                      {payment.method}
+
+                      {payment.transferReference && (
                         <small style={{ display: "block" }}>
-                          Ref: {p.transferReference}
+                          Ref: {payment.transferReference}
                         </small>
                       )}
                     </td>
+
                     <td data-mobile="status">
                       <span
-                        className={`sales-pill is-${p.status.toLowerCase()}`}
+                        className={`sales-pill is-${payment.status.toLowerCase()}`}
                       >
-                        {p.status}
+                        {payment.status}
                       </span>
                     </td>
+
                     <td>
-                      <strong>{money(p.amount)}</strong>
+                      <strong>{money(payment.amount)}</strong>
                     </td>
-                    <td>{date(p.paidAt || p.createdAt)}</td>
+
                     <td>
-                      {["ONLINE", "FACEBOOK", "SERVICE"].includes(p.channel) &&
-                      p.status === "PENDING" &&
-                      p.method === "CASH" &&
-                      [
-                        "CONFIRMED",
-                        "SCHEDULED",
-                        "IN_PROGRESS",
-                        "COMPLETED",
-                      ].includes(p.orderStatus) ? (
-                        <button
-                          type="button"
-                          className="sales-small-action"
-                          onClick={() => open(p)}
-                        >
-                          Confirm cash
-                        </button>
-                      ) : (
-                        <span className="sales-muted">—</span>
+                      {date(
+                        payment.refundedAt ||
+                          payment.paidAt ||
+                          payment.createdAt,
                       )}
                     </td>
+
+                    <td>
+                      {actions(payment)}
+
+                      <button
+                        type="button"
+                        className="sales-small-action"
+                        onClick={() => setDetailsPayment(payment)}
+                      >
+                        View Details
+                      </button>
+                    </td>
+
                     <td
                       className="av-mobile-only av-smart-more-cell"
                       data-mobile="action"
@@ -260,8 +477,8 @@ export default function PaymentsPage() {
                       <button
                         type="button"
                         className="av-smart-expand-btn"
-                        aria-label={`View payment details for ${p.orderNumber}`}
-                        onClick={() => setDetailsPayment(p)}
+                        aria-label={`View payment details for ${reference(payment)}`}
+                        onClick={() => setDetailsPayment(payment)}
                       >
                         <Eye size={14} aria-hidden="true" />
                         <span>View Details</span>
@@ -273,34 +490,52 @@ export default function PaymentsPage() {
             </table>
           </div>
         )}
+
         <p className="sales-note">
-          Refunds are not simulated here. A refund needs its own verified
-          return-of-funds workflow.
+          Cash refunds are available for eligible unstarted transactions. Online
+          refunds and physical returns require separate verification.
         </p>
       </section>
+
       {detailsPayment && (
         <ManagementRecordDetailsModal
           title="Payment Details"
-          subtitle={String(
-            detailsPayment.displayOrderNumber ||
-              detailsPayment.orderNumber ||
-              "Payment record",
-          )}
+          subtitle={reference(detailsPayment)}
+          onClose={closeDetails}
           fields={[
             {
               label: "Order / Service",
-              value:
-                detailsPayment.displayOrderNumber || detailsPayment.orderNumber,
+              value: reference(detailsPayment),
             },
-            { label: "Customer", value: detailsPayment.customer },
-            { label: "Channel", value: detailsPayment.channel },
-            { label: "Method", value: detailsPayment.method },
-            { label: "Status", value: detailsPayment.status },
-            { label: "Amount", value: money(detailsPayment.amount) },
+            {
+              label: "Customer",
+              value: detailsPayment.customer,
+            },
+            {
+              label: "Channel",
+              value: detailsPayment.channel,
+            },
+            {
+              label: "Method",
+              value: detailsPayment.method,
+            },
+            {
+              label: "Payment status",
+              value: detailsPayment.status,
+            },
+            {
+              label: "Transaction status",
+              value: detailsPayment.orderStatus,
+            },
+            {
+              label: "Amount",
+              value: money(detailsPayment.amount),
+            },
             {
               label: "Date",
               value: date(detailsPayment.paidAt || detailsPayment.createdAt),
             },
+
             ...(detailsPayment.transferReference
               ? [
                   {
@@ -309,88 +544,139 @@ export default function PaymentsPage() {
                   },
                 ]
               : []),
+
+            ...(detailsPayment.refundReference
+              ? [
+                  {
+                    label: "Refund voucher",
+                    value: detailsPayment.refundReference,
+                  },
+                  {
+                    label: "Refund reason",
+                    value: detailsPayment.refundReason,
+                  },
+                  {
+                    label: "Refunded on",
+                    value: date(detailsPayment.refundedAt),
+                  },
+                ]
+              : []),
           ]}
-          onClose={closeDetails}
         >
-          {["ONLINE", "FACEBOOK", "SERVICE"].includes(detailsPayment.channel) &&
-            detailsPayment.status === "PENDING" &&
-            detailsPayment.method === "CASH" &&
-            ["CONFIRMED", "SCHEDULED", "IN_PROGRESS", "COMPLETED"].includes(
-              detailsPayment.orderStatus,
-            ) && (
-              <button
-                type="button"
-                className="sales-small-action"
-                onClick={() => {
-                  closeDetails();
-                  open(detailsPayment);
-                }}
-              >
-                Confirm Cash Collection
-              </button>
-            )}
+          {actions(detailsPayment)}
         </ManagementRecordDetailsModal>
       )}
+
       {selected && (
         <div
           className="sales-overlay"
           onMouseDown={(e) => {
-            if (e.target === e.currentTarget && !busyId) setSelected(null);
+            if (e.target === e.currentTarget && !lock.current) {
+              setSelected(null);
+            }
           }}
         >
           <form
             className="sales-panel sales-modal"
             role="dialog"
             aria-modal="true"
-            aria-labelledby="sales-confirm-payment-heading"
-            onSubmit={confirm}
+            aria-labelledby="sales-payment-heading"
+            onSubmit={submit}
           >
-            <h2 id="sales-confirm-payment-heading">
-              <ShieldCheck size={22} /> Confirm actual cash collection
+            <h2 id="sales-payment-heading">
+              <ShieldCheck size={22} />
+
+              {refund ? "Cancel & Refund" : "Confirm cash collection"}
             </h2>
+
             <p>
-              <strong>
-                {selected.displayOrderNumber || selected.orderNumber}
-              </strong>{" "}
-              · {selected.customer}
+              <strong>{reference(selected)}</strong>
+              {" · "}
+              {selected.customer}
             </p>
+
             <p>
-              Amount to confirm: <strong>{money(selected.amount)}</strong>
+              {refund ? "Refund amount" : "Amount to collect"}:{" "}
+              <strong>{money(selected.amount)}</strong>
             </p>
+
+            {refund && (
+              <p className="sales-note">
+                This records money already returned. It does not transfer funds.
+                The voucher is generated automatically.
+              </p>
+            )}
+
             <label>
-              Staff note (optional)
+              {refund ? "Refund reason (required)" : "Staff note (optional)"}
+
               <textarea
                 value={note}
-                maxLength={250}
+                required={refund}
+                minLength={refund ? 5 : undefined}
+                maxLength={refund ? 500 : 250}
                 rows={2}
+                disabled={busy}
                 onChange={(e) => setNote(e.target.value)}
               />
             </label>
+
             <label className="sales-checkline av-cash-confirm-row">
               <input
                 type="checkbox"
-                checked={collected}
-                onChange={(e) => setCollected(e.target.checked)}
+                checked={verified}
+                disabled={busy}
+                onChange={(e) => setVerified(e.target.checked)}
               />
+
               <span>
-                I personally verified that this cash payment was received.
+                {refund
+                  ? "I physically returned the full cash amount to the customer."
+                  : "I personally verified that the full cash payment was received."}
               </span>
             </label>
+
+            {needsHandover && (
+              <label className="sales-checkline av-cash-confirm-row">
+                <input
+                  type="checkbox"
+                  checked={released}
+                  disabled={busy}
+                  onChange={(e) => setReleased(e.target.checked)}
+                />
+
+                <span>
+                  The products have been physically handed over to the customer.
+                </span>
+              </label>
+            )}
+
+            {actionError && (
+              <p className="sales-error" role="alert">
+                {actionError}
+              </p>
+            )}
+
             <div className="sales-modal-actions">
               <button
                 className="sales-refresh"
                 type="button"
+                disabled={busy}
                 onClick={() => setSelected(null)}
-                disabled={Boolean(busyId)}
               >
-                Cancel
+                Back
               </button>
+
               <button
                 className="sales-primary"
                 type="submit"
-                disabled={!collected || Boolean(busyId)}
+                disabled={!ready || busy}
               >
-                {busyId ? "Recording…" : "Record as PAID"}
+                {busy
+                  ? "Recording…"
+                  : refund
+                    ? "Confirm Cancellation & Refund"
+                    : "Record as PAID"}
               </button>
             </div>
           </form>

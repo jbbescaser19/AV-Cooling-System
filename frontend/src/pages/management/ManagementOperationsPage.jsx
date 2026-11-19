@@ -1,8 +1,14 @@
+import RecordCategoryFilters, {
+  field,
+  useRecordFilters,
+} from "../../components/common/RecordCategoryFilters.jsx";
+
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Eye } from "lucide-react";
 import { createPortal } from "react-dom";
+
 import {
+  Eye,
   CalendarDays,
   CheckCircle2,
   ClipboardList,
@@ -12,15 +18,22 @@ import {
   Search,
   X,
 } from "lucide-react";
+
 import api from "../../../api/api.js";
 import { confirmAction } from "../../utils/confirmAction.jsx";
 import { getStaff } from "../../utils/authMock.js";
+
 import AvailabilityPicker from "../../components/scheduling/AvailabilityPicker";
 import TechnicianTeamPicker from "../../components/management/TechnicianTeamPicker";
 import SourceTeamPanel from "../../components/management/SourceTeamPanel";
 import ServiceActivityHistory from "../../components/management/ServiceActivityHistory.jsx";
 import ServicePaymentPanel from "../../components/management/ServicePaymentPanel.jsx";
 import ActionGuidance from "../../components/common/ActionGuidance.jsx";
+
+import InternalStaffNoteField, {
+  CustomerProgressReasonField,
+} from "../../components/management/InternalStaffNoteField.jsx";
+
 import "../../styles/management/workspace.css";
 import "../../styles/management/sales-live.css";
 import "../../styles/management/av-records.css";
@@ -37,34 +50,57 @@ const labels = {
   SERVICE_CANCELLED: "Cancel request",
 };
 
+const DECLINE_REASONS = [
+  "No available technician",
+  "Requested schedule unavailable",
+  "Outside service coverage area",
+  "Requested service unavailable",
+  "Incomplete customer information",
+  "Duplicate request",
+];
+
 function availableActions(record, role) {
   if (role === "SALES_CASHIER") {
-    if (record.status === "PENDING") return ["SERVICE_ACCEPTED"];
+    if (record.status === "PENDING") {
+      return ["SERVICE_ACCEPTED"];
+    }
+
     if (record.status === "CONFIRMED" && !record.serviceStarted) {
       return record.schedule ? ["SERVICE_RESCHEDULED"] : ["SERVICE_SCHEDULED"];
     }
+
     return [];
   }
-  if (record.status === "PENDING")
+
+  if (record.status === "PENDING") {
     return ["SERVICE_ACCEPTED", "SERVICE_DECLINED"];
+  }
+
   if (record.status === "CONFIRMED") {
-    if (record.serviceStarted) return ["SERVICE_COMPLETED"];
+    if (record.serviceStarted) {
+      return ["SERVICE_COMPLETED"];
+    }
+
     return record.schedule
       ? ["SERVICE_RESCHEDULED", "SERVICE_STARTED", "SERVICE_CANCELLED"]
       : ["SERVICE_SCHEDULED", "SERVICE_CANCELLED"];
   }
+
   return [];
 }
 
 function phoneHref(raw) {
   const safe = String(raw || "").replace(/[^\d+]/g, "");
   const digits = safe.replace(/\D/g, "");
+
   return digits.length >= 7 && digits.length <= 15 ? `tel:${safe}` : null;
 }
 
 export default function ManagementOperationsPage({ kind = "SERVICE" }) {
   const staff = getStaff();
+
   const canAssign = ["OWNER", "MANAGER"].includes(staff?.role);
+
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -75,17 +111,24 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [page, setPage] = useState(1);
   const [revision, setRevision] = useState(0);
+
   const [event, setEvent] = useState("");
   const [schedule, setSchedule] = useState("");
   const [originalSchedule, setOriginalSchedule] = useState("");
   const [customerReason, setCustomerReason] = useState("");
+  const [declineReasonChoice, setDeclineReasonChoice] = useState("");
   const [internalNote, setInternalNote] = useState("");
   const [technicianIds, setTechnicianIds] = useState([]);
   const [sourceJobs, setSourceJobs] = useState([]);
+
   const [searchParams, setSearchParams] = useSearchParams();
+
   const selectedId = searchParams.get("requestId");
+
   const selected = items.find((row) => String(row.id) === selectedId) || null;
+
   const actions = selected ? availableActions(selected, staff?.role) : [];
+
   const hasAssignedTeam = sourceJobs.some(
     (job) =>
       job.type === "SERVICE" &&
@@ -93,8 +136,18 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
       job.members?.length > 0,
   );
 
-  // Use exactly these conditions for both the disabled button and the guide.
-  // POS walk-in services may already be CONFIRMED, PAID and have a team.
+  const isDeclining = event === "SERVICE_DECLINED";
+
+  const isWorkProgress = ["SERVICE_STARTED", "SERVICE_COMPLETED"].includes(
+    event,
+  );
+
+  const reasonRequired = [
+    "SERVICE_DECLINED",
+    "SERVICE_CANCELLED",
+    "SERVICE_RESCHEDULED",
+  ].includes(event);
+
   const actionReasons =
     selected && event
       ? [
@@ -105,89 +158,134 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
           ].includes(event) && !schedule
             ? "Choose an available future appointment date and time."
             : null,
+
           event === "SERVICE_ACCEPTED" && technicianIds.length === 0
             ? "Choose the technician team before confirming the appointment."
             : null,
+
           event === "SERVICE_RESCHEDULED" &&
           schedule &&
           schedule === originalSchedule
             ? "Choose a different appointment time from the current schedule."
             : null,
-          [
-            "SERVICE_DECLINED",
-            "SERVICE_CANCELLED",
-            "SERVICE_RESCHEDULED",
-          ].includes(event) && customerReason.trim().length < 5
+
+          isDeclining && !declineReasonChoice
+            ? "Select a reason for declining this request."
+            : null,
+
+          reasonRequired &&
+          (!isDeclining || declineReasonChoice) &&
+          customerReason.trim().length < 5
             ? "Enter a customer-visible reason (at least 5 characters)."
             : null,
+
           event === "SERVICE_CANCELLED" && selected.paymentStatus === "PAID"
             ? "This service is paid. First return the funds and record the completed cash refund in Payment details above."
             : null,
+
           event === "SERVICE_STARTED" && !hasAssignedTeam
             ? "An assigned technician team is required before starting service."
             : null,
+
           event === "SERVICE_STARTED" && !selected.schedule
             ? "A confirmed service appointment is required before starting."
             : null,
-          ["SERVICE_STARTED", "SERVICE_COMPLETED"].includes(event) &&
-          internalNote.trim().length < 10
-            ? "Write who reported the work and how it was confirmed in the private staff note (10+ characters)."
+
+          isWorkProgress && internalNote.trim().length < 10
+            ? "Select a confirmation method and enter the actual work details (at least 10 characters)."
             : null,
         ].filter(Boolean)
       : [];
 
+  function changeAction(nextEvent) {
+    if (nextEvent !== event) {
+      setInternalNote("");
+      setCustomerReason("");
+      setDeclineReasonChoice("");
+    }
+
+    setEvent(nextEvent);
+    setActionError("");
+  }
+
+  function changeDeclineReason(value) {
+    setDeclineReasonChoice(value);
+
+    setCustomerReason(DECLINE_REASONS.includes(value) ? value : "");
+
+    setActionError("");
+  }
+
   function close(force = false) {
     if (busy && !force) return;
+
     setSearchParams((previous) => {
       const next = new URLSearchParams(previous);
       next.delete("requestId");
       return next;
     });
   }
+
   function open(record) {
     setSearchParams((previous) => {
       const next = new URLSearchParams(previous);
+
       next.set("requestId", String(record.id));
+
       return next;
     });
   }
 
   useEffect(() => {
     const refreshList = () => setRevision((value) => value + 1);
+
     window.addEventListener("av-management-updated", refreshList);
+
     return () =>
       window.removeEventListener("av-management-updated", refreshList);
   }, []);
 
   useEffect(() => {
     const controller = new AbortController();
+
     setLoading(true);
     setError("");
+
     api
-      .get("/api/management/services", { signal: controller.signal })
+      .get("/api/management/services", {
+        signal: controller.signal,
+      })
       .then(({ data }) => {
-        if (!controller.signal.aborted)
+        if (!controller.signal.aborted) {
           setItems(Array.isArray(data.records) ? data.records : []);
+        }
       })
       .catch((requestError) => {
-        if (!controller.signal.aborted)
+        if (!controller.signal.aborted) {
           setError(
             requestError.response?.data?.message ||
               "Unable to load service requests.",
           );
+        }
       })
       .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
       });
+
     return () => controller.abort();
   }, [revision]);
 
   useEffect(() => {
     if (!selected) return;
+
     setEvent(availableActions(selected, staff?.role)[0] || "");
+
     setSchedule(selected.schedule || "");
     setOriginalSchedule(selected.schedule || "");
     setCustomerReason("");
+    setDeclineReasonChoice("");
     setInternalNote("");
     setTechnicianIds([]);
     setSourceJobs([]);
@@ -196,113 +294,164 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
 
   useEffect(() => {
     if (!selectedId) return undefined;
+
     const previous = document.body.style.overflow;
+
     document.body.style.overflow = "hidden";
+
     const escape = (ev) => {
       if (ev.key === "Escape" && !busy) close();
     };
+
     document.addEventListener("keydown", escape);
+
     return () => {
       document.body.style.overflow = previous;
+
       document.removeEventListener("keydown", escape);
     };
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId, busy]);
 
+  const categories = useRecordFilters(items, [
+    field(
+      "serviceName",
+      "Service types",
+      (r) => r.serviceName ?? r.products?.split(" · ")[0],
+    ),
+
+    field("paymentStatus", "Payment statuses"),
+  ]);
+
   const filtered = useMemo(
     () =>
-      items.filter(
+      categories.filtered.filter(
         (row) =>
           (statusFilter === "ALL" || row.status === statusFilter) &&
           `${row.reference} ${row.customer} ${row.products} ${row.contact} ${row.status} ${row.paymentStatus || ""}`
             .toLowerCase()
             .includes(search.trim().toLowerCase()),
       ),
-    [items, search, statusFilter],
+    [categories.filtered, search, statusFilter],
   );
+
   const totalPages = Math.max(1, Math.ceil(filtered.length / 16));
+
   const pageItems = filtered.slice((page - 1) * 16, page * 16);
 
   async function save(submitEvent) {
     submitEvent.preventDefault();
-    if (!selected || !event || busy || !actions.includes(event)) return;
+
+    if (!selected || !event || busy || !actions.includes(event)) {
+      return;
+    }
+
     const needsSchedule = [
       "SERVICE_ACCEPTED",
       "SERVICE_SCHEDULED",
       "SERVICE_RESCHEDULED",
     ].includes(event);
-    const needsReason = [
-      "SERVICE_DECLINED",
-      "SERVICE_CANCELLED",
-      "SERVICE_RESCHEDULED",
-    ].includes(event);
+
     if (needsSchedule && !schedule) {
       setActionError("Choose a future appointment date and time.");
+
       return;
     }
-    if (needsReason && customerReason.trim().length < 5) {
+
+    if (isDeclining && !declineReasonChoice) {
+      setActionError("Select a reason for declining this request.");
+
+      return;
+    }
+
+    if (reasonRequired && customerReason.trim().length < 5) {
       setActionError(
         "Enter a customer-visible reason (at least 5 characters).",
       );
+
       return;
     }
+
     if (event === "SERVICE_ACCEPTED" && technicianIds.length === 0) {
       setActionError(
         "Select a technician team before confirming this service.",
       );
+
       return;
     }
-    if (
-      ["SERVICE_STARTED", "SERVICE_COMPLETED"].includes(event) &&
-      internalNote.trim().length < 10
-    ) {
+
+    if (isWorkProgress && internalNote.trim().length < 10) {
       setActionError(
-        "For start or completion, enter who reported the work and how it was confirmed (10+ characters) in the private staff note.",
+        "Select a confirmation method and enter the actual work details.",
       );
+
       return;
     }
+
     if (event === "SERVICE_STARTED" && !hasAssignedTeam) {
       setActionError("Assign a technician team before starting this service.");
+
       return;
     }
+
     if (actionReasons.length > 0) {
       setActionError(actionReasons[0]);
+
       return;
     }
+
     if (
       ["SERVICE_DECLINED", "SERVICE_CANCELLED", "SERVICE_COMPLETED"].includes(
         event,
       ) &&
       !(await confirmAction({
         title: labels[event],
+
         message: `${labels[event]} for service #${selected.id}?${customerReason.trim() ? `\nCustomer-visible reason: ${customerReason.trim()}` : ""}`,
+
         confirmText: labels[event],
+
         danger: ["SERVICE_DECLINED", "SERVICE_CANCELLED"].includes(event),
       }))
-    )
+    ) {
       return;
+    }
 
     setBusy(true);
     setActionError("");
+
     try {
       const { data } = await api.post(
         `/api/management/services/${selected.id}/events`,
         {
           requestKey: crypto.randomUUID(),
+
           eventCode: event,
-          note: customerReason.trim(), // visible to customer; existing API field
-          internalNote: internalNote.trim(), // never sent to customer
+
+          note: customerReason.trim(),
+
+          internalNote: internalNote.trim(),
+
           schedule: needsSchedule ? schedule : null,
+
           technicianIds:
             event === "SERVICE_ACCEPTED" && canAssign ? technicianIds : [],
         },
       );
-      if (!data.success) throw new Error("Update not confirmed.");
+
+      if (!data.success) {
+        throw new Error("Update not confirmed.");
+      }
+
       setNotice(
         `Service #${selected.id}: ${labels[event]} recorded by ${staff?.name || "staff"}.`,
       );
+
       close(true);
+
       setRevision((value) => value + 1);
+
       window.dispatchEvent(new Event("av-management-updated"));
     } catch (requestError) {
       setActionError(
@@ -315,6 +464,7 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
   }
 
   const callLink = phoneHref(selected?.contact);
+
   return (
     <div className="wsm-page av-records-responsive av-services-page">
       <header className="wsm-head">
@@ -322,9 +472,12 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
           <span className="wsm-kicker">
             <ClipboardList size={16} /> SERVICES
           </span>
+
           <h1>Service requests</h1>
+
           <p>Manage online, POS walk-in and Facebook service requests.</p>
         </div>
+
         <button
           type="button"
           className="wsm-secondary"
@@ -334,15 +487,19 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
           <RefreshCw size={16} /> Refresh
         </button>
       </header>
+
       {error && (
         <p className="wsm-error" role="alert">
           {error}
         </p>
       )}
+
       {notice && (
         <div role="status" className="wsm-success service-action-toast">
           <CheckCircle2 size={17} />
+
           <span>{notice}</span>
+
           <button
             type="button"
             onClick={() => setNotice("")}
@@ -352,16 +509,20 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
           </button>
         </div>
       )}
+
       <section className="sales-panel" aria-label="Service request records">
         <div className="sales-section-head">
           <h2>Service request records</h2>
+
           <span>
             {filtered.length} matching · page {page} of {totalPages}
           </span>
         </div>
+
         <div className="sales-filters">
           <label className="sales-search">
             <Search size={17} />
+
             <input
               aria-label="Search service requests"
               placeholder="Search requests, contacts, or payments"
@@ -372,6 +533,7 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
               }}
             />
           </label>
+
           <select
             aria-label="Filter service status"
             value={statusFilter}
@@ -381,6 +543,7 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
             }}
           >
             <option value="ALL">All statuses</option>
+
             {["PENDING", "CONFIRMED", "COMPLETED", "CANCELLED"].map(
               (status) => (
                 <option key={status} value={status}>
@@ -390,6 +553,12 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
             )}
           </select>
         </div>
+
+        <RecordCategoryFilters
+          filters={categories}
+          onChange={() => setPage(1)}
+        />
+
         {loading ? (
           <p role="status" className="sales-empty">
             Loading services…
@@ -413,15 +582,18 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
                   <th data-mobile="action">Action</th>
                 </tr>
               </thead>
+
               <tbody>
                 {pageItems.map((row) => (
                   <tr key={row.id}>
                     <td data-label="Request" data-mobile="primary">
                       <strong>#{row.reference || row.id}</strong>
                     </td>
+
                     <td data-label="Customer" data-mobile="secondary">
                       {row.customer}
                     </td>
+
                     <td data-label="Source">
                       {row.facebookRequestId
                         ? "Facebook"
@@ -431,6 +603,7 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
                           ? "Walk-in POS"
                           : "Online"}
                     </td>
+
                     <td data-label="Contact">
                       {phoneHref(row.contact) ? (
                         <a href={phoneHref(row.contact)}>{row.contact}</a>
@@ -438,23 +611,31 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
                         row.contact || "Not provided"
                       )}
                     </td>
+
                     <td data-label="Status" data-mobile="status">
                       <span
-                        className={`sales-pill is-${String(row.status || "unknown").toLowerCase()}`}
+                        className={`sales-pill is-${String(
+                          row.status || "unknown",
+                        ).toLowerCase()}`}
                       >
                         {String(row.status || "Unknown").replaceAll("_", " ")}
                       </span>
                     </td>
+
                     <td data-label="Payment">
                       <span
-                        className={`sales-pill is-${String(row.paymentStatus || "no-record").toLowerCase()}`}
+                        className={`sales-pill is-${String(
+                          row.paymentStatus || "no-record",
+                        ).toLowerCase()}`}
                       >
                         {row.paymentStatus === "NO_RECORD" || !row.paymentStatus
                           ? "Not recorded"
                           : String(row.paymentStatus).replaceAll("_", " ")}
                       </span>
                     </td>
+
                     <td data-label="Service">{row.products || "—"}</td>
+
                     <td data-label="Total">
                       <strong>
                         {new Intl.NumberFormat("en-PH", {
@@ -463,11 +644,13 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
                         }).format(Number(row.total) || 0)}
                       </strong>
                     </td>
+
                     <td data-label="Schedule">
                       {row.schedule
                         ? String(row.schedule).replace("T", " at ")
                         : "Not scheduled"}
                     </td>
+
                     <td data-label="Action" data-mobile="action">
                       <button
                         type="button"
@@ -475,7 +658,8 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
                         aria-label={`View and manage service request ${row.reference || row.id}`}
                         onClick={() => open(row)}
                       >
-                        <Eye size={15} aria-hidden="true" />{" "}
+                        <Eye size={15} aria-hidden="true" />
+
                         <span className="av-smart-view-text">View Details</span>
                       </button>
                     </td>
@@ -485,6 +669,7 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
             </table>
           </div>
         )}
+
         {!loading && filtered.length > 0 && (
           <nav
             className="av-management-pages"
@@ -494,6 +679,7 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
               Showing {(page - 1) * 16 + 1}–
               {Math.min(page * 16, filtered.length)} of {filtered.length}
             </span>
+
             <div>
               <button
                 type="button"
@@ -502,9 +688,11 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
               >
                 Previous
               </button>
+
               <span>
                 {page} / {totalPages}
               </span>
+
               <button
                 type="button"
                 disabled={page >= totalPages}
@@ -522,12 +710,15 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
           Service request #{selectedId} was not found in the current list.
         </p>
       )}
+
       {selected &&
         createPortal(
           <div
             className="wsm-backdrop service-request-backdrop"
             onMouseDown={(e) => {
-              if (e.target === e.currentTarget) close();
+              if (e.target === e.currentTarget) {
+                close();
+              }
             }}
           >
             <section
@@ -538,6 +729,7 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
             >
               <div className="wsm-dialog-head">
                 <h2 id="service-detail-heading">Service #{selected.id}</h2>
+
                 <button
                   type="button"
                   className="wsm-close"
@@ -548,10 +740,12 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
                   <X size={18} />
                 </button>
               </div>
+
               <div className="wsm-form service-request-scroll">
                 <p>
                   <strong>Customer:</strong> {selected.customer}
                 </p>
+
                 <p>
                   <strong>Source:</strong>{" "}
                   {selected.facebookRequestId
@@ -562,6 +756,7 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
                       ? "POS walk-in"
                       : "Online booking"}
                 </p>
+
                 <p>
                   <Phone size={16} aria-hidden="true" />{" "}
                   <strong>Contact:</strong>{" "}
@@ -571,49 +766,64 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
                     selected.contact || "Not provided"
                   )}
                 </p>
+
                 <p>
                   <MapPin size={16} aria-hidden="true" />{" "}
                   <strong>Address:</strong> {selected.address || "Not provided"}
                 </p>
+
                 <p>
                   <strong>Requested service:</strong> {selected.products}
                 </p>
+
                 <div className="service-request-context">
                   <div>
                     <strong>Customer concern</strong>
+
                     <p>{selected.concern?.trim() || "No concern provided."}</p>
                   </div>
+
                   <div>
                     <strong>Customer notes</strong>
+
                     <p>
                       {selected.customerNotes?.trim() || "No additional notes."}
                     </p>
                   </div>
+
                   {selected.destinationAddress && (
                     <div>
                       <strong>Relocation destination</strong>
+
                       <p>{selected.destinationAddress}</p>
                     </div>
                   )}
                 </div>
+
                 <p>
                   <CalendarDays size={16} aria-hidden="true" />{" "}
                   <strong>Schedule:</strong>{" "}
                   {selected.schedule || "Pending confirmation"}
                 </p>
+
                 <div className="av-service-status-pair">
                   <p>
                     <strong>Status:</strong>{" "}
                     <span
-                      className={`sales-pill is-${String(selected.status).toLowerCase()}`}
+                      className={`sales-pill is-${String(
+                        selected.status,
+                      ).toLowerCase()}`}
                     >
                       {selected.status}
                     </span>
                   </p>
+
                   <p>
                     <strong>Payment:</strong>{" "}
                     <span
-                      className={`sales-pill is-${String(selected.paymentStatus || "no-record").toLowerCase()}`}
+                      className={`sales-pill is-${String(
+                        selected.paymentStatus || "no-record",
+                      ).toLowerCase()}`}
                     >
                       {!selected.paymentStatus ||
                       selected.paymentStatus === "NO_RECORD"
@@ -622,10 +832,12 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
                     </span>
                   </p>
                 </div>
+
                 <ServicePaymentPanel
                   requestId={selected.id}
                   refreshKey={revision}
                 />
+
                 {canAssign &&
                   selected.status !== "PENDING" &&
                   selected.status !== "CANCELLED" && (
@@ -633,9 +845,11 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
                       key={`SERVICE-${selected.id}`}
                       kind="SERVICE"
                       sourceId={selected.id}
+                      scheduledStart={selected.schedule}
                       onJobsChange={setSourceJobs}
                     />
                   )}
+
                 {actions.length > 0 ? (
                   <form
                     id="service-request-action-form"
@@ -646,11 +860,9 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
                       Next action
                       <select
                         value={event}
-                        onChange={(e) => {
-                          setEvent(e.target.value);
-                          setActionError("");
-                        }}
+                        onChange={(e) => changeAction(e.target.value)}
                         required
+                        disabled={busy}
                       >
                         {actions.map((code) => (
                           <option value={code} key={code}>
@@ -659,6 +871,7 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
                         ))}
                       </select>
                     </label>
+
                     {[
                       "SERVICE_ACCEPTED",
                       "SERVICE_SCHEDULED",
@@ -673,65 +886,131 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
                         label="Select available service date and time"
                       />
                     )}
+
                     {event === "SERVICE_ACCEPTED" && canAssign && (
                       <TechnicianTeamPicker
+                        scheduledStart={schedule || selected.schedule}
+                        kind="SERVICE"
+                        sourceId={selected.id}
                         value={technicianIds}
                         onChange={setTechnicianIds}
                         disabled={busy}
                       />
                     )}
+
                     {event === "SERVICE_STARTED" && !hasAssignedTeam && (
                       <p className="wsm-info">
                         Assign the service team before starting the job.
                       </p>
                     )}
-                    <div style={{ display: "grid", gap: 14, minWidth: 0 }}>
-                      <label className="wsm-field">
-                        Customer-visible reason{" "}
-                        {[
-                          "SERVICE_DECLINED",
-                          "SERVICE_CANCELLED",
-                          "SERVICE_RESCHEDULED",
-                        ].includes(event)
-                          ? "(required)"
-                          : "(optional)"}
-                        <textarea
-                          maxLength={1000}
-                          rows={2}
+
+                    <div
+                      style={{
+                        display: "grid",
+                        gap: 14,
+                        minWidth: 0,
+                      }}
+                    >
+                      {isDeclining ? (
+                        <>
+                          <label className="wsm-field">
+                            Decline reason (required)
+                            <select
+                              value={declineReasonChoice}
+                              onChange={(e) =>
+                                changeDeclineReason(e.target.value)
+                              }
+                              required
+                              disabled={busy}
+                            >
+                              <option value="">Select a reason</option>
+
+                              {DECLINE_REASONS.map((reason) => (
+                                <option key={reason} value={reason}>
+                                  {reason}
+                                </option>
+                              ))}
+
+                              <option value="OTHER">Other</option>
+                            </select>
+                            <small>
+                              This reason will be shared with the customer.
+                            </small>
+                          </label>
+
+                          {declineReasonChoice === "OTHER" && (
+                            <label className="wsm-field">
+                              Specify reason (required)
+                              <textarea
+                                rows={2}
+                                minLength={5}
+                                maxLength={1000}
+                                value={customerReason}
+                                onChange={(e) => {
+                                  setCustomerReason(e.target.value);
+
+                                  setActionError("");
+                                }}
+                                placeholder="Enter decline reason"
+                                required
+                                disabled={busy}
+                              />
+                            </label>
+                          )}
+                        </>
+                      ) : isWorkProgress ? (
+                        <CustomerProgressReasonField
+                          key={`customer-${selected.id}-${event}`}
+                          event={event}
                           value={customerReason}
-                          onChange={(e) => setCustomerReason(e.target.value)}
-                          placeholder="Reason the customer can see in notifications and service history"
+                          onChange={(value) => {
+                            setCustomerReason(value);
+                            setActionError("");
+                          }}
+                          disabled={busy}
                         />
-                        <small>
-                          This reason is shared with the customer. Do not write
-                          private staff information here.
-                        </small>
-                      </label>
-                      <label className="wsm-field">
-                        Internal staff note{" "}
-                        {["SERVICE_STARTED", "SERVICE_COMPLETED"].includes(
-                          event,
-                        )
-                          ? "(required for work progress)"
-                          : "(optional)"}
-                        <textarea
-                          maxLength={1000}
-                          rows={3}
-                          value={internalNote}
-                          onChange={(e) => setInternalNote(e.target.value)}
-                          placeholder="For store staff and assigned technicians only"
-                        />
-                        <small>
-                          Private. Not included in customer notifications or
-                          customer history.
-                        </small>
-                      </label>
+                      ) : (
+                        <label className="wsm-field">
+                          Customer-visible reason{" "}
+                          {reasonRequired ? "(required)" : "(optional)"}
+                          <textarea
+                            rows={2}
+                            maxLength={1000}
+                            value={customerReason}
+                            onChange={(e) => {
+                              setCustomerReason(e.target.value);
+
+                              setActionError("");
+                            }}
+                            placeholder="Enter customer-visible reason"
+                            disabled={busy}
+                            required={reasonRequired}
+                          />
+                          <small>
+                            This reason is shared with the customer. Do not
+                            include private staff information.
+                          </small>
+                        </label>
+                      )}
+
+                      <InternalStaffNoteField
+                        key={`internal-${selected.id}-${event}`}
+                        event={event}
+                        value={internalNote}
+                        onChange={(value) => {
+                          setInternalNote(value);
+                          setActionError("");
+                        }}
+                        disabled={busy}
+                      />
                     </div>
+
                     <ActionGuidance
                       title="To confirm this update"
                       reasons={actionReasons}
                       readyText="Ready to confirm this service update."
                     />
+
                     {actionError && (
                       <p className="wsm-error" role="alert">
                         {actionError}
@@ -743,8 +1022,10 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
                     No further status actions available for your staff role.
                   </p>
                 )}
+
                 <ServiceActivityHistory requestId={selected.id} />
               </div>
+
               <footer className="service-request-footer">
                 <button
                   className="wsm-secondary"
@@ -754,18 +1035,22 @@ export default function ManagementOperationsPage({ kind = "SERVICE" }) {
                 >
                   Close
                 </button>
+
                 {actions.length > 0 && (
                   <button
                     className="wsm-primary"
                     type="submit"
                     form="service-request-action-form"
+                    data-action={event}
                     disabled={busy || actionReasons.length > 0}
                   >
                     {busy
                       ? "Saving…"
                       : event === "SERVICE_ACCEPTED"
                         ? "Accept request & confirm schedule"
-                        : "Confirm update"}
+                        : event === "SERVICE_DECLINED"
+                          ? "Decline request"
+                          : "Confirm update"}
                   </button>
                 )}
               </footer>

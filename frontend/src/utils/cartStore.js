@@ -243,3 +243,115 @@ export async function updateCartItemQuantity(
 
   saveCart(current.map((row, i) => (i === index ? { ...row, qty } : row)));
 }
+
+export async function updateCartItemHorsepower(
+  item,
+  authenticated,
+  product,
+  variant,
+) {
+  if (
+    !product ||
+    String(product.id) !== String(item.productId) ||
+    !variant ||
+    !product.variants?.some(
+      (option) =>
+        option.hp === variant.hp && option.variantId === variant.variantId,
+    )
+  ) {
+    throw new Error("Choose a valid horsepower for this product.");
+  }
+
+  const qty = Number(item.qty);
+
+  if (!Number.isInteger(qty) || qty < 1 || qty > 99) {
+    throw new Error("This cart item has an invalid quantity.");
+  }
+
+  if (!Number.isInteger(variant.stock) || variant.stock < qty) {
+    throw new Error("Not enough stock for the selected horsepower.");
+  }
+
+  if (authenticated && !item.pendingSync) {
+    const variantId = Number(item.variantId);
+
+    if (!Number.isSafeInteger(variantId) || variantId < 1) {
+      throw new Error("Refresh your cart before changing horsepower.");
+    }
+
+    const { data } = await api.patch(`/api/customer/cart/items/${variantId}`, {
+      hp: variant.hp,
+      quantity: qty,
+    });
+
+    if (data?.success !== true || !Array.isArray(data.items)) {
+      throw new Error("The horsepower update was not confirmed.");
+    }
+
+    window.dispatchEvent(new Event("av-cart-updated"));
+
+    return data.items;
+  }
+
+  // Guest cart or an unsynced browser cart.
+  const current = readCart();
+
+  const sourceIndex = current.findIndex(
+    (row) => row.productId === item.productId && row.hp === item.hp,
+  );
+
+  if (sourceIndex === -1) {
+    throw new Error("This cart item no longer exists.");
+  }
+
+  const source = current[sourceIndex];
+
+  const sourceQty = Number(source.qty);
+
+  if (sourceQty !== qty) {
+    throw new Error("Your cart has changed. Refresh and try again.");
+  }
+
+  const targetIndex = current.findIndex(
+    (row, index) =>
+      index !== sourceIndex &&
+      row.productId === item.productId &&
+      row.hp === variant.hp,
+  );
+
+  const existingQty = targetIndex === -1 ? 0 : Number(current[targetIndex].qty);
+
+  const combinedQty = sourceQty + existingQty;
+
+  if (
+    !Number.isInteger(combinedQty) ||
+    combinedQty < 1 ||
+    combinedQty > 99 ||
+    combinedQty > variant.stock
+  ) {
+    throw new Error("Not enough stock to combine these cart items.");
+  }
+
+  const updated = {
+    ...source,
+
+    hp: variant.hp,
+    price: Number(variant.price),
+    srp: Number(variant.srp),
+    qty: combinedQty,
+  };
+
+  if (targetIndex !== -1) {
+    const next = current
+      .map((row, index) =>
+        index === targetIndex ? { ...row, ...updated } : row,
+      )
+      .filter((_, index) => index !== sourceIndex);
+
+    return saveCart(next);
+  }
+
+  return saveCart(
+    current.map((row, index) => (index === sourceIndex ? updated : row)),
+  );
+}
